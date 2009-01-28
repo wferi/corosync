@@ -1,0 +1,24 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 001_fixes.dpatch by  <fabbione@cerberus.int.fabbione.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad corosync-0.92~/exec/totemnet.c corosync-0.92/exec/totemnet.c
+--- corosync-0.92~/exec/totemnet.c	2009-01-21 10:44:07.000000000 +0100
++++ corosync-0.92/exec/totemnet.c	2009-01-21 10:44:15.000000000 +0100
+@@ -747,11 +747,13 @@
+ 		instance->netif_bind_state == BIND_STATE_REGULAR &&
+ 		interface_up == 1)) {
+ 
++/*
+ 		poll_timer_add (instance->totemnet_poll_handle,
+ 			instance->totem_config->downcheck_timeout,
+ 			(void *)instance,
+ 			timer_function_netif_check_timeout,
+ 			&instance->timer_netif_check_timeout);
++*/
+ 
+ 		/*
+ 		 * Add a timer to check for a downed regular interface

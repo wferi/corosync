@@ -1,0 +1,55 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 100_makefile.dpatch by  <fabbione@gordian.fabbione.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad corosync-0.92~/Makefile corosync-0.92/Makefile
+--- corosync-0.92~/Makefile	2009-01-06 09:49:25.000000000 +0100
++++ corosync-0.92/Makefile	2009-01-06 09:49:26.000000000 +0100
+@@ -46,22 +46,8 @@
+ INCLUDEDIR_ENGINE=$(PREFIX)/include/corosync/engine
+ MANDIR=$(PREFIX)/share/man
+ ETCDIR=/etc
+-ARCH=$(shell uname -p)
+ 
+-ifeq (,$(findstring 64,$(ARCH)))
+-LIBDIR=$(PREFIX)/lib/corosync
+-else
+-LIBDIR=$(PREFIX)/lib64/corosync
+-endif
+-ifeq (s390,$(ARCH))
+-LIBDIR=$(PREFIX)/lib/corosync
+-endif
+-ifeq (s390x,$(ARCH))
+-LIBDIR=$(PREFIX)/lib64/corosync
+-endif
+-ifeq (ia64,$(ARCH))
+-LIBDIR=$(PREFIX)/lib/corosync
+-endif
++LIBDIR=/usr/lib/corosync
+ 
+ SUBDIRS:=$(builddir)lcr $(builddir)lib $(builddir)tools $(builddir)exec $(builddir)test $(builddir)services
+ sub_make = srcdir=$(srcdir) builddir=$(builddir) subdir=$(1)/ $(MAKE) -I$(srcdir)$(1) -f $(srcdir)$(1)/Makefile $(2)
+@@ -175,7 +161,7 @@
+ 	    ) \
+ 	done
+ 
+-	echo $(LIBDIR) > "$(DESTDIR)$(ETCDIR)/ld.so.conf.d/corosync-$(ARCH).conf"
++	echo $(LIBDIR) > "$(DESTDIR)$(ETCDIR)/ld.so.conf.d/corosync.conf"
+ 
+ 	install -m 755 $(builddir)exec/*lcrso $(DESTDIR)$(LCRSODIR)
+ 	install -m 755 $(builddir)services/*lcrso $(DESTDIR)$(LCRSODIR)
+diff -urNad corosync-0.92~/Makefile.inc corosync-0.92/Makefile.inc
+--- corosync-0.92~/Makefile.inc	2009-01-06 09:49:25.000000000 +0100
++++ corosync-0.92/Makefile.inc	2009-01-06 09:49:26.000000000 +0100
+@@ -1,7 +1,7 @@
+ # Common options
+ PREFIX=/usr
+ DESTDIR=
+-LCRSODIR=$(PREFIX)/libexec/lcrso
++LCRSODIR=/usr/lib/lcrso
+ 
+ # Do not modify below this line
+ 

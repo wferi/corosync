@@ -1,0 +1,4 @@
+usr/include
+usr/lib/corosync/*.a
+usr/lib/corosync/*.so
+usr/share/man/man3

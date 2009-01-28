@@ -1,0 +1,2 @@
+etc/ld*
+usr/lib/corosync/*.so.2*
