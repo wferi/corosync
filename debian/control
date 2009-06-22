@@ -10,7 +10,7 @@ Build-Depends: dpatch, debhelper (>> 5)
 Package: corosync
 Section: admin
 Architecture: any
-Depends: ${shlibs:Depends}, lsb-base (>= 3.0-6), libcorosync2
+Depends: ${shlibs:Depends}, lsb-base (>= 3.0-6), libcorosync2, groff
 Conflicts: openais (<< 0.85)
 Description: Standards-based cluster framework (daemon and modules)
  The corosync project is a project to implement a production quality
