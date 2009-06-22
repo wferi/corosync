@@ -6,48 +6,34 @@
 SOURCE  := $(shell dpkg-parsechangelog | sed -ne 's,^Source: *\(.*\)$$,\1,p')
 VERSION := $(shell dpkg-parsechangelog | perl -ne '/^Version:\s+(\S+)-[^-]+$$/ && print $$1;')
 
-BUILD_DIR = debian/build
 STAMPS_DIR = debian/stamps
 
 export COROSYNC_BUILD=$(if $(findstring debug,$(DEB_BUILD_OPTIONS)),DEBUG,RELEASE)
 
 setup: $(STAMPS_DIR)/setup
 
-$(STAMPS_DIR)/setup: SOURCE_FILES = $(filter-out debian, $(wildcard * .[^.]*))
-$(STAMPS_DIR)/setup: DIR = $(BUILD_DIR)/build
-$(STAMPS_DIR)/setup:
-	@[ -d $(BUILD_DIR) ] || mkdir $(BUILD_DIR)
-	@[ -d $(STAMPS_DIR) ] || mkdir $(STAMPS_DIR)
+configure-stamp:
 	dh_testdir
-	@rm -rf $(DIR)
-	mkdir $(DIR)
-	cp -a $(SOURCE_FILES) $(DIR)
-	dpatch -d $(DIR) apply-all
-	touch $@
+	./configure --prefix=/usr --libexecdir=/usr/lib/ --localstatedir=/var
+	touch configure-stamp
 
-build: $(STAMPS_DIR)/build
-
-$(STAMPS_DIR)/build: DIR = $(BUILD_DIR)/build
-$(STAMPS_DIR)/build: $(STAMPS_DIR)/setup
-	dh_testdir
-	$(MAKE) -C $(DIR) COROSYNC_BUILD=${COROSYNC_BUILD}
-	touch $@
+build: configure-stamp
+	$(MAKE)
 
 clean:
 	dh_testdir
-	rm -rf $(BUILD_DIR) $(STAMPS_DIR)
-	dh_clean
+	-$(MAKE) clean
+	dh_clean configure-stamp
 
 maintainerclean:
 	rm -rf $(filter-out .svn debian, $(wildcard * .[^.]*))
 
-install: DIR = $(BUILD_DIR)/build
-install: $(STAMPS_DIR)/build
+install: build
 	dh_testdir
 	dh_testroot
 	dh_clean -k
 	
-	$(MAKE) -C $(DIR) install DESTDIR=$(CURDIR)/debian/tmp/ STATICLIBS=YES
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp/ STATICLIBS=YES
 	dh_install --sourcedir=debian/tmp --list-missing
 	dh_installchangelogs CHANGELOG
 	dh_installdirs
@@ -74,21 +60,6 @@ binary-arch: install
 binary-indep:
 
 binary: binary-arch binary-indep
-
-DIR_ORIG = ../orig/$(SOURCE)-$(VERSION)
-TAR_ORIG_NAME = $(SOURCE)_$(VERSION).orig.tar.gz
-TAR_ORIG = $(firstword $(wildcard ../$(TAR_ORIG_NAME)) $(wildcard ../orig/$(TAR_ORIG_NAME)))
-
-orig: $(DIR_ORIG)
-	rsync --delete --exclude debian --exclude .svk --exclude .svn --link-dest=$(DIR_ORIG)/ -a $(DIR_ORIG)/ .
-
-$(DIR_ORIG):
-ifeq ($(TAR_ORIG),)
-	$(error Cannot find orig tarball $(TAR_ORIG_NAME))
-else
-	mkdir -p ../orig
-	tar -C ../orig -xzf $(TAR_ORIG)
-endif
 
 # This is to make dpatch-edit-patch work
 unpatch: clean
