@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -38,7 +38,7 @@
 struct worker_thread_group {
 	int threadcount;
 	int last_scheduled;
-	struct worker_thread *threads;
+	struct worker_thread_t *threads;
 	void (*worker_fn) (void *thread_state, void *work_item);
 };
 

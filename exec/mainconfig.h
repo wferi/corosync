@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -37,6 +37,7 @@
 
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/logsys.h>
+#include <corosync/list.h>
 
 /*
  * All service handlers in the AIS
@@ -49,25 +50,19 @@ struct dynamic_service {
 };
 #define MAX_DYNAMIC_SERVICES 128
 
-struct main_config {
-	/*
-	 * logging configuration
-	 */
-	char *logfile;
-	unsigned int logmode;
-	unsigned int syslog_facility;
-	unsigned int minimum_priority;
-
-	/*
-	 * user/group to run as
-	 */
-	char *user;
-	char *group;
+/*
+ * Structure describing cached uidgid item
+ */
+struct uidgid_item {
+	struct list_head list;
+	int uid;
+	int gid;
 };
+
+extern struct list_head uidgid_list_head;
 
 extern int corosync_main_config_read (
 	struct objdb_iface_ver0 *objdb,
-	char **error_string,
-	struct main_config *main_config);
-	
+	const char **error_string);
+
 #endif /* MAINCONFIG_H_DEFINED */

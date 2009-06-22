@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,11 +32,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <assert.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -52,6 +54,13 @@
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 #include <corosync/engine/logsys.h>
+
+#ifdef HAVE_LIBNSS
+#include <nss.h>
+#include <pk11pub.h>
+#include <pkcs11.h>
+#include <prerror.h>
+#endif
 
 #include "util.h"
 #include "totemconfig.h"
@@ -76,12 +85,19 @@
 #define RRP_PROBLEM_COUNT_THRESHOLD_MIN		5
 
 static char error_string_response[512];
+static struct objdb_iface_ver0 *global_objdb;
+
+static void add_totem_config_notification(
+	struct objdb_iface_ver0 *objdb,
+	struct totem_config *totem_config,
+	hdb_handle_t totem_object_handle);
+
 
 /* These just makes the code below a little neater */
 static inline int objdb_get_string (
-	struct objdb_iface_ver0 *objdb,
-	unsigned int object_service_handle,
-	char *key, char **value)
+	const struct objdb_iface_ver0 *objdb,
+	hdb_handle_t object_service_handle,
+	const char *key, const char **value)
 {
 	int res;
 
@@ -100,8 +116,9 @@ static inline int objdb_get_string (
 }
 
 static inline void objdb_get_int (
-	struct objdb_iface_ver0 *objdb, unsigned int object_service_handle,
-	char *key, unsigned int *intvalue)
+	const struct objdb_iface_ver0 *objdb,
+	hdb_handle_t object_service_handle,
+	const char *key, unsigned int *intvalue)
 {
 	char *value = NULL;
 
@@ -119,9 +136,9 @@ static inline void objdb_get_int (
 
 static unsigned int totem_handle_find (
 	struct objdb_iface_ver0 *objdb,
-	unsigned int *totem_find_handle)  {
+	hdb_handle_t *totem_find_handle)  {
 
-	unsigned int object_find_handle;
+	hdb_handle_t object_find_handle;
 	unsigned int res;
 
 	/*
@@ -163,65 +180,11 @@ static unsigned int totem_handle_find (
 	return (0);
 }
 
-extern int totem_config_read (
+static void totem_volatile_config_read (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	char **error_string)
+	hdb_handle_t object_totem_handle)
 {
-	int res = 0;
-	unsigned int object_totem_handle;
-	unsigned int object_interface_handle;
-	char *str;
-	unsigned int ringnumber = 0;
-	unsigned int object_find_interface_handle;
-
-	res = totem_handle_find (objdb, &object_totem_handle);
-	if (res == -1) {
-printf ("couldn't find totem handle\n");
-		return (-1);
-	}
-
-	memset (totem_config, 0, sizeof (struct totem_config));
-	totem_config->interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
-	if (totem_config->interfaces == 0) {
-		*error_string = "Out of memory trying to allocate ethernet interface storage area";
-		return -1;
-	}
-
-	memset (totem_config->interfaces, 0,
-		sizeof (struct totem_interface) * INTERFACE_MAX);
-
-	totem_config->secauth = 1;
-
-	strcpy (totem_config->rrp_mode, "none");
-
-	if (!objdb_get_string (objdb, object_totem_handle, "version", &str)) {
-		if (strcmp (str, "2") == 0) {
-			totem_config->version = 2;
-		}
-	}
-	if (!objdb_get_string (objdb, object_totem_handle, "secauth", &str)) {
-		if (strcmp (str, "on") == 0) {
-			totem_config->secauth = 1;
-		}
-		if (strcmp (str, "off") == 0) {
-			totem_config->secauth = 0;
-		}
-	}
-	if (!objdb_get_string (objdb, object_totem_handle, "rrp_mode", &str)) {
-		strcpy (totem_config->rrp_mode, str);
-	}
-
-	/*
-	 * Get interface node id
-	 */
-	objdb_get_int (objdb, object_totem_handle, "nodeid", &totem_config->node_id);
-
-	objdb_get_int (objdb,object_totem_handle, "threads", &totem_config->threads);
-
-
-	objdb_get_int (objdb,object_totem_handle, "netmtu", &totem_config->net_mtu);
-
 	objdb_get_int (objdb,object_totem_handle, "token", &totem_config->token_timeout);
 
 	objdb_get_int (objdb,object_totem_handle, "token_retransmit", &totem_config->token_retransmit_timeout);
@@ -258,6 +221,125 @@ printf ("couldn't find totem handle\n");
 
 	objdb_get_int (objdb,object_totem_handle, "max_messages", &totem_config->max_messages);
 
+}
+
+
+static void totem_get_crypto_type(
+	const struct objdb_iface_ver0 *objdb,
+	hdb_handle_t object_totem_handle,
+	struct totem_config *totem_config)
+{
+	const char *str;
+
+	totem_config->crypto_accept = TOTEM_CRYPTO_ACCEPT_OLD;
+	if (!objdb_get_string (objdb, object_totem_handle, "crypto_accept", &str)) {
+		if (strcmp(str, "new") == 0) {
+			totem_config->crypto_accept = TOTEM_CRYPTO_ACCEPT_NEW;
+		}
+	}
+
+	totem_config->crypto_type = TOTEM_CRYPTO_SOBER;
+
+#ifdef HAVE_LIBNSS
+	/*
+	 * We must set these even if the key does not exist.
+	 * Encryption type can be set on-the-fly using CFG
+	 */
+	totem_config->crypto_crypt_type = CKM_AES_CBC_PAD;
+	totem_config->crypto_sign_type = CKM_SHA256_RSA_PKCS;
+#endif
+
+	if (!objdb_get_string (objdb, object_totem_handle, "crypto_type", &str)) {
+		if (strcmp(str, "sober") == 0) {
+			return;
+		}
+#ifdef HAVE_LIBNSS
+		if (strcmp(str, "nss") == 0) {
+			totem_config->crypto_type = TOTEM_CRYPTO_NSS;
+
+		}
+#endif
+	}
+}
+
+
+
+extern int totem_config_read (
+	struct objdb_iface_ver0 *objdb,
+	struct totem_config *totem_config,
+	const char **error_string)
+{
+	int res = 0;
+	hdb_handle_t object_totem_handle;
+	hdb_handle_t object_interface_handle;
+	const char *str;
+	unsigned int ringnumber = 0;
+	hdb_handle_t object_find_interface_handle;
+
+	res = totem_handle_find (objdb, &object_totem_handle);
+	if (res == -1) {
+printf ("couldn't find totem handle\n");
+		return (-1);
+	}
+
+	memset (totem_config, 0, sizeof (struct totem_config));
+	totem_config->interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
+	if (totem_config->interfaces == 0) {
+		*error_string = "Out of memory trying to allocate ethernet interface storage area";
+		return -1;
+	}
+
+	memset (totem_config->interfaces, 0,
+		sizeof (struct totem_interface) * INTERFACE_MAX);
+
+	totem_config->secauth = 1;
+
+	strcpy (totem_config->rrp_mode, "none");
+
+	if (!objdb_get_string (objdb, object_totem_handle, "version", &str)) {
+		if (strcmp (str, "2") == 0) {
+			totem_config->version = 2;
+		}
+	}
+	if (!objdb_get_string (objdb, object_totem_handle, "secauth", &str)) {
+		if (strcmp (str, "on") == 0) {
+			totem_config->secauth = 1;
+		}
+		if (strcmp (str, "off") == 0) {
+			totem_config->secauth = 0;
+		}
+	}
+
+	if (totem_config->secauth == 1) {
+		totem_get_crypto_type(objdb, object_totem_handle, totem_config);
+	}
+
+	if (!objdb_get_string (objdb, object_totem_handle, "rrp_mode", &str)) {
+		strcpy (totem_config->rrp_mode, str);
+	}
+
+	/*
+	 * Get interface node id
+	 */
+	objdb_get_int (objdb, object_totem_handle, "nodeid", &totem_config->node_id);
+
+	totem_config->clear_node_high_bit = 0;
+	if (!objdb_get_string (objdb,object_totem_handle, "clear_node_high_bit", &str)) {
+		if (strcmp (str, "yes") == 0) {
+			totem_config->clear_node_high_bit = 1;
+		}
+	}
+
+	objdb_get_int (objdb,object_totem_handle, "threads", &totem_config->threads);
+
+
+	objdb_get_int (objdb,object_totem_handle, "netmtu", &totem_config->net_mtu);
+
+	/*
+	 * Get things that might change in the future
+	 */
+	totem_volatile_config_read (objdb, totem_config, object_totem_handle);
+
 	objdb->object_find_create (
 		object_totem_handle,
 		"interface",
@@ -275,6 +357,17 @@ printf ("couldn't find totem handle\n");
 		 */
 		if (!objdb_get_string (objdb, object_interface_handle, "mcastaddr", &str)) {
 			res = totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr, str, 0);
+		}
+		totem_config->broadcast_use = 0;
+		if (!objdb_get_string (objdb, object_interface_handle, "broadcast", &str)) {
+			if (strcmp (str, "yes") == 0) {
+				totem_config->broadcast_use = 1;
+				totemip_parse (
+					&totem_config->interfaces[ringnumber].mcast_addr,
+					"255.255.255.255", 0);
+			}
+
+
 		}
 
 		/*
@@ -297,16 +390,18 @@ printf ("couldn't find totem handle\n");
 
 	objdb->object_find_destroy (object_find_interface_handle);
 
+	add_totem_config_notification(objdb, totem_config, object_totem_handle);
+
 	return 0;
 }
 
 int totem_config_validate (
 	struct totem_config *totem_config,
-	char **error_string)
+	const char **error_string)
 {
 	static char local_error_reason[512];
 	char parse_error[512];
-	char *error_reason = local_error_reason;
+	const char *error_reason = local_error_reason;
 	int i;
 	unsigned int interface_max = INTERFACE_MAX;
 
@@ -323,7 +418,7 @@ int totem_config_validate (
 			error_reason = "No multicast address specified";
 			goto parse_error;
 		}
-	
+
 		if (totem_config->interfaces[i].ip_port == 0) {
 			error_reason = "No multicast port specified";
 			goto parse_error;
@@ -331,19 +426,21 @@ int totem_config_validate (
 
 		if (totem_config->interfaces[i].mcast_addr.family == AF_INET6 &&
 			totem_config->node_id == 0) {
-	
+
 			error_reason = "An IPV6 network requires that a node ID be specified.";
 			goto parse_error;
 		}
 
-		if (totem_config->interfaces[i].mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
-			error_reason = "Multicast address family does not match bind address family";
-			goto parse_error;
-		}
+		if (totem_config->broadcast_use == 0) {
+			if (totem_config->interfaces[i].mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
+				error_reason = "Multicast address family does not match bind address family";
+				goto parse_error;
+			}
 
-		if (totem_config->interfaces[i].mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
-			error_reason =  "Not all bind address belong to the same IP family";
-			goto parse_error;
+			if (totem_config->interfaces[i].mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
+				error_reason =  "Not all bind address belong to the same IP family";
+				goto parse_error;
+			}
 		}
 	}
 
@@ -384,7 +481,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->max_network_delay < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The max_network_delay parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The max_network_delay parameter (%d ms) may not be less then (%d ms).",
 			totem_config->max_network_delay, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -398,7 +496,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->token_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The token timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The token timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->token_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -414,7 +513,8 @@ int totem_config_validate (
 			(1000/HZ));
 	}
 	if (totem_config->token_retransmit_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The token retransmit timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The token retransmit timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->token_retransmit_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -424,7 +524,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->token_hold_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The token hold timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The token hold timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->token_hold_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -434,7 +535,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->join_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The join timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The join timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->join_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -444,7 +546,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->consensus_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The consensus timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The consensus timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->consensus_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -454,7 +557,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->merge_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The merge timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The merge timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->merge_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -464,7 +568,8 @@ int totem_config_validate (
 	}
 
 	if (totem_config->downcheck_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The downcheck timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The downcheck timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->downcheck_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -475,14 +580,16 @@ int totem_config_validate (
 	if (strcmp (totem_config->rrp_mode, "none") &&
 		strcmp (totem_config->rrp_mode, "active") &&
 		strcmp (totem_config->rrp_mode, "passive")) {
-		sprintf (local_error_reason, "The RRP mode \"%s\" specified is invalid.  It must be none, active, or passive.\n", totem_config->rrp_mode);
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The RRP mode \"%s\" specified is invalid.  It must be none, active, or passive.\n", totem_config->rrp_mode);
 		goto parse_error;
 	}
 	if (totem_config->rrp_problem_count_timeout == 0) {
 		totem_config->rrp_problem_count_timeout = RRP_PROBLEM_COUNT_TIMEOUT;
 	}
 	if (totem_config->rrp_problem_count_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The RRP problem count timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The RRP problem count timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->rrp_problem_count_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -490,7 +597,8 @@ int totem_config_validate (
 		totem_config->rrp_problem_count_threshold = RRP_PROBLEM_COUNT_THRESHOLD_DEFAULT;
 	}
 	if (totem_config->rrp_problem_count_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
-		sprintf (local_error_reason, "The RRP problem count threshold (%d problem count) may not be less then (%d problem count).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The RRP problem count threshold (%d problem count) may not be less then (%d problem count).",
 			totem_config->rrp_problem_count_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
 		goto parse_error;
 	}
@@ -498,9 +606,10 @@ int totem_config_validate (
 		totem_config->rrp_token_expired_timeout =
 			totem_config->token_retransmit_timeout;
 	}
-		
+
 	if (totem_config->rrp_token_expired_timeout < MINIMUM_TIMEOUT) {
-		sprintf (local_error_reason, "The RRP token expired timeout parameter (%d ms) may not be less then (%d ms).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The RRP token expired timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->rrp_token_expired_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -509,7 +618,7 @@ int totem_config_validate (
 		interface_max = 1;
 	}
 	if (interface_max < totem_config->interface_count) {
-		sprintf (parse_error,
+		snprintf (parse_error, sizeof(parse_error),
 			"%d is too many configured interfaces for the rrp_mode setting %s.",
 			totem_config->interface_count,
 			totem_config->rrp_mode);
@@ -529,7 +638,8 @@ int totem_config_validate (
 	}
 
 	if ((MESSAGE_QUEUE_MAX) < totem_config->max_messages) {
-		sprintf (local_error_reason, "The max_messages parameter (%d messages) may not be greater then (%d messages).",
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The max_messages parameter (%d messages) may not be greater then (%d messages).",
 			totem_config->max_messages, MESSAGE_QUEUE_MAX);
 		goto parse_error;
 	}
@@ -551,43 +661,50 @@ int totem_config_validate (
 	return (0);
 
 parse_error:
-	sprintf (error_string_response,
+	snprintf (error_string_response, sizeof(error_string_response),
 		 "parse error in config: %s\n", error_reason);
 	*error_string = error_string_response;
 	return (-1);
 }
 
 static int read_keyfile (
-	char *key_location,
+	const char *key_location,
 	struct totem_config *totem_config,
-	char **error_string)
+	const char **error_string)
 {
 	int fd;
 	int res;
+	ssize_t expected_key_len = sizeof (totem_config->private_key);
+	int saved_errno;
 
 	fd = open (key_location, O_RDONLY);
 	if (fd == -1) {
-		sprintf (error_string_response, "Could not open %s: %s\n",
+		snprintf (error_string_response, sizeof(error_string_response),
+			"Could not open %s: %s\n",
 			 key_location, strerror (errno));
 		goto parse_error;
 	}
 
-	res = read (fd, totem_config->private_key, 128);
+	res = read (fd, totem_config->private_key, expected_key_len);
+	saved_errno = errno;
+	close (fd);
+
 	if (res == -1) {
-		close (fd);
-		sprintf (error_string_response, "Could not read %s: %s\n",
-			 key_location, strerror (errno));
+		snprintf (error_string_response, sizeof(error_string_response),
+			"Could not read %s: %s\n",
+			 key_location, strerror (saved_errno));
 		goto parse_error;
 	}
 
-	totem_config->private_key_len = 128;
+	totem_config->private_key_len = expected_key_len;
 
-	if (res != 128) {
-		close (fd);
-		sprintf (error_string_response, "Could only read %d bits of 1024 bits from %s.\n",
+	if (res != expected_key_len) {
+		snprintf (error_string_response, sizeof(error_string_response),
+			"Could only read %d bits of 1024 bits from %s.\n",
 			 res * 8, key_location);
 		goto parse_error;
 	}
+
 	return 0;
 
 parse_error:
@@ -598,11 +715,11 @@ parse_error:
 int totem_config_keyread (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	char **error_string)
+	const char **error_string)
 {
 	int got_key = 0;
-	char *key_location = NULL;
-	unsigned int object_totem_handle;
+	const char *key_location = NULL;
+	hdb_handle_t object_totem_handle;
 	int res;
 
 	memset (totem_config->private_key, 0, 128);
@@ -626,7 +743,7 @@ int totem_config_keyread (
 		got_key = 1;
 	} else { /* Or the key itself may be in the objdb */
 		char *key = NULL;
-		int key_len;
+		size_t key_len;
 		res = objdb->object_key_get (object_totem_handle,
 			"key",
 			strlen ("key"),
@@ -634,6 +751,9 @@ int totem_config_keyread (
 			&key_len);
 
 		if (res == 0 && key) {
+			if (key_len > sizeof (totem_config->private_key)) {
+				goto key_error;
+			}
 			memcpy(totem_config->private_key, key, key_len);
 			totem_config->private_key_len = key_len;
 			got_key = 1;
@@ -642,9 +762,9 @@ int totem_config_keyread (
 
 	/* In desperation we read the default filename */
 	if (!got_key) {
-		char *filename = getenv("COROSYNC_TOTEM_AUTHKEY_FILE");
+		const char *filename = getenv("COROSYNC_TOTEM_AUTHKEY_FILE");
 		if (!filename)
-			filename = "/etc/ais/authkey";
+			filename = COROSYSCONFDIR "/authkey";
 		res = read_keyfile(filename, totem_config, error_string);
 		if (res)
 			goto key_error;
@@ -656,5 +776,94 @@ int totem_config_keyread (
 	*error_string = error_string_response;
 key_error:
 	return (-1);
+
+}
+
+static void totem_key_change_notify(object_change_type_t change_type,
+			      hdb_handle_t parent_object_handle,
+			      hdb_handle_t object_handle,
+			      const void *object_name_pt, size_t object_name_len,
+			      const void *key_name_pt, size_t key_len,
+			      const void *key_value_pt, size_t key_value_len,
+			      void *priv_data_pt)
+{
+	struct totem_config *totem_config = priv_data_pt;
+
+	if (memcmp(object_name_pt, "totem", object_name_len) == 0)
+		totem_volatile_config_read(global_objdb,
+					   totem_config,
+					   object_handle); // CHECK
+}
+
+static void totem_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
+				      void *priv_data_pt)
+{
+	struct totem_config *totem_config = priv_data_pt;
+	hdb_handle_t totem_object_handle;
+
+	/*
+	 * A new totem {} key might exist, cancel the
+	 * existing notification at the start of reload,
+	 * and start a new one on the new object when
+	 * it's all settled.
+	 */
+
+	if (type == OBJDB_RELOAD_NOTIFY_START) {
+		global_objdb->object_track_stop(
+			totem_key_change_notify,
+			NULL,
+			NULL,
+			NULL,
+			NULL);
+	}
+
+	if (type == OBJDB_RELOAD_NOTIFY_END ||
+	    type == OBJDB_RELOAD_NOTIFY_FAILED) {
+
+
+		if (!totem_handle_find(global_objdb,
+				      &totem_object_handle)) {
+			add_totem_config_notification(global_objdb, totem_config, totem_object_handle);
+
+			/*
+			 * Reload the configuration
+			 */
+			totem_volatile_config_read(global_objdb,
+						   totem_config,
+						   totem_object_handle);
+
+		}
+		else {
+			log_printf(LOGSYS_LEVEL_ERROR, "totem objdb tracking stopped, cannot find totem{} handle on objdb\n");
+		}
+	}
+}
+
+
+static void add_totem_config_notification(
+	struct objdb_iface_ver0 *objdb,
+	struct totem_config *totem_config,
+	hdb_handle_t totem_object_handle)
+{
+
+	global_objdb = objdb;
+	objdb->object_track_start(totem_object_handle,
+				  1,
+				  totem_key_change_notify,
+				  NULL, // object_create_notify,
+				  NULL, // object_destroy_notify,
+				  NULL, // object_reload_notify
+				  totem_config); // priv_data
+
+	/*
+	 * Reload notify must be on the parent object
+	 */
+	objdb->object_track_start(OBJECT_PARENT_HANDLE,
+				  1,
+				  NULL, // key_change_notify,
+				  NULL, // object_create_notify,
+				  NULL, // object_destroy_notify,
+				  totem_objdb_reload_notify, // object_reload_notify
+				  totem_config); // priv_data
 
 }

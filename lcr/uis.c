@@ -2,7 +2,7 @@
  * Copyright (c) 2006 Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -27,6 +27,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <sys/uio.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -41,7 +44,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <signal.h>
 #include <sched.h>
 #include <time.h>
 #include <pthread.h>
@@ -51,7 +53,7 @@
 #define SERVER_BACKLOG 5
 
 #if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
-/* SUN_LEN is broken for abstract namespace 
+/* SUN_LEN is broken for abstract namespace
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
 #else
@@ -59,9 +61,9 @@
 #endif
 
 #ifdef COROSYNC_LINUX
-static char *socketname = "lcr.socket";
+static const char *socketname = "lcr.socket";
 #else
-static char *socketname = "/var/run/lcr.socket";
+static const char *socketname = SOCKETDIR "/lcr.socket";
 #endif
 
 static void uis_lcr_bind (int *server_fd)
@@ -101,11 +103,11 @@ static void uis_lcr_bind (int *server_fd)
 }
 
 struct uis_commands {
-	char *command;
+	const char *command;
 	void (*cmd_handler) (char *);
 };
 
-void cmd1 (char *cmd) {
+static void cmd1 (char *cmd) {
 	printf ("cmd1 executed with cmd line %s\n", cmd);
 }
 
@@ -115,14 +117,14 @@ struct uis_commands uis_commands[] = {
 	}
 };
 
-struct req_msg {
+struct uis_req_msg {
         int len;
         char msg[0];
 };
 
 static void lcr_uis_dispatch (int fd)
 {
-	struct req_msg header;
+	struct uis_req_msg header;
 	char msg_contents[512];
 	ssize_t readsize;
 
@@ -150,7 +152,6 @@ static void *lcr_uis_server (void *data)
 #ifdef COROSYNC_LINUX
 	int on = 1;
 #endif
-	int res;
 
 	/*
 	 * Main acceptance and dispatch loop
@@ -160,23 +161,24 @@ static void *lcr_uis_server (void *data)
 	ufds[0].events = POLLIN;
 	ufds[1].events = POLLOUT;
 	for (;;) {
-		res = poll (ufds, nfds, -1);
+		int res = poll (ufds, nfds, -1);
+		if (res == 0 || (res < 0 && errno == EINTR))
+			continue;
+		if (res < 0)
+			return NULL;
 		if (nfds == 1 && ufds[0].revents & POLLIN) {
 			ufds[1].fd = accept (ufds[0].fd,
 				(struct sockaddr *)&un_addr, &addrlen);
-#ifdef COROSYNC_LINUX			
+#ifdef COROSYNC_LINUX
 			setsockopt(ufds[1].fd, SOL_SOCKET, SO_PASSCRED,
 				&on, sizeof (on));
 #endif
-			nfds = 2;		
+			nfds = 2;
 		}
 		if (ufds[0].revents & POLLIN) {
 			lcr_uis_dispatch (ufds[1].fd);
 		}
 	}
-
-
-	return 0;
 }
 
 __attribute__ ((constructor)) static int lcr_uis_ctors (void)
@@ -187,4 +189,3 @@ __attribute__ ((constructor)) static int lcr_uis_ctors (void)
 
 	return (0);
 }
-

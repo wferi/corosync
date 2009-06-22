@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -33,6 +33,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <assert.h>
 #include <pwd.h>
 #include <grp.h>
@@ -51,18 +53,19 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <signal.h>
 #include <sched.h>
 #include <time.h>
 
 #include <corosync/engine/logsys.h>
+#include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
+#include <corosync/mar_gen.h>
+#include <corosync/engine/coroapi.h>
+#include <corosync/engine/quorum.h>
 #include <corosync/swab.h>
 #include <corosync/lcr/lcr_comp.h>
 
-#include "main.h"
-#include "vsf.h"
-
-LOGSYS_DECLARE_SUBSYS ("YKD", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("YKD");
 
 #define YKD_PROCESSOR_COUNT_MAX 32
 
@@ -108,7 +111,7 @@ struct state_received {
 
 struct ykd_state ykd_state;
 
-static totempg_groups_handle ykd_group_handle;
+static hdb_handle_t ykd_group_handle;
 
 static struct state_received state_received_confchg[YKD_PROCESSOR_COUNT_MAX];
 
@@ -136,17 +139,19 @@ static int primary_designated = 0;
 
 static struct memb_ring_id ykd_ring_id;
 
-static void *ykd_attempt_send_callback_token_handle = 0;
+hdb_handle_t schedwrk_attempt_send_callback_handle;
 
-static void *ykd_state_send_callback_token_handle = 0;
+hdb_handle_t schedwrk_state_send_callback_handle;
+
+static struct corosync_api_v1 *api;
 
 static void (*ykd_primary_callback_fn) (
-	unsigned int *view_list,
-	int view_list_entries,
+	const unsigned int *view_list,
+	size_t view_list_entries,
 	int primary_designated,
 	struct memb_ring_id *ring_id) = NULL;
 
-void ykd_state_init (void)
+static void ykd_state_init (void)
 {
 	ykd_state.session_id = 0;
 	ykd_state.last_formed_entries = 0;
@@ -155,58 +160,54 @@ void ykd_state_init (void)
 	ykd_state.last_primary.member_list_entries = 0;
 }
 
-static int ykd_state_send_msg (enum totem_callback_token_type type, void *context)
+static int ykd_state_send_msg (const void *context)
 {
 	struct iovec iovec[2];
 	struct ykd_header header;
 	int res;
 
 	header.id = YKD_HEADER_SENDSTATE;
-	
+
 	iovec[0].iov_base = (char *)&header;
 	iovec[0].iov_len = sizeof (struct ykd_header);
 	iovec[1].iov_base = (char *)&ykd_state;
 	iovec[1].iov_len = sizeof (struct ykd_state);
 
-	res = totempg_groups_mcast_joined (ykd_group_handle, iovec, 2,
-		TOTEMPG_AGREED);
+	res = api->tpg_joined_mcast (ykd_group_handle, iovec, 2,
+		TOTEM_AGREED);
 
 	return (res);
 }
 
 static void ykd_state_send (void)
 {
-        totempg_callback_token_create (
-                &ykd_state_send_callback_token_handle,
-                TOTEM_CALLBACK_TOKEN_SENT,
-                1, /* delete after callback */
+	api->schedwrk_create (
+		&schedwrk_state_send_callback_handle,
                 ykd_state_send_msg,
                 NULL);
 }
 
-static int ykd_attempt_send_msg (enum totem_callback_token_type type, void *context)
+static int ykd_attempt_send_msg (const void *context)
 {
 	struct iovec iovec;
 	struct ykd_header header;
 	int res;
 
 	header.id = YKD_HEADER_SENDSTATE;
-	
+
 	iovec.iov_base = (char *)&header;
 	iovec.iov_len = sizeof (struct ykd_header);
 
-	res = totempg_groups_mcast_joined (ykd_group_handle, &iovec, 1,
-		TOTEMPG_AGREED);
+	res = api->tpg_joined_mcast (ykd_group_handle, &iovec, 1,
+		TOTEM_AGREED);
 
 	return (res);
 }
 
 static void ykd_attempt_send (void)
 {
-        totempg_callback_token_create (
-                &ykd_attempt_send_callback_token_handle,
-                TOTEM_CALLBACK_TOKEN_SENT,
-                1, /* delete after callback */
+	api->schedwrk_create (
+		&schedwrk_attempt_send_callback_handle,
                 ykd_attempt_send_msg,
                 NULL);
 }
@@ -297,7 +298,7 @@ static int decide (void)
 		if (subquorum (view_list, view_list_entries, &ambiguous_sessions_max[i]) == 0) {
 			return (0);
 		}
-		
+
 	}
 	return (1);
 }
@@ -315,41 +316,41 @@ static void ykd_session_endian_convert (struct ykd_session *ykd_session)
 	}
 }
 
-static void ykd_state_endian_convert (struct ykd_state *ykd_state)
+static void ykd_state_endian_convert (struct ykd_state *state)
 {
 	int i;
 
-	ykd_session_endian_convert (&ykd_state->last_primary);
-	ykd_state->last_formed_entries = swab32 (ykd_state->last_formed_entries);
-	ykd_state->ambiguous_sessions_entries = swab32 (ykd_state->ambiguous_sessions_entries);
-	ykd_state->session_id = swab32 (ykd_state->session_id);
+	ykd_session_endian_convert (&state->last_primary);
+	state->last_formed_entries = swab32 (state->last_formed_entries);
+	state->ambiguous_sessions_entries = swab32 (state->ambiguous_sessions_entries);
+	state->session_id = swab32 (state->session_id);
 
-	for (i = 0; i < ykd_state->last_formed_entries; i++) {
-		ykd_session_endian_convert (&ykd_state->last_formed[i]);
+	for (i = 0; i < state->last_formed_entries; i++) {
+		ykd_session_endian_convert (&state->last_formed[i]);
 	}
-	
-	for (i = 0; i < ykd_state->ambiguous_sessions_entries; i++) {
-		ykd_session_endian_convert (&ykd_state->ambiguous_sessions[i]);
+
+	for (i = 0; i < state->ambiguous_sessions_entries; i++) {
+		ykd_session_endian_convert (&state->ambiguous_sessions[i]);
 	}
 }
 
 static void ykd_deliver_fn (
 	unsigned int nodeid,
-	struct iovec *iovec,
-	int iov_len,
+	const void *msg,
+	unsigned int msg_len,
 	int endian_conversion_required)
 {
 	int all_received = 1;
 	int state_position = 0;
 	int i;
-	char *msg_state = iovec->iov_base + sizeof (struct ykd_header);
-	
+	char *msg_state = (char *)msg + sizeof (struct ykd_header);
+
 	/*
 	 * If this is a localhost address, this node is always primary
 	 */
 #ifdef TODO
 	if (totemip_localhost_check (source_addr)) {
-		log_printf (LOG_LEVEL_NOTICE,
+		log_printf (LOGSYS_LEVEL_NOTICE,
 			"This processor is within the primary component.\n");
 			primary_designated = 1;
 
@@ -362,7 +363,7 @@ static void ykd_deliver_fn (
 	}
 #endif
 	if (endian_conversion_required &&
-	    (iovec->iov_len > sizeof (struct ykd_header))) {
+	    (msg_len > sizeof (struct ykd_header))) {
 		ykd_state_endian_convert ((struct ykd_state *)msg_state);
 	}
 
@@ -391,7 +392,7 @@ static void ykd_deliver_fn (
 
 	switch (ykd_mode) {
 		case YKD_MODE_SENDSTATE:
-			assert (iovec->iov_len > sizeof (struct ykd_header));
+			assert (msg_len > sizeof (struct ykd_header));
 			/*
 			 * Copy state information for the sending processor
 			 */
@@ -424,7 +425,7 @@ static void ykd_deliver_fn (
 
 		case YKD_MODE_ATTEMPT:
 			if (all_received) {
-				log_printf (LOG_LEVEL_NOTICE,
+				log_printf (LOGSYS_LEVEL_NOTICE,
 					"This processor is within the primary component.\n");
 				primary_designated = 1;
 
@@ -446,10 +447,10 @@ static void ykd_deliver_fn (
 int first_run = 1;
 static void ykd_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries,
-	struct memb_ring_id *ring_id)
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
 {
 	int i;
 
@@ -460,7 +461,7 @@ static void ykd_confchg_fn (
 	memcpy (&ykd_ring_id, ring_id, sizeof (struct memb_ring_id));
 
 	if (first_run) {
-		ykd_state.last_primary.member_list[0] = totempg_my_nodeid_get();
+		ykd_state.last_primary.member_list[0] = api->totem_nodeid_get();
 		ykd_state.last_primary.member_list_entries = 1;
 		ykd_state.last_primary.session_id = 0;
 		first_run = 0;
@@ -493,53 +494,41 @@ static void ykd_confchg_fn (
 	ykd_state_send ();
 }
 
-struct totempg_group ykd_group = {
+struct corosync_tpg_group ykd_group = {
 	.group		= "ykd",
 	.group_len	= 3
 };
 
-static int ykd_init (
-	void (*primary_callback_fn) (
-		unsigned int *view_list,
-		int view_list_entries,
-		int primary_designated,
-		struct memb_ring_id *ring_id))
+static void ykd_init (
+	struct corosync_api_v1 *corosync_api,
+	quorum_set_quorate_fn_t set_primary)
 {
-	ykd_primary_callback_fn = primary_callback_fn;
+	ykd_primary_callback_fn = set_primary;
+	api = corosync_api;
 
-	totempg_groups_initialize (
+	api->tpg_init (
 		&ykd_group_handle,
 		ykd_deliver_fn,
 		ykd_confchg_fn);
 
-	totempg_groups_join (
+	api->tpg_join (
 		ykd_group_handle,
 		&ykd_group,
 		1);
 
 	ykd_state_init ();
-
-	return (0);
-}
-
-/*
- * Returns 1 if this processor is in the primary 
- */
-static int ykd_primary (void) {
-	return (primary_designated);
 }
 
 /*
  * lcrso object definition
  */
-static struct corosync_vsf_iface_ver0 vsf_ykd_iface_ver0 = {
+static struct quorum_services_api_ver1 vsf_ykd_iface_ver0 = {
 	.init				= ykd_init,
-	.primary			= ykd_primary
 };
 
 static struct lcr_iface corosync_vsf_ykd_ver0[1] = {
 	{
-		.name			= "corosync_vsf_ykd",
+		.name			= "corosync_quorum_ykd",
 		.version		= 0,
 		.versions_replace	= 0,
 		.versions_replace_count	= 0,
@@ -556,6 +545,12 @@ static struct lcr_comp vsf_ykd_comp_ver0 = {
 	.ifaces				= corosync_vsf_ykd_ver0
 };
 
-__attribute__ ((constructor)) static void vsf_ykd_comp_register (void) {
+#ifdef COROSYNC_SOLARIS
+void corosync_lcr_component_register (void);
+
+void corosync_lcr_component_register (void) {
+#else
+__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
+#endif
 	lcr_component_register (&vsf_ykd_comp_ver0);
 }

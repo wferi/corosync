@@ -32,16 +32,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
+#include <sys/select.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <signal.h>
 #include <unistd.h>
 #include <string.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/confdb.h>
 
 #define SEPERATOR '.'
@@ -65,28 +68,28 @@ typedef enum {
 } find_object_of_type_t;
 
 static void tail_key_changed(confdb_handle_t handle,
-							   confdb_change_type_t change_type,
-							   unsigned int parent_object_handle,
-							   unsigned int object_handle,
-							   void *object_name,
-							   int  object_name_len,
-							   void *key_name,
-							   int key_name_len,
-							   void *key_value,
-							   int key_value_len);
+	confdb_change_type_t change_type,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	const void *object_name,
+	size_t  object_name_len,
+	const void *key_name,
+	size_t key_name_len,
+	const void *key_value,
+	size_t key_value_len);
 
 static void tail_object_created(confdb_handle_t handle,
-								unsigned int parent_object_handle,
-								unsigned int object_handle,
-								uint8_t *name_pt,
-								int  name_len);
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	const void *name_pt,
+	size_t name_len);
 
 static void tail_object_deleted(confdb_handle_t handle,
-								unsigned int parent_object_handle,
-								uint8_t *name_pt,
-								int  name_len);
+	hdb_handle_t parent_object_handle,
+	const void *name_pt,
+	size_t name_len);
 
-confdb_callbacks_t callbacks = {
+static confdb_callbacks_t callbacks = {
 	.confdb_key_change_notify_fn = tail_key_changed,
 	.confdb_object_create_change_notify_fn = tail_object_created,
 	.confdb_object_delete_change_notify_fn = tail_object_deleted,
@@ -95,22 +98,22 @@ confdb_callbacks_t callbacks = {
 static int action;
 
 /* Recursively dump the object tree */
-static void print_config_tree(confdb_handle_t handle, unsigned int parent_object_handle, char * parent_name)
+static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object_handle, char * parent_name)
 {
-	unsigned int object_handle;
+	hdb_handle_t object_handle;
 	char object_name[OBJ_NAME_SIZE];
-	int object_name_len;
+	size_t object_name_len;
 	char key_name[OBJ_NAME_SIZE];
-	int key_name_len;
+	size_t key_name_len;
 	char key_value[OBJ_NAME_SIZE];
-	int key_value_len;
-	confdb_error_t res;
+	size_t key_value_len;
+	cs_error_t res;
 	int children_printed;
 
 	/* Show the keys */
 	res = confdb_key_iter_start(handle, parent_object_handle);
-	if (res != CONFDB_OK) {
-		fprintf(stderr, "error resetting key iterator for object %d: %d\n", parent_object_handle, res);
+	if (res != CS_OK) {
+		fprintf(stderr, "error resetting key iterator for object "HDB_X_FORMAT" %d\n", parent_object_handle, res);
 		exit(EXIT_FAILURE);
 	}
 	children_printed = 0;
@@ -120,7 +123,7 @@ static void print_config_tree(confdb_handle_t handle, unsigned int parent_object
 								   key_name,
 								   &key_name_len,
 								   key_value,
-								   &key_value_len)) == CONFDB_OK) {
+								   &key_value_len)) == CS_OK) {
 		key_name[key_name_len] = '\0';
 		key_value[key_value_len] = '\0';
 		if (parent_name != NULL)
@@ -133,16 +136,16 @@ static void print_config_tree(confdb_handle_t handle, unsigned int parent_object
 
 	/* Show sub-objects */
 	res = confdb_object_iter_start(handle, parent_object_handle);
-	if (res != CONFDB_OK) {
-		fprintf(stderr, "error resetting object iterator for object %d: %d\n", parent_object_handle, res);
+	if (res != CS_OK) {
+		fprintf(stderr, "error resetting object iterator for object "HDB_X_FORMAT" %d\n", parent_object_handle, res);
 		exit(EXIT_FAILURE);
 	}
 
 	while ( (res = confdb_object_iter(handle,
-									  parent_object_handle,
-									  &object_handle,
-									  object_name,
-									  &object_name_len)) == CONFDB_OK)	{
+		parent_object_handle,
+		&object_handle,
+		object_name,
+		&object_name_len)) == CS_OK)	{
 
 		object_name[object_name_len] = '\0';
 		if (parent_name != NULL) {
@@ -165,7 +168,7 @@ static int print_all(void)
 	int result;
 
 	result = confdb_initialize (&handle, &callbacks);
-	if (result != CONFDB_OK) {
+	if (result != CS_OK) {
 		fprintf (stderr, "Could not initialize objdb library. Error %d\n", result);
 		return 1;
 	}
@@ -181,42 +184,26 @@ static int print_all(void)
 static int print_help(void)
 {
 	printf("\n");
-	printf ("usage:  corosync-objctl object%ckey ...\n", SEPERATOR);
-	printf ("        corosync-objctl -c object%cchild_obj ...\n", SEPERATOR);
-	printf ("        corosync-objctl -d object%cchild_obj ...\n", SEPERATOR);
-	printf ("        corosync-objctl -w object%cchild_obj.key=value ...\n", SEPERATOR);
-	printf ("        corosync-objctl -a (print all objects)\n");
+	printf ("usage:  corosync-objctl object%ckey ...                    Print an object\n", SEPERATOR);
+	printf ("        corosync-objctl -c object%cchild_obj ...           Create Object\n", SEPERATOR);
+	printf ("        corosync-objctl -d object%cchild_obj ...           Delete object\n", SEPERATOR);
+	printf ("        corosync-objctl -w object%cchild_obj.key=value ... Create a key\n", SEPERATOR);
+	printf ("        corosync-objctl -t object%cchild_obj ...           Track changes\n", SEPERATOR);
+	printf ("        corosync-objctl -a                                Print all objects\n");
 	printf("\n");
 	return 0;
 }
 
-static confdb_error_t validate_name(char * obj_name_pt)
+static cs_error_t validate_name(char * obj_name_pt)
 {
 	if ((strchr (obj_name_pt, SEPERATOR) == NULL) &&
 		(strchr (obj_name_pt, '=') == NULL))
-		return CONFDB_OK;
+		return CS_OK;
 	else
-		return CONFDB_ERR_INVALID_PARAM;
+		return CS_ERR_INVALID_PARAM;
 }
 
-void get_child_name(char * name_pt, char * child_name)
-{
-	char * tmp;
-	char str_copy[OBJ_NAME_SIZE];
-
-	strcpy(str_copy, name_pt);
-
-	/* first remove the value (it could be a file path */
-	tmp = strchr(str_copy, '=');
-	if (tmp != NULL) *tmp = '\0';
-
-	/* truncate the  */
-	tmp = strrchr(str_copy, SEPERATOR);
-	if (tmp == NULL) tmp = str_copy;
-	strcpy(child_name, tmp+1);
-}
-
-void get_parent_name(char * name_pt, char * parent_name)
+static void get_parent_name(const char * name_pt, char * parent_name)
 {
 	char * tmp;
 	strcpy(parent_name, name_pt);
@@ -230,7 +217,7 @@ void get_parent_name(char * name_pt, char * parent_name)
 	if (tmp != NULL) *tmp = '\0';
 }
 
-void get_key(char * name_pt, char * key_name, char * key_value)
+static void get_key(const char * name_pt, char * key_name, char * key_value)
 {
 	char * tmp;
 	char str_copy[OBJ_NAME_SIZE];
@@ -251,31 +238,31 @@ void get_key(char * name_pt, char * key_name, char * key_value)
 	strcpy(key_name, tmp+1);
 }
 
-static confdb_error_t find_object (confdb_handle_t handle,
+static cs_error_t find_object (confdb_handle_t handle,
 			char * name_pt,
 			find_object_of_type_t type,
-			uint32_t * out_handle)
+			hdb_handle_t * out_handle)
 {
 	char * obj_name_pt;
 	char * save_pt;
-	uint32_t obj_handle;
+	hdb_handle_t obj_handle;
 	confdb_handle_t parent_object_handle = OBJECT_PARENT_HANDLE;
 	char tmp_name[OBJ_NAME_SIZE];
-	confdb_error_t res;
+	cs_error_t res = CS_OK;
 
 	strncpy (tmp_name, name_pt, OBJ_NAME_SIZE);
 	obj_name_pt = strtok_r(tmp_name, SEPERATOR_STR, &save_pt);
 
 	while (obj_name_pt != NULL) {
 		res = confdb_object_find_start(handle, parent_object_handle);
-		if (res != CONFDB_OK) {
+		if (res != CS_OK) {
 			fprintf (stderr, "Could not start object_find %d\n", res);
 			exit (EXIT_FAILURE);
 		}
 
 		res = confdb_object_find(handle, parent_object_handle,
 				obj_name_pt, strlen (obj_name_pt), &obj_handle);
-		if (res != CONFDB_OK) {
+		if (res != CS_OK) {
 			return res;
 		}
 
@@ -290,37 +277,37 @@ static confdb_error_t find_object (confdb_handle_t handle,
 static void read_object(confdb_handle_t handle, char * name_pt)
 {
 	char parent_name[OBJ_NAME_SIZE];
-	uint32_t obj_handle;
-	confdb_error_t res;
+	hdb_handle_t obj_handle;
+	cs_error_t res;
 
 	get_parent_name(name_pt, parent_name);
 	res = find_object (handle, name_pt, FIND_OBJECT_OR_KEY, &obj_handle);
-	if (res == CONFDB_OK) {
+	if (res == CS_OK) {
 		print_config_tree(handle, obj_handle, parent_name);
 	}
 }
 
 static void write_key(confdb_handle_t handle, char * path_pt)
 {
-	uint32_t obj_handle;
+	hdb_handle_t obj_handle;
 	char parent_name[OBJ_NAME_SIZE];
 	char key_name[OBJ_NAME_SIZE];
 	char key_value[OBJ_NAME_SIZE];
 	char old_key_value[OBJ_NAME_SIZE];
-	int old_key_value_len;
-	confdb_error_t res;
+	size_t old_key_value_len;
+	cs_error_t res;
 
 	/* find the parent object */
 	get_parent_name(path_pt, parent_name);
 	get_key(path_pt, key_name, key_value);
 
-	if (validate_name(key_name) != CONFDB_OK) {
+	if (validate_name(key_name) != CS_OK) {
 		fprintf(stderr, "Incorrect key name, can not have \"=\" or \"%c\"\n", SEPERATOR);
 		exit(EXIT_FAILURE);
 	}
 	res = find_object (handle, parent_name, FIND_OBJECT_ONLY, &obj_handle);
 
-	if (res != CONFDB_OK) {
+	if (res != CS_OK) {
 		fprintf(stderr, "Can't find parent object of \"%s\"\n", path_pt);
 		exit(EXIT_FAILURE);
 	}
@@ -333,7 +320,7 @@ static void write_key(confdb_handle_t handle, char * path_pt)
 						  old_key_value,
 						  &old_key_value_len);
 
-	if (res == CONFDB_OK) {
+	if (res == CS_OK) {
 		/* replace the current value */
 		res = confdb_key_replace (handle,
 								  obj_handle,
@@ -344,7 +331,7 @@ static void write_key(confdb_handle_t handle, char * path_pt)
 								  key_value,
 								  strlen(key_value));
 
-		if (res != CONFDB_OK)
+		if (res != CS_OK)
 			fprintf(stderr, "Failed to replace the key %s=%s. Error %d\n", key_name, key_value, res);
 	} else {
 		/* not there, create a new key */
@@ -354,7 +341,7 @@ static void write_key(confdb_handle_t handle, char * path_pt)
 								 strlen(key_name),
 								 key_value,
 								 strlen(key_value));
-		if (res != CONFDB_OK)
+		if (res != CS_OK)
 			fprintf(stderr, "Failed to create the key %s=%s. Error %d\n", key_name, key_value, res);
 	}
 
@@ -364,26 +351,26 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 {
 	char * obj_name_pt;
 	char * save_pt;
-	uint32_t obj_handle;
-	uint32_t parent_object_handle = OBJECT_PARENT_HANDLE;
+	hdb_handle_t obj_handle;
+	hdb_handle_t parent_object_handle = OBJECT_PARENT_HANDLE;
 	char tmp_name[OBJ_NAME_SIZE];
-	confdb_error_t res;
+	cs_error_t res;
 
 	strncpy (tmp_name, name_pt, OBJ_NAME_SIZE);
 	obj_name_pt = strtok_r(tmp_name, SEPERATOR_STR, &save_pt);
 
 	while (obj_name_pt != NULL) {
 		res = confdb_object_find_start(handle, parent_object_handle);
-		if (res != CONFDB_OK) {
+		if (res != CS_OK) {
 			fprintf (stderr, "Could not start object_find %d\n", res);
 			exit (EXIT_FAILURE);
 		}
 
 		res = confdb_object_find(handle, parent_object_handle,
-								 obj_name_pt, strlen (obj_name_pt), &obj_handle);
-		if (res != CONFDB_OK) {
+			 obj_name_pt, strlen (obj_name_pt), &obj_handle);
+		if (res != CS_OK) {
 
-			if (validate_name(obj_name_pt) != CONFDB_OK) {
+			if (validate_name(obj_name_pt) != CS_OK) {
 				fprintf(stderr, "Incorrect object name \"%s\", \"=\" not allowed.\n",
 						obj_name_pt);
 				exit(EXIT_FAILURE);
@@ -393,7 +380,7 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 										obj_name_pt,
 										strlen (obj_name_pt),
 										&obj_handle);
-			if (res != CONFDB_OK)
+			if (res != CS_OK)
 				fprintf(stderr, "Failed to create object \"%s\". Error %d.\n",
 						obj_name_pt, res);
 		}
@@ -403,45 +390,60 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 	}
 }
 
-static void tail_key_changed(confdb_handle_t handle,
-							   confdb_change_type_t change_type,
-							   unsigned int parent_object_handle,
-							   unsigned int object_handle,
-							   void *object_name_pt,
-							   int  object_name_len,
-							   void *key_name_pt,
-							   int key_name_len,
-							   void *key_value_pt,
-							   int key_value_len)
+/* Print "?" in place of any non-printable byte of OBJ. */
+static void print_name (FILE *fp, const void *obj, size_t obj_len)
 {
-	char * on = (char*)object_name_pt;
-	char * kn = (char*)key_name_pt;
-	char * kv = (char*)key_value_pt;
+	const char *p = obj;
+	size_t i;
+	for (i = 0; i < obj_len; i++) {
+		int c = *p++;
+		if (!isprint (c)) {
+			c = '?';
+		}
+		fputc (c, fp);
+	}
+}
 
-	on[object_name_len] = '\0';
-	kv[key_value_len] = '\0';
-	kn[key_name_len] = '\0';
-	printf("key_changed> %s.%s=%s\n", on, kn, kv);
+static void tail_key_changed(confdb_handle_t handle,
+	confdb_change_type_t change_type,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	const void *object_name_pt,
+	size_t  object_name_len,
+	const void *key_name_pt,
+	size_t key_name_len,
+	const void *key_value_pt,
+	size_t key_value_len)
+{
+	/* printf("key_changed> %.*s.%.*s=%.*s\n", */
+	fputs("key_changed> ", stdout);
+	print_name (stdout, object_name_pt, object_name_len);
+	fputs(".", stdout);
+	print_name (stdout, key_name_pt, key_name_len);
+	fputs("=", stdout);
+	print_name (stdout, key_value_pt, key_value_len);
+	fputs("\n", stdout);
 }
 
 static void tail_object_created(confdb_handle_t handle,
-								unsigned int parent_object_handle,
-								unsigned int object_handle,
-								uint8_t *name_pt,
-								int  name_len)
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	const void *name_pt,
+	size_t name_len)
 {
-	name_pt[name_len] = '\0';
-	printf("object_created> %s\n", name_pt);
+	fputs("object_created>", stdout);
+	print_name(stdout, name_pt, name_len);
+	fputs("\n", stdout);
 }
 
 static void tail_object_deleted(confdb_handle_t handle,
-								unsigned int parent_object_handle,
-								uint8_t *name_pt,
-								int  name_len)
+	hdb_handle_t parent_object_handle,
+	const void *name_pt,
+	size_t name_len)
 {
-	name_pt[name_len] = '\0';
-
-	printf("object_deleted> %s\n", name_pt);
+	fputs("object_deleted>", stdout);
+	print_name(stdout, name_pt, name_len);
+	fputs("\n", stdout);
 }
 
 static void listen_for_object_changes(confdb_handle_t handle)
@@ -449,10 +451,13 @@ static void listen_for_object_changes(confdb_handle_t handle)
 	int result;
 	fd_set read_fds;
 	int select_fd;
-	SaBoolT quit = SA_FALSE;
+	int quit = CS_FALSE;
 
 	FD_ZERO (&read_fds);
-	confdb_fd_get(handle, &select_fd);
+	if (confdb_fd_get (handle, &select_fd) != CS_OK) {
+		printf ("can't get the confdb selector object.\n");
+		return;
+	}
 	printf ("Type \"q\" to finish\n");
 	do {
 		FD_SET (select_fd, &read_fds);
@@ -464,35 +469,36 @@ static void listen_for_object_changes(confdb_handle_t handle)
 		if (FD_ISSET (STDIN_FILENO, &read_fds)) {
 			char inbuf[3];
 
-			fgets(inbuf, sizeof(inbuf), stdin);
-			if (strncmp(inbuf, "q", 1) == 0)
-				quit = SA_TRUE;
+			if (fgets(inbuf, sizeof(inbuf), stdin) == NULL)
+				quit = CS_TRUE;
+			else if (strncmp(inbuf, "q", 1) == 0)
+				quit = CS_TRUE;
 		}
 		if (FD_ISSET (select_fd, &read_fds)) {
-			if (confdb_dispatch (handle, CONFDB_DISPATCH_ALL) != CONFDB_OK)
+			if (confdb_dispatch (handle, CONFDB_DISPATCH_ALL) != CS_OK)
 				exit(1);
 		}
-	} while (result && quit == SA_FALSE);
+	} while (result && quit == CS_FALSE);
 
-	confdb_stop_track_changes(handle);
+	(void)confdb_stop_track_changes(handle);
 
 }
 
 static void track_object(confdb_handle_t handle, char * name_pt)
 {
-	confdb_error_t res;
-	uint32_t obj_handle;
+	cs_error_t res;
+	hdb_handle_t obj_handle;
 
 	res = find_object (handle, name_pt, FIND_OBJECT_ONLY, &obj_handle);
 
-	if (res != CONFDB_OK) {
+	if (res != CS_OK) {
 		fprintf (stderr, "Could not find object \"%s\". Error %d\n",
 				 name_pt, res);
 		return;
 	}
 
 	res = confdb_track_changes (handle, obj_handle, CONFDB_TRACK_DEPTH_RECURSIVE);
-	if (res != CONFDB_OK) {
+	if (res != CS_OK) {
 		fprintf (stderr, "Could not enable tracking on object \"%s\". Error %d\n",
 				 name_pt, res);
 		return;
@@ -501,10 +507,10 @@ static void track_object(confdb_handle_t handle, char * name_pt)
 
 static void stop_tracking(confdb_handle_t handle)
 {
-	confdb_error_t res;
+	cs_error_t res;
 
 	res = confdb_stop_track_changes (handle);
-	if (res != CONFDB_OK) {
+	if (res != CS_OK) {
 		fprintf (stderr, "Could not stop tracking. Error %d\n", res);
 		return;
 	}
@@ -512,14 +518,14 @@ static void stop_tracking(confdb_handle_t handle)
 
 static void delete_object(confdb_handle_t handle, char * name_pt)
 {
-	confdb_error_t res;
-	uint32_t obj_handle;
+	cs_error_t res;
+	hdb_handle_t obj_handle;
 	res = find_object (handle, name_pt, FIND_OBJECT_ONLY, &obj_handle);
 
-	if (res == CONFDB_OK) {
+	if (res == CS_OK) {
 		res = confdb_object_destroy (handle, obj_handle);
 
-		if (res != CONFDB_OK)
+		if (res != CS_OK)
 			fprintf(stderr, "Failed to find object \"%s\" to delete. Error %d\n", name_pt, res);
 	} else {
 		char parent_name[OBJ_NAME_SIZE];
@@ -531,7 +537,7 @@ static void delete_object(confdb_handle_t handle, char * name_pt)
 		get_key(name_pt, key_name, key_value);
 		res = find_object (handle, parent_name, FIND_OBJECT_ONLY, &obj_handle);
 
-		if (res != CONFDB_OK) {
+		if (res != CS_OK) {
 			fprintf(stderr, "Failed to find the key's parent object \"%s\". Error %d\n", parent_name, res);
 			exit (EXIT_FAILURE);
 		}
@@ -543,7 +549,7 @@ static void delete_object(confdb_handle_t handle, char * name_pt)
 								 key_value,
 								 strlen(key_value));
 
-		if (res != CONFDB_OK)
+		if (res != CS_OK)
 			fprintf(stderr, "Failed to delete key \"%s=%s\" from object \"%s\". Error %d\n",
 					key_name, key_value, parent_name, res);
 	}
@@ -552,8 +558,8 @@ static void delete_object(confdb_handle_t handle, char * name_pt)
 
 int main (int argc, char *argv[]) {
 	confdb_handle_t handle;
-	confdb_error_t result;
-	char c;
+	cs_error_t result;
+	int c;
 
 	action = ACTION_READ;
 
@@ -603,7 +609,7 @@ int main (int argc, char *argv[]) {
 	}
 
 	result = confdb_initialize (&handle, &callbacks);
-	if (result != CONFDB_OK) {
+	if (result != CS_OK) {
 		fprintf (stderr, "Failed to initialize the objdb API. Error %d\n", result);
 		exit (EXIT_FAILURE);
 	}
@@ -633,11 +639,10 @@ int main (int argc, char *argv[]) {
 	}
 
 	result = confdb_finalize (handle);
-	if (result != CONFDB_OK) {
+	if (result != CS_OK) {
 		fprintf (stderr, "Error finalizing objdb API. Error %d\n", result);
 		exit(EXIT_FAILURE);
 	}
 
 	return 0;
 }
-

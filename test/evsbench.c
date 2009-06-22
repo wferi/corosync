@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -33,6 +33,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -49,7 +51,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/evs.h>
 
 #ifdef COROSYNC_SOLARIS
@@ -66,23 +68,17 @@
 
 volatile static int alarm_notice = 0;
 
-int outstanding = 0;
-
-
-
-void evs_deliver_fn (
+static void evs_deliver_fn (
 	unsigned int nodeid,
-	void *msg,
-	int msg_len)
+	const void *msg,
+	size_t msg_len)
 {
-	outstanding--;
-// printf ("Delivering message %s\n", msg);
 }
 
-void evs_confchg_fn (
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries)
+static void evs_confchg_fn (
+	unsigned int *member_list, size_t member_list_entries,
+	unsigned int *left_list, size_t left_list_entries,
+	unsigned int *joined_list, size_t joined_list_entries)
 {
 	int i;
 
@@ -102,7 +98,7 @@ void evs_confchg_fn (
 	}
 }
 
-evs_callbacks_t callbacks = {
+static evs_callbacks_t callbacks = {
 	evs_deliver_fn,
 	evs_confchg_fn
 };
@@ -113,18 +109,18 @@ struct evs_group groups[3] = {
 	{ "key3" }
 };
 
-char buffer[200000];
+static char buffer[200000];
 
-struct iovec iov = {
+static struct iovec iov = {
 	.iov_base = buffer,
 	.iov_len = sizeof (buffer)
 };
 
-void evs_benchmark (evs_handle_t handle,
+static void evs_benchmark (evs_handle_t handle,
 	int write_size)
 {
 	struct timeval tv1, tv2, tv_elapsed;
-	evs_error_t result;
+	cs_error_t result;
 	int write_count = 0;
 
 	/*
@@ -136,37 +132,35 @@ void evs_benchmark (evs_handle_t handle,
 	iov.iov_len = write_size;
 	do {
 		sprintf (buffer, "This is message %d\n", write_count);
-		if (outstanding < 10) {
-			result = evs_mcast_joined (handle, EVS_TYPE_AGREED, &iov, 1);
+		result = evs_mcast_joined (handle, EVS_TYPE_AGREED, &iov, 1);
 
-			if (result != EVS_ERR_TRY_AGAIN) {
-				write_count += 1;
-				outstanding++;
-			}
+		if (result != CS_ERR_TRY_AGAIN) {
+			write_count += 1;
 		}
-		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	} while (alarm_notice == 0);
 	gettimeofday (&tv2, NULL);
 	timersub (&tv2, &tv1, &tv_elapsed);
 
 	printf ("%5d Writes ", write_count);
 	printf ("%5d bytes per write ", write_size);
-	printf ("%7.3f Seconds runtime ", 
+	printf ("%7.3f Seconds runtime ",
 		(tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
 	printf ("%9.3f TP/s ",
 		((float)write_count) /  (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
-	printf ("%7.3f MB/s.\n", 
+	printf ("%7.3f MB/s.\n",
 		((float)write_count) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
 
 	alarm_notice = 0;
 }
 
-void sigalrm_handler (int num)
+static void sigalrm_handler (int num)
 {
 	alarm_notice = 1;
 }
 
-void sigintr_handler (int num)
+static void sigintr_handler (int num) __attribute__((__noreturn__));
+static void sigintr_handler (int num)
 {
 	exit (1);
 }
@@ -174,7 +168,7 @@ void sigintr_handler (int num)
 int main (void) {
 	int size;
 	int i;
-	evs_error_t result;
+	cs_error_t result;
 	evs_handle_t handle;
 
 	signal (SIGALRM, sigalrm_handler);
@@ -185,8 +179,6 @@ int main (void) {
 	printf ("Init result %d\n", result);
 	result = evs_join (handle, groups, 3);
 	printf ("Join result %d\n", result);
-	result = evs_leave (handle, &groups[0], 1);
-	printf ("Leave result %d\n", result);
 
 	size = 1;
 

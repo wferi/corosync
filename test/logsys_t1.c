@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -31,20 +31,27 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <stdio.h>
 #include <syslog.h>
-#include "../exec/logsys.h"
+
+#include <corosync/engine/logsys.h>
 
 LOGSYS_DECLARE_SYSTEM ("logsystestNOsubsystems",
-	LOG_MODE_OUTPUT_STDERR | LOG_MODE_OUTPUT_SYSLOG_THREADED, 
+	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_OUTPUT_SYSLOG,
+	0,
 	NULL,
-	LOG_DAEMON);
-
-LOGSYS_DECLARE_NOSUBSYS(LOG_LEVEL_DEBUG);
+	LOGSYS_LEVEL_DEBUG,
+	LOG_DAEMON,
+	LOGSYS_LEVEL_DEBUG,
+	NULL,
+	1000000);
 
 int main (void) {
-	log_printf (LOG_ALERT, "This is an alert log message\n");
-	log_printf (LOG_WARNING, "This is a warning log message\n");
-	log_printf (LOG_DEBUG, "This is a debug log message\n");
+	log_printf (LOGSYS_LEVEL_ALERT, "This is an alert log message\n");
+	log_printf (LOGSYS_LEVEL_WARNING, "This is a warning log message\n");
+	log_printf (LOGSYS_LEVEL_DEBUG, "This is a debug log message\n");
 	return (0);
 }

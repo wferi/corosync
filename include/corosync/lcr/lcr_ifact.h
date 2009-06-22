@@ -2,7 +2,7 @@
  * Copyright (C) 2006 Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -31,14 +31,25 @@
 #ifndef LCR_IFACT_H_DEFINED
 #define LCR_IFACT_H_DEFINED
 
+#include <corosync/hdb.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int lcr_ifact_reference (
-	unsigned int *handle,
-	char *iface_name,
+	hdb_handle_t *handle,
+	const char *iface_name,
 	int version,
 	void **interface,
 	void *context);
 
 int lcr_ifact_release (
-	unsigned int handle);
+	hdb_handle_t handle);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LCR_IFACT_H_DEFINED */

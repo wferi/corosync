@@ -1,13 +1,13 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006 Red Hat, Inc.
+.\" * Copyright (c) 2006-2009 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
 .\" * Author: Steven Dake (sdake@redhat.com)
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
-.\" * 
+.\" *
 .\" * Redistribution and use in source and binary forms, with or without
 .\" * modification, are permitted provided that the following conditions are met:
 .\" *
@@ -37,7 +37,7 @@
 corosync.conf - corosync executive configuration file
 
 .SH SYNOPSIS
-/etc/ais/corosync.conf
+/etc/corosync.conf
 
 .SH DESCRIPTION
 The corosync.conf instructs the corosync executive about various parameters
@@ -58,13 +58,13 @@ This top level directive contains configuration options for the event service.
 
 .PP
 .PP
-Within the 
+Within the
 .B totem
 directive, an interface directive is required.  There is also one configuration
 option which is required:
 .PP
 .PP
-Within the 
+Within the
 .B interface
 sub-directive of totem there are four parameters which are required:
 
@@ -88,6 +88,12 @@ selection of the network interface within a specific subnet as with IPv4.
 If IPv6 networking is used, the nodeid field must be specified.
 
 .TP
+broadcast
+This is optional and can be set to yes.  If it is set to yes, the broadcast
+address will be used for communication.  If this option is set, mcastaddr
+should not be set.
+
+.TP
 mcastaddr
 This is the multicast address used by corosync executive.  The default
 should work for most networks, but the network administrator should be queried
@@ -105,8 +111,8 @@ UDP ports.
 
 .PP
 .PP
-Within the 
-.B totem 
+Within the
+.B totem
 directive, there are seven configuration options of which one is required,
 five are optional, and one is required when IPV6 is configured in the interface
 subdirective.  The required directive controls the version of the totem
@@ -130,6 +136,17 @@ cluster membership service.  If this is not specified with IPv4, the node id
 will be determined from the 32 bit IP address the system to which the system
 is bound with ring identifier of 0.  The node identifier value of zero is
 reserved and should not be used.
+
+.TP
+clear_node_high_bit
+This configuration option is optional and is only relevant when no nodeid is
+specified.  Some openais clients require a signed 32 bit nodeid that is greater
+than zero however by default openais uses all 32 bits of the IPv4 address space
+when generating a nodeid.  Set this option to yes to force the high bit to be
+zero and therefor ensure the nodeid is a positive signed 32 bit integer.
+
+WARNING: The clusters behavior is undefined if this option is enabled on only
+a subset of the cluster (for example during a rolling upgrade).
 
 .TP
 secauth
@@ -181,13 +198,13 @@ Please note while some NICs or switches claim large frame support, they support
 9000 MTU as the maximum frame size including the IP header.  Setting the netmtu
 and host MTUs to 9000 will cause totem to use the full 9000 bytes of the frame.
 Then Linux will add a 18 byte header moving the full frame size to 9018.  As a
-result some hardware will not operate properly with this size of data.  A netmtu 
+result some hardware will not operate properly with this size of data.  A netmtu
 of 8982 seems to work for the few large frame devices that have been tested.
 Some manufacturers claim large frame support when in fact they support frame
 sizes of 4500 bytes.
 
 Increasing the MTU from 1500 to 8982 doubles throughput performance from 30MB/sec
-to 60MB/sec as measured with evsbench with 175000 byte messages with the secauth 
+to 60MB/sec as measured with evsbench with 175000 byte messages with the secauth
 directive set to off.
 
 When sending multicast traffic, if the network frequently reconfigures, chances are
@@ -205,7 +222,7 @@ If secauth is on, this directive allows systems to be configured to use
 multiple threads to encrypt and send multicast messages.
 
 A thread directive of 0 indicates that no threaded send should be used.  This
-mode offers best performance for non-SMP systems. 
+mode offers best performance for non-SMP systems.
 
 The default is 0.
 
@@ -214,15 +231,15 @@ vsftype
 This directive controls the virtual synchrony filter type used to identify
 a primary component.  The preferred choice is YKD dynamic linear voting,
 however, for clusters larger then 32 nodes YKD consumes alot of memory.  For
-large scale clusters that are created by changing the MAX_PROCESSORS_COUNT 
+large scale clusters that are created by changing the MAX_PROCESSORS_COUNT
 #define in the C code totem.h file, the virtual synchrony filter "none" is
 recommended but then AMF and DLCK services (which are currently experimental)
 are not safe for use.
 
 The default is ykd.  The vsftype can also be set to none.
 
-Within the 
-.B totem 
+Within the
+.B totem
 directive, there are several configuration options which are used to control
 the operation of the protocol.  It is generally not recommended to change any
 of these values without proper guidance and sufficient testing.  Some networks
@@ -266,7 +283,7 @@ The default is 4 retransmissions.
 
 .TP
 join
-This timeout specifies in milliseconds how long to wait for join messages in 
+This timeout specifies in milliseconds how long to wait for join messages in
 the membership protocol.
 
 The default is 100 milliseconds.
@@ -325,10 +342,10 @@ The default is 30 rotations.
 heartbeat_failures_allowed
 [HeartBeating mechanism]
 Configures the optional HeartBeating mechanism for faster failure detection. Keep in
-mind that engaging this mechanism in lossy networks could cause faulty loss declaration 
-as the mechanism relies on the network for heartbeating. 
+mind that engaging this mechanism in lossy networks could cause faulty loss declaration
+as the mechanism relies on the network for heartbeating.
 
-So as a rule of thumb use this mechanism if you require improved failure in low to 
+So as a rule of thumb use this mechanism if you require improved failure in low to
 medium utilized networks.
 
 This constant specifies the number of heartbeat failures the system should tolerate
@@ -406,13 +423,39 @@ override this value without guidance from the corosync community.
 The default is 47 milliseconds.
 
 .PP
-Within the 
+Within the
 .B logging
-directive, there are seven configuration options which are all optional:
+directive, there are several configuration options which are all optional.
+
+.PP
+The following 3 options are valid only for the top level logging directive:
+
+.TP
+timestamp
+This specifies that a timestamp is placed on all log messages.
+
+The default is off.
+
+.TP
+fileline
+This specifies that file and line should be printed.
+
+The default is off.
+
+.TP
+function_name
+This specifies that the code function name should be printed.
+
+The default is off.
+
+.PP
+The following options are valid both for top level logging directive
+and they can be overriden in logger_subsys entries.
+
 .TP
 to_stderr
 .TP
-to_file
+to_logfile
 .TP
 to_syslog
 These specify the destination of logging output. Any combination of
@@ -423,11 +466,10 @@ and
 
 The default is syslog and stderr.
 
-
 .TP
 logfile
-If the 
-.B to_file
+If the
+.B to_logfile
 directive is set to
 .B yes
 , this option specifies the pathname of the log file.
@@ -435,68 +477,32 @@ directive is set to
 No default.
 
 .TP
-debug
-This specifies whether debug output is logged for all services.  This is
-generally a bad idea, unless there is some specific bug or problem that must be
-found in the executive. Set the value to 
-.B on
-to debug, 
-.B off
-to turn off debugging. If enabled, individual loggers can be disabled using a
-.B logger_subsys
-directive.
+logfile_priority
+This specifies the logfile priority for this particular subsystem. Ignored if debug is on.
+Possible values are: alert, crit, debug (same as debug = on), emerg, err, info, notice, warning.
 
-The default is off.
+The default is: info.
 
 .TP
-timestamp
-This specifies that a timestamp is placed on all log messages.
-
-The default is off.
-
-.TP
-fileline
-This specifies that file and line should be printed instead of logger name.
-
-The default is off.
-
-.TP 
 syslog_facility
 This specifies the syslog facility type that will be used for any messages
-sent to syslog. options are daemon, local0, local1, local2, local3, local4, 
-local5, local6 & local7. 
+sent to syslog. options are daemon, local0, local1, local2, local3, local4,
+local5, local6 & local7.
 
 The default is daemon.
 
-.PP
-.PP
-Within the 
-.B logging
-directive, logger directives are optional.
-.PP
-.PP
-Within the 
-.B logger_subsys
-sub-directive of logging there are three configuration options:
-
 .TP
-subsys
-This specifies the subsystem identity (name) for which logging is specified. This is the
-name used by a service in the log_init () call. E.g. 'CKPT'. This directive is
-required.
+syslog_priority
+This specifies the syslog level for this particular subsystem. Ignored if debug is on.
+Possible values are: alert, crit, debug (same as debug = on), emerg, err, info, notice, warning.
+
+The default is: info.
 
 .TP
 debug
 This specifies whether debug output is logged for this particular logger.
 
 The default is off.
-
-.TP
-syslog_level
-This specifies the syslog level for this particular subsystem. Ignored if debug is on.
-Possible values are: alert, crit, debug (same as debug = on), emerg, err, info, notice, warning.
-
-The default is: info.
 
 .TP
 tags
@@ -509,6 +515,24 @@ Values are specified using a vertical bar as a logical OR separator:
 enter|leave|trace1|trace2|trace3|...
 
 The default is none.
+
+.PP
+Within the
+.B logging
+directive, logger_subsys directives are optional.
+
+.PP
+Within the
+.B logger_subsys
+sub-directive, all of the above logging configuration options are valid and
+can be used to override the default settings.
+The subsys entry, described below, is mandatory to identify the subsystem.
+
+.TP
+subsys
+This specifies the subsystem identity (name) for which logging is specified. This is the
+name used by a service in the log_init () call. E.g. 'CKPT'. This directive is
+required.
 
 .SH "FILES"
 .TP

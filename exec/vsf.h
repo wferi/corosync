@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -34,12 +34,14 @@
 #ifndef VSF_H_DEFINED
 #define VSF_H_DEFINED
 
+struct corosync_api_v1;
 struct corosync_vsf_iface_ver0 {
 
 	/*
 	 * Executes a callback whenever component changes
 	 */
 	int (*init) (
+	    struct corosync_api_v1 *api,
 	    void (*primary_callback_fn) (
 		unsigned int *view_list,
 		int view_list_entries,

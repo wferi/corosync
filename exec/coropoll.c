@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2003-2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -32,6 +32,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <errno.h>
 #include <pthread.h>
 #include <sys/poll.h>
@@ -39,12 +42,12 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <corosync/hdb.h>
 #include <corosync/totem/coropoll.h>
 #include <corosync/list.h>
-#include <corosync/hdb.h>
 #include "tlist.h"
 
-typedef int (*dispatch_fn_t) (poll_handle poll_handle, int fd, int revents, void *data);
+typedef int (*dispatch_fn_t) (hdb_handle_t hdb_handle_t, int fd, int revents, void *data);
 
 struct poll_entry {
 	struct pollfd ufd;
@@ -57,24 +60,14 @@ struct poll_instance {
 	struct pollfd *ufds;
 	int poll_entry_count;
 	struct timerlist timerlist;
-	void (*serialize_lock_fn) (void);
-	void (*serialize_unlock_fn) (void);
+	int stop_requested;
 };
 
-/*
- * All instances in one database
- */
-static struct hdb_handle_database poll_instance_database = {
-	.handle_count	= 0,
-	.handles	= 0,
-	.iterator	= 0
-};
+DECLARE_HDB_DATABASE (poll_instance_database,NULL);
 
-poll_handle poll_create (
-	void (*serialize_lock_fn) (void),
-	void (*serialize_unlock_fn) (void))
+hdb_handle_t poll_create (void)
 {
-	poll_handle handle;
+	hdb_handle_t handle;
 	struct poll_instance *poll_instance;
 	unsigned int res;
 
@@ -88,24 +81,23 @@ poll_handle poll_create (
 	if (res != 0) {
 		goto error_destroy;
 	}
-	
+
 	poll_instance->poll_entries = 0;
 	poll_instance->ufds = 0;
 	poll_instance->poll_entry_count = 0;
-	poll_instance->serialize_lock_fn = serialize_lock_fn;
-	poll_instance->serialize_unlock_fn = serialize_unlock_fn;
+	poll_instance->stop_requested = 0;
 	timerlist_init (&poll_instance->timerlist);
 
 	return (handle);
 
 error_destroy:
 	hdb_handle_destroy (&poll_instance_database, handle);
-	
+
 error_exit:
 	return (-1);
 }
 
-int poll_destroy (poll_handle handle)
+int poll_destroy (hdb_handle_t handle)
 {
 	struct poll_instance *poll_instance;
 	int res = 0;
@@ -117,12 +109,8 @@ int poll_destroy (poll_handle handle)
 		goto error_exit;
 	}
 
-	if (poll_instance->poll_entries) {
-		free (poll_instance->poll_entries);
-	}
-	if (poll_instance->ufds) {
-		free (poll_instance->ufds);
-	}
+	free (poll_instance->poll_entries);
+	free (poll_instance->ufds);
 
 	hdb_handle_destroy (&poll_instance_database, handle);
 
@@ -133,12 +121,12 @@ error_exit:
 }
 
 int poll_dispatch_add (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd,
 	int events,
 	void *data,
 	int (*dispatch_fn) (
-		poll_handle poll_handle,
+		hdb_handle_t hdb_handle_t,
 		int fd,
 		int revents,
 		void *data))
@@ -176,7 +164,7 @@ int poll_dispatch_add (
 			goto error_put;
 		}
 		poll_instance->poll_entries = poll_entries;
-	
+
 		ufds = (struct pollfd *)realloc (poll_instance->ufds,
 			(poll_instance->poll_entry_count + 1) *
 			sizeof (struct pollfd));
@@ -189,7 +177,7 @@ int poll_dispatch_add (
 		poll_instance->poll_entry_count += 1;
 		install_pos = poll_instance->poll_entry_count - 1;
 	}
-	
+
 	/*
 	 * Install new dispatch handler
 	 */
@@ -207,11 +195,11 @@ error_exit:
 }
 
 int poll_dispatch_modify (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd,
 	int events,
 	int (*dispatch_fn) (
-		poll_handle poll_handle,
+		hdb_handle_t hdb_handle_t,
 		int fd,
 		int revents,
 		void *data))
@@ -234,7 +222,7 @@ int poll_dispatch_modify (
 		if (poll_instance->poll_entries[i].ufd.fd == fd) {
 			poll_instance->poll_entries[i].ufd.events = events;
 			poll_instance->poll_entries[i].dispatch_fn = dispatch_fn;
-			
+
 			goto error_put;
 		}
 	}
@@ -249,7 +237,7 @@ error_exit:
 }
 
 int poll_dispatch_delete (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd)
 {
 	struct poll_instance *poll_instance;
@@ -283,7 +271,7 @@ error_exit:
 }
 
 int poll_timer_add (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int msec_duration, void *data,
 	void (*timer_fn) (void *data),
 	poll_timer_handle *timer_handle_out)
@@ -291,16 +279,16 @@ int poll_timer_add (
 	struct poll_instance *poll_instance;
 	int res = 0;
 
+	if (timer_handle_out == NULL) {
+		res = -ENOENT;
+		goto error_exit;
+	}
+
 	res = hdb_handle_get (&poll_instance_database, handle,
 		(void *)&poll_instance);
 	if (res != 0) {
 		res = -ENOENT;
-		
 		goto error_exit;
-	}
-
-	if (timer_handle_out == 0) {
-		res = -ENOENT;
 	}
 
 	timerlist_add_duration (&poll_instance->timerlist,
@@ -312,13 +300,13 @@ error_exit:
 }
 
 int poll_timer_delete (
-	poll_handle handle,
-	poll_timer_handle timer_handle)
+	hdb_handle_t handle,
+	poll_timer_handle th)
 {
 	struct poll_instance *poll_instance;
 	int res = 0;
 
-	if (timer_handle == 0) {
+	if (th == 0) {
 		return (0);
 	}
 	res = hdb_handle_get (&poll_instance_database, handle,
@@ -328,7 +316,7 @@ int poll_timer_delete (
 		goto error_exit;
 	}
 
-	timerlist_del (&poll_instance->timerlist, (void *)timer_handle);
+	timerlist_del (&poll_instance->timerlist, (void *)th);
 
 	hdb_handle_put (&poll_instance_database, handle);
 
@@ -336,8 +324,29 @@ error_exit:
 	return (res);
 }
 
+int poll_stop (
+	hdb_handle_t handle)
+{
+	struct poll_instance *poll_instance;
+	unsigned int res;
+
+	res = hdb_handle_get (&poll_instance_database, handle,
+		(void *)&poll_instance);
+	if (res != 0) {
+		res = -ENOENT;
+		goto error_exit;
+	}
+
+	poll_instance->stop_requested = 1;
+
+	hdb_handle_put (&poll_instance_database, handle);
+error_exit:
+	return (res);
+}
+
+
 int poll_run (
-	poll_handle handle)
+	hdb_handle_t handle)
 {
 	struct poll_instance *poll_instance;
 	int i;
@@ -366,6 +375,9 @@ int poll_run (
 retry_poll:
 		res = poll (poll_instance->ufds,
 			poll_instance->poll_entry_count, expire_timeout_msec);
+		if (poll_instance->stop_requested) {
+			return (0);
+		}
 		if (errno == EINTR && res == -1) {
 			goto retry_poll;
 		} else
@@ -378,13 +390,11 @@ retry_poll:
 			if (poll_instance->ufds[i].fd != -1 &&
 				poll_instance->ufds[i].revents) {
 
-				poll_instance->serialize_lock_fn();
 				res = poll_instance->poll_entries[i].dispatch_fn (handle,
-					poll_instance->ufds[i].fd, 
+					poll_instance->ufds[i].fd,
 					poll_instance->ufds[i].revents,
 					poll_instance->poll_entries[i].data);
 
-				poll_instance->serialize_unlock_fn();
 				/*
 				 * Remove dispatch functions that return -1
 				 */
@@ -393,9 +403,7 @@ retry_poll:
 				}
 			}
 		}
-		poll_instance->serialize_lock_fn();
 		timerlist_expire (&poll_instance->timerlist);
-		poll_instance->serialize_unlock_fn();
 	} /* for (;;) */
 
 	hdb_handle_put (&poll_instance_database, handle);
@@ -403,12 +411,9 @@ error_exit:
 	return (-1);
 }
 
-int poll_stop (
-	poll_handle handle);
-
 #ifdef COMPILE_OUT
 void poll_print_state (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd)
 {
 	struct poll_instance *poll_instance;
@@ -429,5 +434,5 @@ void poll_print_state (
 		}
 	}
 }
-	
+
 #endif

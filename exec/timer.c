@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,8 +32,10 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <pthread.h>
-#include <assert.h>
 #include <pwd.h>
 #include <grp.h>
 #include <sys/types.h>
@@ -56,9 +58,9 @@
 #include <time.h>
 
 #include <corosync/swab.h>
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
 #include <corosync/list.h>
-#include <corosync/queue.h>
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/totem/coropoll.h>
 #include <corosync/totem/totempg.h>
@@ -69,13 +71,13 @@
 
 #include "poll.h"
 #include "totemsrp.h"
-#include "mempool.h"
 #include "mainconfig.h"
 #include "totemconfig.h"
 #include "main.h"
 #include "sync.h"
 #include "tlist.h"
 #include "util.h"
+#include "timer.h"
 
 #define SERVER_BACKLOG 5
 
@@ -86,6 +88,8 @@ static pthread_t expiry_thread;
 static pthread_attr_t thread_attr;
 
 static struct timerlist timers_timerlist;
+
+static int sched_priority = 0;
 
 static void (*timer_serialize_lock_fn) (void);
 
@@ -104,16 +108,16 @@ static void *prioritized_timer_thread (void *data)
 	unsigned long long timeout;
 
 #if ! defined(TS_CLASS) && (defined(COROSYNC_BSD) || defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS))
-	struct sched_param sched_param;
-	int res;
+	if (sched_priority != 0) {
+		struct sched_param sched_param;
 
-	sched_param.sched_priority = 2;
-	res = pthread_setschedparam (expiry_thread, SCHED_RR, &sched_param);
+		sched_param.sched_priority = sched_priority;
+		pthread_setschedparam (expiry_thread, SCHED_RR, &sched_param);
+	}
 #endif
 
 	pthread_mutex_unlock (&timer_mutex);
 	for (;;) {
-retry_poll:
 		timer_serialize_lock_fn ();
 		timeout = timerlist_msec_duration_to_expire (&timers_timerlist);
 		if (timeout != -1 && timeout > 0xFFFFFFFF) {
@@ -121,19 +125,20 @@ retry_poll:
 		}
 		timer_serialize_unlock_fn ();
 		fds = poll (NULL, 0, timeout);
-		if (fds == -1) {
-			goto retry_poll;
+		if (fds < 0 && errno == EINTR) {
+			continue;
+		}
+		if (fds < 0) {
+			return NULL;
 		}
 		pthread_mutex_lock (&timer_mutex);
 		timer_serialize_lock_fn ();
 
 		timerlist_expire (&timers_timerlist);
-		
+
 		timer_serialize_unlock_fn ();
 		pthread_mutex_unlock (&timer_mutex);
 	}
-
-	pthread_exit (0);
 }
 
 static void sigusr1_handler (int num) {
@@ -145,12 +150,14 @@ static void sigusr1_handler (int num) {
 
 int corosync_timer_init (
         void (*serialize_lock_fn) (void),
-        void (*serialize_unlock_fn) (void))
+        void (*serialize_unlock_fn) (void),
+	int sched_priority_in)
 {
 	int res;
 
 	timer_serialize_lock_fn = serialize_lock_fn;
 	timer_serialize_unlock_fn = serialize_unlock_fn;
+	sched_priority = sched_priority_in;
 
 	timerlist_init (&timers_timerlist);
 
@@ -231,11 +238,11 @@ int corosync_timer_add_duration (
 }
 
 void corosync_timer_delete (
-	timer_handle timer_handle)
+	timer_handle th)
 {
 	int unlock;
 
-	if (timer_handle == 0) {
+	if (th == 0) {
 		return;
 	}
 
@@ -246,7 +253,7 @@ void corosync_timer_delete (
 		pthread_mutex_lock (&timer_mutex);
 	}
 
-	timerlist_del (&timers_timerlist, timer_handle);
+	timerlist_del (&timers_timerlist, th);
 
 	if (unlock) {
 		pthread_mutex_unlock (&timer_mutex);
@@ -261,4 +268,35 @@ void corosync_timer_lock (void)
 void corosync_timer_unlock (void)
 {
 	pthread_mutex_unlock (&timer_mutex);
+}
+
+unsigned long long corosync_timer_time_get (void)
+{
+	return (timerlist_nano_from_epoch());
+}
+
+unsigned long long corosync_timer_expire_time_get (
+	timer_handle th)
+{
+	int unlock;
+	unsigned long long expire;
+
+	if (th == 0) {
+		return (0);
+	}
+
+	if (pthread_equal (pthread_self(), expiry_thread) != 0) {
+		unlock = 0;
+	} else {
+		unlock = 1;
+		pthread_mutex_lock (&timer_mutex);
+	}
+
+	expire = timerlist_expire_time (&timers_timerlist, th);
+
+	if (unlock) {
+		pthread_mutex_unlock (&timer_mutex);
+	}
+
+	return (expire);
 }

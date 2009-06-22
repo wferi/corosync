@@ -1,4 +1,4009 @@
 ------------------------------------------------------------------------
+r2267 | sdake | 2009-06-19 08:42:15 -0700 (Fri, 19 Jun 2009) | 2 lines
+
+Patch from Wojtek to fix Solaris segfault with compiler optimization.
+
+------------------------------------------------------------------------
+r2266 | meyering | 2009-06-19 04:34:50 -0700 (Fri, 19 Jun 2009) | 4 lines
+
+maint: remove trailing blanks
+
+By running this command from a git-cloned directory:
+git grep -z -l -E '[[:blank:]]+$' | xargs -0 perl -pi -e 's/[ \t]+$//'
+------------------------------------------------------------------------
+r2265 | fabbione | 2009-06-19 00:02:55 -0700 (Fri, 19 Jun 2009) | 3 lines
+
+Fix handling of sysconfdir
+
+
+------------------------------------------------------------------------
+r2264 | fabbione | 2009-06-18 21:58:00 -0700 (Thu, 18 Jun 2009) | 2 lines
+
+Install basic operational directories
+
+------------------------------------------------------------------------
+r2263 | fabbione | 2009-06-18 21:57:22 -0700 (Thu, 18 Jun 2009) | 2 lines
+
+Remove tags from example configuration
+
+------------------------------------------------------------------------
+r2262 | sdake | 2009-06-18 18:53:24 -0700 (Thu, 18 Jun 2009) | 2 lines
+
+Warn user of missing dirs and exit gracefully.
+
+------------------------------------------------------------------------
+r2261 | sdake | 2009-06-18 17:03:56 -0700 (Thu, 18 Jun 2009) | 4 lines
+
+Remove requirement of having uid and gid of "ais" on the system and allow
+nonroot users to access ipc if their uid/gid is in the /etc/corosync/uidgid.d
+directory.
+
+------------------------------------------------------------------------
+r2260 | sdake | 2009-06-18 16:08:16 -0700 (Thu, 18 Jun 2009) | 2 lines
+
+Sanitize output of autogen.sh.
+
+------------------------------------------------------------------------
+r2259 | sdake | 2009-06-18 14:32:45 -0700 (Thu, 18 Jun 2009) | 3 lines
+
+Ensure Linux, BSD, Solaris, Darwin function with security authentication in
+IPC system.
+
+------------------------------------------------------------------------
+r2258 | fabbione | 2009-06-18 12:52:37 -0700 (Thu, 18 Jun 2009) | 2 lines
+
+Fix rec_ident encoding for IPC
+
+------------------------------------------------------------------------
+r2257 | fabbione | 2009-06-18 12:16:14 -0700 (Thu, 18 Jun 2009) | 2 lines
+
+use $(INSTALL) instead of install for portability to other OS'es
+
+------------------------------------------------------------------------
+r2256 | fabbione | 2009-06-18 11:14:00 -0700 (Thu, 18 Jun 2009) | 14 lines
+
+flight recorder: enable temporary 0 buffer size protection
+
+The flight recoder doesn't handle a 0 byte allocation properly
+and it would fail miserably by allocating a single PAGE_SIZE
+to handle the logging. That means an enormous performance hit
+because of the constant wrapping around the buffer.
+
+If any requested buffer is < 64000 bytes, then force to at least
+64000.
+
+In future we will be able to handle small buffers properly, but
+for now enable a simple workaround to protect us and the user.
+
+
+------------------------------------------------------------------------
+r2255 | fabbione | 2009-06-18 10:40:41 -0700 (Thu, 18 Jun 2009) | 26 lines
+
+flight recorder: switch from int to bytes for requested allocation
+
+The flight recoder buffer size as specified in LOGSYS_DECLARE_SYSTEM
+or _logsys_rec_init was expressed in number of ints. A developer asking
+to allocate 512K would get a 2M allocation on a machine with sizeof(int) = 4.
+
+This is confusing and the patch addresses it:
+
+- rename rec_size to fltsize for external API (no type change),
+  because rec_size is used many times internally for other reasons
+  and it can be confusing.
+
+- rename size to fltsize in _logsys_rec_init.
+
+- document what we allocate and why.
+
+- swap comments around to match the code.
+
+- introduce a simple macro to perform rounding (stolen from linux-2.6.git).
+
+- start shaping fdata header to better handle dynamic values:
+  * write the flt_data_size as first unsigned int the header.
+  * change corosync-fplay to read the value and alloc the right amount
+    of memory instead of hardcoding it again.
+
+
+------------------------------------------------------------------------
+r2254 | sdake | 2009-06-17 22:58:24 -0700 (Wed, 17 Jun 2009) | 2 lines
+
+Add Jerome to AUTHORS file
+
+------------------------------------------------------------------------
+r2253 | sdake | 2009-06-17 22:53:16 -0700 (Wed, 17 Jun 2009) | 2 lines
+
+add madvise nosync calls for bsd platform.
+
+------------------------------------------------------------------------
+r2252 | fabbione | 2009-06-17 22:39:28 -0700 (Wed, 17 Jun 2009) | 3 lines
+
+logsys: remove leftover files from running tests
+
+
+------------------------------------------------------------------------
+r2251 | fabbione | 2009-06-17 22:33:48 -0700 (Wed, 17 Jun 2009) | 3 lines
+
+flight recorder: don't hardcode max arguments everywhere
+
+
+------------------------------------------------------------------------
+r2250 | fabbione | 2009-06-17 22:32:56 -0700 (Wed, 17 Jun 2009) | 3 lines
+
+logsys: port to new packed rec_ident version
+
+
+------------------------------------------------------------------------
+r2249 | fabbione | 2009-06-17 22:29:51 -0700 (Wed, 17 Jun 2009) | 6 lines
+
+logsys: add macros to pack/unpack rec_ident
+
+rec_ident should contain 3 info: log level, subsystem id and
+message type.
+
+
+------------------------------------------------------------------------
+r2248 | fabbione | 2009-06-17 22:17:43 -0700 (Wed, 17 Jun 2009) | 8 lines
+
+logsys: allow to use header files for #define's
+
+most of the values in logsys.h are very useful for non logsys library
+API users.
+
+Allow to import them without sucking the whole lib.
+
+
+------------------------------------------------------------------------
+r2247 | fabbione | 2009-06-17 22:16:10 -0700 (Wed, 17 Jun 2009) | 3 lines
+
+logsys: update man page to reflect new changes
+
+
+------------------------------------------------------------------------
+r2246 | fabbione | 2009-06-17 22:15:10 -0700 (Wed, 17 Jun 2009) | 3 lines
+
+logsys: merge tags into rec_ident
+
+
+------------------------------------------------------------------------
+r2245 | fabbione | 2009-06-17 22:11:08 -0700 (Wed, 17 Jun 2009) | 9 lines
+
+logsys: drop LOGSYS_LEVEL_SECURITY
+
+LOGSYS_LEVEL_SECURITY is specific to corosync/openais and it
+is used only in the totem configuration.
+
+Drop the special case from logsys that's meant to be a generic
+logging library and specify the correct equivalent for totem config.
+
+
+------------------------------------------------------------------------
+r2244 | meyering | 2009-06-17 03:13:57 -0700 (Wed, 17 Jun 2009) | 4 lines
+
+build: silence automake portability warnings
+
+* configure.ac: Enable automake's -Wno-portability option.
+We depend on GNU make.
+------------------------------------------------------------------------
+r2243 | meyering | 2009-06-17 03:13:49 -0700 (Wed, 17 Jun 2009) | 3 lines
+
+autogen.sh: simply to a one-liner: autoreconf -i
+
+* autogen.sh: Don't use "which" or uname, or...
+------------------------------------------------------------------------
+r2242 | fabbione | 2009-06-16 00:12:40 -0700 (Tue, 16 Jun 2009) | 2 lines
+
+Add missing prototype and fix white spaces
+
+------------------------------------------------------------------------
+r2241 | sdake | 2009-06-15 11:39:50 -0700 (Mon, 15 Jun 2009) | 2 lines
+
+Fix build error from recent solaris porting.
+
+------------------------------------------------------------------------
+r2240 | sdake | 2009-06-14 04:37:53 -0700 (Sun, 14 Jun 2009) | 2 lines
+
+Use PF_UNIX on Solaris platforms instead of PF_LOCAL.
+
+------------------------------------------------------------------------
+r2239 | sdake | 2009-06-14 04:37:11 -0700 (Sun, 14 Jun 2009) | 2 lines
+
+Use rsync -a instead of cp -a to install on Solaris.
+
+------------------------------------------------------------------------
+r2238 | sdake | 2009-06-14 04:36:18 -0700 (Sun, 14 Jun 2009) | 2 lines
+
+Port of coroipc system to Solaris.
+
+------------------------------------------------------------------------
+r2237 | sdake | 2009-06-14 03:40:50 -0700 (Sun, 14 Jun 2009) | 3 lines
+
+Patch from Jerome Flesch to correctly reference count on bsd and solaris
+platforms in the IPC system to avoid cpu spinning.
+
+------------------------------------------------------------------------
+r2236 | sdake | 2009-06-14 03:13:48 -0700 (Sun, 14 Jun 2009) | 2 lines
+
+Add iface checking for Solaris platform.
+
+------------------------------------------------------------------------
+r2235 | honzaf | 2009-06-12 03:22:32 -0700 (Fri, 12 Jun 2009) | 2 lines
+
+Make /etc/corosync/corosync.conf default configuration file
+
+------------------------------------------------------------------------
+r2234 | honzaf | 2009-06-12 03:20:53 -0700 (Fri, 12 Jun 2009) | 20 lines
+
+Handle LCR problem with unloading "unneeded" components
+
+In LCR, global variable g_component_handle is used to keep handle of loaded
+component. If this variable has magic value (0xFFFFFFFF) it means, 
+"we loaded library, but that library doesn't have any component_register 
+call -> don't try to destroy interfaces list).
+
+If this variable has other value, it means "we loaded library, it registers,
+but it exports some interface, what we currently don't need, so we can delete
+that handle from libraries/interfaces list" and variable is set to magic value,
+or "we loaded library, it registers and exports what we need -> great return some
+nice value", but nobody resets variable to it's magic value.
+
+Sadly, if you have loaded some component (needed), then try to load component,
+which don't have component_register function, previously loaded component handle
+is destroyed. 
+
+This problem happened to clm and quorum services, and cause, that loaded
+clm handle was destroyed, so EVT (which need clm) just falls.
+
+------------------------------------------------------------------------
+r2233 | fabbione | 2009-06-11 07:18:26 -0700 (Thu, 11 Jun 2009) | 2 lines
+
+Fix library linking fallout.. again
+
+------------------------------------------------------------------------
+r2232 | sdake | 2009-06-10 10:57:22 -0700 (Wed, 10 Jun 2009) | 3 lines
+
+Modify totemnet to work properly on Solaris by setting variables in sendmsg
+data structure.
+
+------------------------------------------------------------------------
+r2231 | fabbione | 2009-06-10 10:00:15 -0700 (Wed, 10 Jun 2009) | 3 lines
+
+Shared libs should not call exit but return error
+
+
+------------------------------------------------------------------------
+r2230 | sdake | 2009-06-10 07:36:38 -0700 (Wed, 10 Jun 2009) | 2 lines
+
+Remove unused variable on platforms other then Solaris.
+
+------------------------------------------------------------------------
+r2229 | sdake | 2009-06-10 07:28:46 -0700 (Wed, 10 Jun 2009) | 2 lines
+
+Fix compile on BSD platforms.
+
+------------------------------------------------------------------------
+r2228 | sdake | 2009-06-10 07:28:16 -0700 (Wed, 10 Jun 2009) | 2 lines
+
+Fix semun definitions for various platforms.
+
+------------------------------------------------------------------------
+r2227 | chrissie | 2009-06-10 00:33:19 -0700 (Wed, 10 Jun 2009) | 2 lines
+
+Fix corosync-cfgtool -a so that it actaully produces some output!
+
+------------------------------------------------------------------------
+r2226 | sdake | 2009-06-09 14:40:44 -0700 (Tue, 09 Jun 2009) | 2 lines
+
+Use PF_LOCAL to match BSD semantics of api calls.
+
+------------------------------------------------------------------------
+r2225 | sdake | 2009-06-09 13:31:51 -0700 (Tue, 09 Jun 2009) | 3 lines
+
+Resolve bug where config changes are delivered in the wrong order on nodes that
+join and then open a cpg.
+
+------------------------------------------------------------------------
+r2224 | beekhof | 2009-06-09 09:07:11 -0700 (Tue, 09 Jun 2009) | 11 lines
+
+Decouple the decouples shutdown/startup order of lcrso's from the internal objdb order.
+
+This is needed as the objdb order will change as modules are loaded/unloaded and is 
+also set up to unload non-default services last (which is the opposite of what 
+something like Pacemaker needs).
+
+In the worst case, the current behavior leads to cluster services (dlm, ocfs2, etc) 
+failing during shutdown.  This patch also ensures that if, for example, cpg is unloaded 
+then anything that depends on it is unloaded first.
+
+
+------------------------------------------------------------------------
+r2223 | sdake | 2009-06-07 11:56:36 -0700 (Sun, 07 Jun 2009) | 2 lines
+
+Remove quorum.c from lcrso build list since its linked into main binary.
+
+------------------------------------------------------------------------
+r2222 | sdake | 2009-06-07 00:53:56 -0700 (Sun, 07 Jun 2009) | 2 lines
+
+Add support for buildling on Solaris platforms.
+
+------------------------------------------------------------------------
+r2221 | sdake | 2009-06-07 00:47:10 -0700 (Sun, 07 Jun 2009) | 4 lines
+
+Call initializer directly for broken platforms which don't honor ctors in the shared object on dlopen.
+This could probably be more tidy to detect those OS platforms which don't do this instead of hardcoding
+to a specific platform we intend to port to.
+
+------------------------------------------------------------------------
+r2220 | sdake | 2009-06-07 00:36:44 -0700 (Sun, 07 Jun 2009) | 2 lines
+
+Include limits.h in coroparse.c to properly define PATH_MAX.
+
+------------------------------------------------------------------------
+r2219 | sdake | 2009-06-07 00:36:11 -0700 (Sun, 07 Jun 2009) | 2 lines
+
+Change NAME_MAX to FILENAME_MAX to compile properly on Posix OS.
+
+------------------------------------------------------------------------
+r2218 | sdake | 2009-06-07 00:31:40 -0700 (Sun, 07 Jun 2009) | 2 lines
+
+Define MSG_NOSIGNAL if it is undefined by the base OS such as Solaris.
+
+------------------------------------------------------------------------
+r2217 | sdake | 2009-06-07 00:31:14 -0700 (Sun, 07 Jun 2009) | 2 lines
+
+Conditionally compile on Solaris platforms msg_* flags in sendmsg header.
+
+------------------------------------------------------------------------
+r2216 | sdake | 2009-06-07 00:24:37 -0700 (Sun, 07 Jun 2009) | 2 lines
+
+Include string.h in sq.h for memset() calls.
+
+------------------------------------------------------------------------
+r2215 | sdake | 2009-06-06 19:30:13 -0700 (Sat, 06 Jun 2009) | 2 lines
+
+Make readdir operation portable by removing BSDism from coroparse.c.
+
+------------------------------------------------------------------------
+r2214 | sdake | 2009-06-06 19:04:32 -0700 (Sat, 06 Jun 2009) | 5 lines
+
+Add strsep_cs to replace strsep.
+-This line, and those below, will be ignored--
+
+M    exec/mainconfig.c
+
+------------------------------------------------------------------------
+r2213 | sdake | 2009-06-06 18:46:31 -0700 (Sat, 06 Jun 2009) | 2 lines
+
+First run at adding support for corosync totemip determination.
+
+------------------------------------------------------------------------
+r2212 | sdake | 2009-06-06 17:55:00 -0700 (Sat, 06 Jun 2009) | 2 lines
+
+Make coroipcs compile on Solaris.
+
+------------------------------------------------------------------------
+r2211 | sdake | 2009-06-06 17:47:56 -0700 (Sat, 06 Jun 2009) | 3 lines
+
+Rename queue datastructure to cs_queue data structure because some fail
+operating system struct queue in the globally scoped headers.
+
+------------------------------------------------------------------------
+r2210 | sdake | 2009-06-06 17:43:18 -0700 (Sat, 06 Jun 2009) | 2 lines
+
+Port of totemip to Solaris.
+
+------------------------------------------------------------------------
+r2209 | sdake | 2009-06-06 17:42:40 -0700 (Sat, 06 Jun 2009) | 2 lines
+
+Port of logsys to Solaris.
+
+------------------------------------------------------------------------
+r2208 | sdake | 2009-06-06 17:42:21 -0700 (Sat, 06 Jun 2009) | 2 lines
+
+coroipcc port to Solaris.
+
+------------------------------------------------------------------------
+r2207 | chrissie | 2009-06-04 09:12:08 -0700 (Thu, 04 Jun 2009) | 2 lines
+
+Don't let corosync-keygen fail if /etc/ais already exists
+
+------------------------------------------------------------------------
+r2206 | beekhof | 2009-06-03 03:46:07 -0700 (Wed, 03 Jun 2009) | 1 line
+
+Fix compilation on OSX/Darwin
+------------------------------------------------------------------------
+r2205 | beekhof | 2009-06-03 02:54:22 -0700 (Wed, 03 Jun 2009) | 1 line
+
+Forward port the clear_node_high_bit from whitetank
+------------------------------------------------------------------------
+r2204 | meyering | 2009-06-02 10:44:56 -0700 (Tue, 02 Jun 2009) | 4 lines
+
+totempg.c: don't truncate group list
+
+* exec/totempg.c (totempg_groups_join): Fix typo s/=/+/ that
+would mistakenly truncate totempg group list.
+------------------------------------------------------------------------
+r2203 | honzaf | 2009-06-01 01:46:10 -0700 (Mon, 01 Jun 2009) | 24 lines
+
+Fix coroipcc linking
+
+Fixes rhbz#499918
+	
+Functions from ckpt library (like aCkptCheckpointOpen,
+saCkptSectionIterationInitialize, ...) internally uses corosync functions
+reply_receive, reply_receive_in_buf, ... This functions are included in
+coroipcc.c source file and uses global static variable ipc_hdb.
+
+Without patch, coroipcc is linked to shared library (libcoroipcc.so) AND linked
+with every corosync libraries (like cpg, ....), so global variable ipc_hdb is
+included not only in libcoroipcc.so, but also in libcpg.so, ...
+
+dlm_controld has function retrieve_plocks, and whole binary is linked with
+libcoroipcc and libcpg. So ipc_hdb is included TWICE (so has TWO addresses).
+
+Main problem causing the bug was, that reply_receive uses address from one
+library, and reply_receive_in_buf uses other. This confuses check of hdb_get
+function.
+
+After removing linking of coroipcc.o to cpg, and rather use of dynamic version,
+ (this means, there is only one instance of ipc_hdb) problem disappeared.
+
+
+------------------------------------------------------------------------
+r2202 | chrissie | 2009-06-01 00:20:17 -0700 (Mon, 01 Jun 2009) | 5 lines
+
+Add broadcast option to corosync
+
+This is a forward port of the openais, whitetank, code.
+
+
+------------------------------------------------------------------------
+r2201 | sdake | 2009-05-30 18:18:09 -0700 (Sat, 30 May 2009) | 2 lines
+
+Fix race condition in cpg service.
+
+------------------------------------------------------------------------
+r2200 | fabbione | 2009-05-29 21:47:01 -0700 (Fri, 29 May 2009) | 3 lines
+
+Public headers should not include private config.h
+
+
+------------------------------------------------------------------------
+r2199 | chrissie | 2009-05-22 01:02:10 -0700 (Fri, 22 May 2009) | 8 lines
+
+This patch adds the definition VOTEQUORUM_NODEID_US to the library,
+which is already implicitly zero.
+
+It also adds VOTEQUORUM_NODEID_QDEVICE and makes the code that checks
+for them more generic. This now allows you to change the number of votes
+assigned to a quorum disk (for example)
+
+
+------------------------------------------------------------------------
+r2198 | honzaf | 2009-05-20 06:30:29 -0700 (Wed, 20 May 2009) | 2 lines
+
+Support for uidgid feature
+
+------------------------------------------------------------------------
+r2197 | honzaf | 2009-05-20 06:11:23 -0700 (Wed, 20 May 2009) | 2 lines
+
+*Dispatch returns CS_ERR_BAD_HANDLE only on first hdb_get
+
+------------------------------------------------------------------------
+r2196 | chrissie | 2009-05-20 01:37:14 -0700 (Wed, 20 May 2009) | 2 lines
+
+Adapt the deliver_fn in the YKD quorum plugin to the new tpg API. 
+
+------------------------------------------------------------------------
+r2195 | chrissie | 2009-05-20 00:50:53 -0700 (Wed, 20 May 2009) | 2 lines
+
+Print a list of quorum members when it changes.
+
+------------------------------------------------------------------------
+r2194 | meyering | 2009-05-18 09:41:55 -0700 (Mon, 18 May 2009) | 4 lines
+
+avoid spurious failure of 'make syntax-check's sc_makefile_check
+
+* pkgconfig/Makefile.am (lib%.pc): Add extra quotes to avoid
+triggering check for use of obsolescent @VAR@ notation.
+------------------------------------------------------------------------
+r2193 | meyering | 2009-05-18 09:41:46 -0700 (Mon, 18 May 2009) | 27 lines
+
+don't include <signal.h> when it's not used
+
+* exec/coroparse.c: Likewise.
+* exec/quorum.c: Likewise.
+* exec/sync.c: Likewise.
+* exec/totemmrp.c: Likewise.
+* exec/totemnet.c: Likewise.
+* exec/totemrrp.c: Likewise.
+* exec/totemsrp.c: Likewise.
+* exec/vsf_quorum.c: Likewise.
+* exec/vsf_ykd.c: Likewise.
+* lcr/uic.c: Likewise.
+* lcr/uis.c: Likewise.
+* lib/cfg.c: Likewise.
+* services/cfg.c: Likewise.
+* services/cpg.c: Likewise.
+* services/evs.c: Likewise.
+* services/pload.c: Likewise.
+* services/testquorum.c: Likewise.
+* services/votequorum.c: Likewise.
+* test/testconfdb.c: Likewise.
+* test/testcpg.c: Likewise.
+* test/testcpgzc.c: Likewise.
+* test/testzcgc.c: Likewise.
+* tools/corosync-cfgtool.c: Likewise.
+* tools/corosync-objctl.c: Likewise.
+* tools/corosync-pload.c: Likewise.
+------------------------------------------------------------------------
+r2192 | meyering | 2009-05-18 09:41:37 -0700 (Mon, 18 May 2009) | 13 lines
+
+don't include <assert.h> when it's not used
+
+* exec/apidef.c: Likewise.
+* exec/mainconfig.c: Likewise.
+* exec/service.c: Likewise.
+* exec/timer.c: Likewise.
+* exec/totemconfig.c: Likewise.
+* exec/totemmrp.c: Likewise.
+* exec/vsf_quorum.c: Likewise.
+* services/testquorum.c: Likewise.
+* test/cpgbench.c: Likewise.
+* test/cpgbenchzc.c: Likewise.
+* tools/corosync-fplay.c: Likewise.
+------------------------------------------------------------------------
+r2191 | meyering | 2009-05-18 09:41:28 -0700 (Mon, 18 May 2009) | 4 lines
+
+always include <config.h> before any other file
+
+* test/cpgbench.c: Include <config.h> before any other file.
+* test/cpgbenchzc.c: Ditto.
+------------------------------------------------------------------------
+r2190 | meyering | 2009-05-18 09:41:21 -0700 (Mon, 18 May 2009) | 1 line
+
+exec/schedwrk.c: include <config.h>
+------------------------------------------------------------------------
+r2189 | meyering | 2009-05-18 09:41:13 -0700 (Mon, 18 May 2009) | 5 lines
+
+cfg.c: avoid useless if-before-free
+
+* lib/cfg.c (corosync_cfg_ring_status_get): Avoid useless if-before-free
+and change syntax to avoid triggering false-positive failure of
+the "make syntax-check" sc_cast_of_argument_to_free rule.
+------------------------------------------------------------------------
+r2188 | meyering | 2009-05-18 09:41:04 -0700 (Mon, 18 May 2009) | 1 line
+
+remove trailing blanks
+------------------------------------------------------------------------
+r2187 | chrissie | 2009-05-18 07:03:25 -0700 (Mon, 18 May 2009) | 6 lines
+
+When doing a controlled shutdown of corosync, we now
+send out a JOIN message with our node removed. This should
+speed up the case where a lot of nodes leave at the same time as
+they don't need to wait for the token timeout for each node.
+
+
+------------------------------------------------------------------------
+r2186 | honzaf | 2009-05-18 04:44:58 -0700 (Mon, 18 May 2009) | 2 lines
+
+coroparse: Handle different EOLs and pass error_string
+
+------------------------------------------------------------------------
+r2185 | honzaf | 2009-05-18 02:42:57 -0700 (Mon, 18 May 2009) | 2 lines
+
+Remove duplicity in logsys code
+
+------------------------------------------------------------------------
+r2184 | fabbione | 2009-05-13 02:25:08 -0700 (Wed, 13 May 2009) | 2 lines
+
+Fix output to syslog
+
+------------------------------------------------------------------------
+r2183 | chrissie | 2009-05-13 00:04:00 -0700 (Wed, 13 May 2009) | 8 lines
+
+Convert votequorum to use the proper message delivery API
+rather than the tpg_ calls. Also remove a lot of mess around those
+calls, such as headers and things that were needed for cman
+compatibility but which we will not need.
+ 
+Fixes some handle changes that did not get picked up when
+handles were changed from unsigned ints to hdb_handle_t
+
+------------------------------------------------------------------------
+r2182 | fabbione | 2009-05-13 00:01:51 -0700 (Wed, 13 May 2009) | 3 lines
+
+Logsys header clean (comments and whitespaces)
+
+
+------------------------------------------------------------------------
+r2181 | fabbione | 2009-05-12 21:27:54 -0700 (Tue, 12 May 2009) | 2 lines
+
+Fix totem logging after logsys changes
+
+------------------------------------------------------------------------
+r2180 | fabbione | 2009-05-12 20:59:47 -0700 (Tue, 12 May 2009) | 2 lines
+
+Fix logsys TAG handling
+
+------------------------------------------------------------------------
+r2179 | chrissie | 2009-05-12 02:20:21 -0700 (Tue, 12 May 2009) | 2 lines
+
+Fix spelling of "Received" in sync.c
+
+------------------------------------------------------------------------
+r2178 | meyering | 2009-05-12 01:35:17 -0700 (Tue, 12 May 2009) | 10 lines
+
+logsys.c: avoid possibility of buffer overrun
+
+* exec/logsys.c (strcpy_cutoff): Add buf_len parameter, and never
+write more than this number of bytes into "dest".
+Change type of "cutoff" parameter from int to size_t.
+Sentinel value changes from -1 to 0.
+(log_printf_to_logs): Adapt to those changes.
+Reverse condition of test so the much-shorter block is the "if-block".
+Factor out a common subexpression for readability.
+Exit the loop if output_buffer_idx ever reaches sizeof(output_buffer).
+------------------------------------------------------------------------
+r2177 | meyering | 2009-05-12 01:35:09 -0700 (Tue, 12 May 2009) | 6 lines
+
+logsys.c: avoid redundant strlen in else-block
+
+* exec/logsys.c (strcpy_cutoff): Also, with a field width (aka cutoff),
+and a shorter-than-field-width string, don't write the same memory
+twice: once with strncpy using NUL bytes, then again with spaces
+via the memset.
+------------------------------------------------------------------------
+r2176 | meyering | 2009-05-12 01:35:01 -0700 (Tue, 12 May 2009) | 4 lines
+
+logsys.c: factor out some duplication
+
+* exec/logsys.c (log_printf_to_logs): Factor out repeated calls to
+strcpy_cutoff.
+------------------------------------------------------------------------
+r2175 | fabbione | 2009-05-11 22:36:09 -0700 (Mon, 11 May 2009) | 3 lines
+
+Add debugging code to logsys.
+
+
+------------------------------------------------------------------------
+r2174 | meyering | 2009-05-11 10:40:42 -0700 (Mon, 11 May 2009) | 4 lines
+
+totemnet.c: Make totemnet_initialize definition match just-changed decl.
+
+* exec/totemnet.c (totemnet_initialize): Declare deliver_fn's msg_len
+parameter to be of type "unsigned int" (not size_t) to match decl.
+------------------------------------------------------------------------
+r2173 | fabbione | 2009-05-11 01:17:53 -0700 (Mon, 11 May 2009) | 3 lines
+
+Fix logging date format and add missing daemon name
+
+
+------------------------------------------------------------------------
+r2172 | sdake | 2009-05-09 10:23:17 -0700 (Sat, 09 May 2009) | 4 lines
+
+Remove most iovector-ized functionality from totem and only make one malloc
+and memory copy call in totemsrp_mcast.  The rest of the stack minus totempg
+then uses zero copies.
+
+------------------------------------------------------------------------
+r2170 | meyering | 2009-05-05 23:54:07 -0700 (Tue, 05 May 2009) | 4 lines
+
+fix missing-dependency bug, so as not to install bogus .pc files
+
+* pkgconfig/Makefile.am (all .pc files): Depend on Makefile, so that
+a change in $(prefix) there provokes regeneration of these files.
+------------------------------------------------------------------------
+r2169 | meyering | 2009-05-04 05:45:45 -0700 (Mon, 04 May 2009) | 5 lines
+
+votequorum.c: avoid a new warning and add a comment in cpg.h
+
+* votequorum.c: Avoid declaration of unused: ‘votequorum_instance_destructor’
+* include/corosync/cpg.h (cpg_deliver_fn_t) [msg]: Add a comment explaining
+why this member is not const.
+------------------------------------------------------------------------
+r2168 | meyering | 2009-05-04 05:37:27 -0700 (Mon, 04 May 2009) | 3 lines
+
+avoid 'incompatible pointer type' compiler warning
+
+* test/cpgverify.c (cpg_deliver_fn): Remove const.
+------------------------------------------------------------------------
+r2167 | asalkeld | 2009-05-04 01:56:24 -0700 (Mon, 04 May 2009) | 2 lines
+
+add NTF_SERVICE to the service list
+
+------------------------------------------------------------------------
+r2166 | sdake | 2009-04-29 17:14:08 -0700 (Wed, 29 Apr 2009) | 3 lines
+
+Do checking of handle code after we verify that handle could actually be 
+in the handle database.
+
+------------------------------------------------------------------------
+r2165 | sdake | 2009-04-29 00:21:21 -0700 (Wed, 29 Apr 2009) | 2 lines
+
+Implement thread saftey in corosync trunk.
+
+------------------------------------------------------------------------
+r2164 | sdake | 2009-04-29 00:14:36 -0700 (Wed, 29 Apr 2009) | 2 lines
+
+Fix leak caused by invalid put in hdb_handle_destroy.
+
+------------------------------------------------------------------------
+r2163 | beekhof | 2009-04-28 07:05:52 -0700 (Tue, 28 Apr 2009) | 1 line
+
+Call all configured exec_dump_fn's when SIGUSR2 is received
+------------------------------------------------------------------------
+r2162 | sdake | 2009-04-27 23:45:26 -0700 (Mon, 27 Apr 2009) | 2 lines
+
+Add cpgverify program to test directory.
+
+------------------------------------------------------------------------
+r2161 | beekhof | 2009-04-27 07:51:05 -0700 (Mon, 27 Apr 2009) | 1 line
+
+Minor fixes to the build process on OSX
+------------------------------------------------------------------------
+r2160 | fabbione | 2009-04-27 04:37:59 -0700 (Mon, 27 Apr 2009) | 2 lines
+
+Fix debug: on option for logging purposes
+
+------------------------------------------------------------------------
+r2159 | fabbione | 2009-04-27 04:36:53 -0700 (Mon, 27 Apr 2009) | 2 lines
+
+add max limit error checks in logsys
+
+------------------------------------------------------------------------
+r2157 | sdake | 2009-04-26 22:17:40 -0700 (Sun, 26 Apr 2009) | 2 lines
+
+Add mechanism to use logsysrec from inside totem stack.
+
+------------------------------------------------------------------------
+r2156 | sdake | 2009-04-26 22:01:25 -0700 (Sun, 26 Apr 2009) | 2 lines
+
+Improve security of NSS implementation in totem.
+
+------------------------------------------------------------------------
+r2155 | sdake | 2009-04-26 05:39:54 -0700 (Sun, 26 Apr 2009) | 2 lines
+
+Fix evsverify failure.
+
+------------------------------------------------------------------------
+r2154 | fabbione | 2009-04-25 23:26:12 -0700 (Sat, 25 Apr 2009) | 3 lines
+
+Fix --enable-nss default in configure.ac
+
+
+------------------------------------------------------------------------
+r2153 | sdake | 2009-04-25 22:22:24 -0700 (Sat, 25 Apr 2009) | 2 lines
+
+Make libnss detection work properly.
+
+------------------------------------------------------------------------
+r2152 | fabbione | 2009-04-25 21:52:26 -0700 (Sat, 25 Apr 2009) | 2 lines
+
+Fix pkgconfig file inclusion into release and pass distcheck
+
+------------------------------------------------------------------------
+r2151 | sdake | 2009-04-25 19:42:05 -0700 (Sat, 25 Apr 2009) | 2 lines
+
+add Chrissie as author of totem NSS implementation.
+
+------------------------------------------------------------------------
+r2150 | sdake | 2009-04-25 19:38:46 -0700 (Sat, 25 Apr 2009) | 3 lines
+
+Remove const from delivery callback to allow inplace endian changes of 
+message contents.
+
+------------------------------------------------------------------------
+r2149 | sdake | 2009-04-25 19:24:43 -0700 (Sat, 25 Apr 2009) | 2 lines
+
+remove "AIS" from cfg.h header file.
+
+------------------------------------------------------------------------
+r2148 | sdake | 2009-04-25 19:08:18 -0700 (Sat, 25 Apr 2009) | 2 lines
+
+Allow CPP linkage by adding extern "C" {} to external header files.
+
+------------------------------------------------------------------------
+r2147 | sdake | 2009-04-25 18:58:49 -0700 (Sat, 25 Apr 2009) | 2 lines
+
+remove config.h from public header file.
+
+------------------------------------------------------------------------
+r2146 | sdake | 2009-04-25 18:20:09 -0700 (Sat, 25 Apr 2009) | 3 lines
+
+Remove useless APIs from coroipcs.c related to handling of overload 
+conditions.
+
+------------------------------------------------------------------------
+r2145 | chrissie | 2009-04-25 07:05:27 -0700 (Sat, 25 Apr 2009) | 3 lines
+
+Add libnss security support to corosync.
+
+
+------------------------------------------------------------------------
+r2144 | fabbione | 2009-04-24 03:06:57 -0700 (Fri, 24 Apr 2009) | 2 lines
+
+Bump SONAME to 4.0.0
+
+------------------------------------------------------------------------
+r2143 | meyering | 2009-04-24 02:55:21 -0700 (Fri, 24 Apr 2009) | 4 lines
+
+logsys.c: avoid an unnecessary strlen call
+
+* exec/logsys.c (strcpy_cutoff): Use strlen, then memcpy,
+not strcpy, then strlen.
+------------------------------------------------------------------------
+r2142 | honzaf | 2009-04-24 00:06:30 -0700 (Fri, 24 Apr 2009) | 2 lines
+
+Add Jan Friesse (me) to the list of Corosync authors
+
+------------------------------------------------------------------------
+r2141 | sdake | 2009-04-23 12:39:20 -0700 (Thu, 23 Apr 2009) | 3 lines
+
+Remove mempool since it is unused and isn't going to be a feature in 
+this release.
+
+------------------------------------------------------------------------
+r2140 | sdake | 2009-04-23 12:34:26 -0700 (Thu, 23 Apr 2009) | 2 lines
+
+add request_shutdown call to coroapi.
+
+------------------------------------------------------------------------
+r2139 | sdake | 2009-04-23 12:21:35 -0700 (Thu, 23 Apr 2009) | 2 lines
+
+Add logsys yield counter for the logsys thread.
+
+------------------------------------------------------------------------
+r2138 | meyering | 2009-04-23 11:55:15 -0700 (Thu, 23 Apr 2009) | 3 lines
+
+corosync.pc.in: Define Cflags
+
+* pkgconfig/corosync.pc.in (Cflags): Define.
+------------------------------------------------------------------------
+r2137 | meyering | 2009-04-23 11:55:06 -0700 (Thu, 23 Apr 2009) | 4 lines
+
+pkgconfig: correct and clean up Makefile.am
+
+* pkgconfig/Makefile.am: Factor, add missing deps.
+(pkgconf_LIBS): Remove unused var.
+------------------------------------------------------------------------
+r2136 | sdake | 2009-04-23 10:37:32 -0700 (Thu, 23 Apr 2009) | 2 lines
+
+Modify property of loc script to be executable.
+
+------------------------------------------------------------------------
+r2135 | sdake | 2009-04-23 10:32:57 -0700 (Thu, 23 Apr 2009) | 2 lines
+
+remove rmd.h header file.
+
+------------------------------------------------------------------------
+r2134 | sdake | 2009-04-23 10:03:21 -0700 (Thu, 23 Apr 2009) | 2 lines
+
+Include file cleanups.
+
+------------------------------------------------------------------------
+r2133 | sdake | 2009-04-23 09:19:49 -0700 (Thu, 23 Apr 2009) | 2 lines
+
+Cleanup coroipcc.h header file to remove saHandleXXX and friends.
+
+------------------------------------------------------------------------
+r2132 | sdake | 2009-04-23 09:13:24 -0700 (Thu, 23 Apr 2009) | 2 lines
+
+coroipcs.h cleanup.
+
+------------------------------------------------------------------------
+r2131 | chrissie | 2009-04-23 08:51:41 -0700 (Thu, 23 Apr 2009) | 7 lines
+
+This patch removes the (now redundant) call to sync_primary_callback_fn
+when quorum changes.
+
+As we established a while ago, quorum is independent of sync and all
+this code does is segfault when called!
+
+
+------------------------------------------------------------------------
+r2130 | sdake | 2009-04-23 08:24:29 -0700 (Thu, 23 Apr 2009) | 2 lines
+
+Remove priority inversion in logsys.
+
+------------------------------------------------------------------------
+r2129 | meyering | 2009-04-23 07:16:01 -0700 (Thu, 23 Apr 2009) | 4 lines
+
+exec/Makefile.am: require that copied code stays in sync
+
+* exec/Makefile.am (check_logsys_log_printf_functions): New rule.
+(check): Depend on check_logsys_log_printf_functions.
+------------------------------------------------------------------------
+r2128 | meyering | 2009-04-23 07:15:53 -0700 (Thu, 23 Apr 2009) | 4 lines
+
+logsys.c: indent consistently
+
+* exec/logsys.c (_logsys_log_printf): Indent with TABs to be
+consistent with copied-from function, _logsys_log_vprintf.
+------------------------------------------------------------------------
+r2127 | honzaf | 2009-04-23 05:29:26 -0700 (Thu, 23 Apr 2009) | 3 lines
+
+Make ipc_log_printf function working by adding _logsys_log_vprintf, which
+is mostly same as _logsys_log_printf but takes va_list as argument.
+
+------------------------------------------------------------------------
+r2126 | sdake | 2009-04-23 03:03:01 -0700 (Thu, 23 Apr 2009) | 3 lines
+
+use uint64_t for hdb_handle_t type and also specify some formatting 
+strings for printing handles out of the handle database.
+
+------------------------------------------------------------------------
+r2125 | sdake | 2009-04-22 10:43:54 -0700 (Wed, 22 Apr 2009) | 2 lines
+
+Remove saHandleXXX and friends and use hdb instead.
+
+------------------------------------------------------------------------
+r2124 | honzaf | 2009-04-22 06:39:28 -0700 (Wed, 22 Apr 2009) | 2 lines
+
+Rewrite of CPG. It solves problems with double delete.
+
+------------------------------------------------------------------------
+r2123 | fabbione | 2009-04-22 03:39:43 -0700 (Wed, 22 Apr 2009) | 2 lines
+
+Stop hardcoding /var
+
+------------------------------------------------------------------------
+r2122 | honzaf | 2009-04-22 02:45:47 -0700 (Wed, 22 Apr 2009) | 2 lines
+
+Remove MESSAGE_REQ_CPG_GROUPS_GET call and all function using that.
+
+------------------------------------------------------------------------
+r2121 | fabbione | 2009-04-22 02:14:23 -0700 (Wed, 22 Apr 2009) | 2 lines
+
+Kill all asserts from logsys and handle proper error return
+
+------------------------------------------------------------------------
+r2120 | sdake | 2009-04-22 02:03:59 -0700 (Wed, 22 Apr 2009) | 2 lines
+
+Add missing header from last commit.
+
+------------------------------------------------------------------------
+r2119 | sdake | 2009-04-22 02:01:30 -0700 (Wed, 22 Apr 2009) | 2 lines
+
+Reworking of include file dependencies.
+
+------------------------------------------------------------------------
+r2118 | meyering | 2009-04-22 01:04:06 -0700 (Wed, 22 Apr 2009) | 1 line
+
+remove empty lines at end-of-file
+------------------------------------------------------------------------
+r2117 | meyering | 2009-04-22 01:03:55 -0700 (Wed, 22 Apr 2009) | 1 line
+
+remove all trailing blanks
+------------------------------------------------------------------------
+r2116 | meyering | 2009-04-22 00:28:25 -0700 (Wed, 22 Apr 2009) | 6 lines
+
+perf: avoid writing 1MB of zero bytes
+
+Don't initialize the entire just-allocated buffer to all zeroes.
+The very next lines initialize all members except "data".
+* exec/totempg.c (assembly_ref): Initialize the first byte of
+assembly->data to 0, just in case someone uses it as a string.
+------------------------------------------------------------------------
+r2115 | sdake | 2009-04-21 22:41:30 -0700 (Tue, 21 Apr 2009) | 2 lines
+
+Change shared memory to use mmap() system calls.
+
+------------------------------------------------------------------------
+r2114 | sdake | 2009-04-21 16:37:49 -0700 (Tue, 21 Apr 2009) | 3 lines
+
+Zero copy feature for IPC transmits.  Also integrated into CPG library 
+service.
+
+------------------------------------------------------------------------
+r2113 | sdake | 2009-04-21 13:26:12 -0700 (Tue, 21 Apr 2009) | 2 lines
+
+Remove memory leak from new dispatch circular buffer mapped system.
+
+------------------------------------------------------------------------
+r2112 | meyering | 2009-04-21 04:56:55 -0700 (Tue, 21 Apr 2009) | 5 lines
+
+rename function: s/strstr_rs/strchr_rs/ to reflect new semantics
+
+* exec/coroparse.c (parse_section):
+* exec/util.c (strchr_rs, strstr_rs):
+* exec/util.h (corosync_exit_error):
+------------------------------------------------------------------------
+r2111 | meyering | 2009-04-21 04:56:47 -0700 (Tue, 21 Apr 2009) | 11 lines
+
+rewrite strstr_rs not to use strdup
+
+strstr_rs used strdup and didn't handle failure.  This change removes
+the use of strdup as well as the uses of strstr, since all callers
+passed a string of length 1 as the second argument.  This also changes
+the prototype so that the 2nd parameter is a byte, not a string.
+
+* util.h (strstr_rs): Adjust prototype.
+* util.c (strstr_rs): Rewrite/simplify.
+* sa-confdb.c (strstr_rs): Remove duplicate definition.
+* coroparse.c (parse_section): Update callers.
+------------------------------------------------------------------------
+r2110 | fabbione | 2009-04-21 02:25:28 -0700 (Tue, 21 Apr 2009) | 2 lines
+
+Fix pthread linking
+
+------------------------------------------------------------------------
+r2109 | fabbione | 2009-04-21 00:53:06 -0700 (Tue, 21 Apr 2009) | 2 lines
+
+Fix uid and gid determination
+
+------------------------------------------------------------------------
+r2108 | fabbione | 2009-04-21 00:34:05 -0700 (Tue, 21 Apr 2009) | 2 lines
+
+Move include config.h at the top as it's supposed to be
+
+------------------------------------------------------------------------
+r2107 | meyering | 2009-04-21 00:28:26 -0700 (Tue, 21 Apr 2009) | 3 lines
+
+exce/main.c: handle strdup failure
+
+* exec/main.c (main): Upon strdup failure, log the error and exit.
+------------------------------------------------------------------------
+r2106 | meyering | 2009-04-21 00:28:18 -0700 (Tue, 21 Apr 2009) | 7 lines
+
+remove useless if-before-free tests
+
+* exec/coropoll.c (poll_destroy): Remove useless if.
+* exec/main.c (main): Likewise.
+* include/corosync/hdb.h (hdb_destroy): Likewise.
+* lcr/lcr_ifact.c (scandir): Likewise.
+* lib/sa-confdb.c (load_config): Likewise.
+------------------------------------------------------------------------
+r2105 | meyering | 2009-04-21 00:28:09 -0700 (Tue, 21 Apr 2009) | 5 lines
+
+services/confdb.c: avoid four warnings
+
+* services/confdb.c (m2h): New function.
+(message_handler_req_lib_confdb_object_iter): Use m2h rather than a cast.
+(message_handler_req_lib_confdb_object_find): Likewise.
+------------------------------------------------------------------------
+r2104 | fabbione | 2009-04-20 21:40:01 -0700 (Mon, 20 Apr 2009) | 2 lines
+
+Guarantee that all logging buffers are flushed before we die
+
+------------------------------------------------------------------------
+r2103 | fabbione | 2009-04-20 21:38:49 -0700 (Mon, 20 Apr 2009) | 2 lines
+
+Add logsys_flush logsys API call to signal the logging thread
+
+------------------------------------------------------------------------
+r2102 | fabbione | 2009-04-20 21:37:28 -0700 (Mon, 20 Apr 2009) | 2 lines
+
+Add logging configuration backward compatibility layer
+
+------------------------------------------------------------------------
+r2101 | fabbione | 2009-04-20 21:02:19 -0700 (Mon, 20 Apr 2009) | 3 lines
+
+Fix output filtering when debug is enabled
+
+
+------------------------------------------------------------------------
+r2100 | meyering | 2009-04-20 11:26:22 -0700 (Mon, 20 Apr 2009) | 4 lines
+
+corosync-cfgtool.c: handle strdup failure gracefully
+
+* tools/corosync-cfgtool.c (xstrdup): New function.
+(main): Use it in place of strdup.
+------------------------------------------------------------------------
+r2099 | sdake | 2009-04-20 11:03:10 -0700 (Mon, 20 Apr 2009) | 2 lines
+
+Use spinlocks in library handle references.
+
+------------------------------------------------------------------------
+r2098 | meyering | 2009-04-20 08:50:23 -0700 (Mon, 20 Apr 2009) | 5 lines
+
+schedwrk.c: avoid two int-pointer cast conversion warnings
+
+* exec/schedwrk.c (void2handle, handle2void): New functions.
+(schedwrk_do): Use void2handle rather than an unportable cast.
+(schedwrk_create): Use handle2void rather than an unportable cast.
+------------------------------------------------------------------------
+r2097 | fabbione | 2009-04-20 07:17:09 -0700 (Mon, 20 Apr 2009) | 3 lines
+
+Fix libconfdb linking
+
+
+------------------------------------------------------------------------
+r2096 | fabbione | 2009-04-20 03:43:37 -0700 (Mon, 20 Apr 2009) | 4 lines
+
+Improve logsys error handling in logsys_format_set
+and logsys_config_file_set_unlocked.
+
+
+------------------------------------------------------------------------
+r2095 | fabbione | 2009-04-20 02:35:39 -0700 (Mon, 20 Apr 2009) | 2 lines
+
+Rename corosync.conf to corosync.conf.example take 2
+
+------------------------------------------------------------------------
+r2094 | fabbione | 2009-04-20 02:34:26 -0700 (Mon, 20 Apr 2009) | 2 lines
+
+Rename corosync.conf to corosync.conf.example
+
+------------------------------------------------------------------------
+r2093 | fabbione | 2009-04-20 00:08:42 -0700 (Mon, 20 Apr 2009) | 3 lines
+
+readd early log level check for performance reasons.
+
+
+------------------------------------------------------------------------
+r2092 | sdake | 2009-04-19 21:45:46 -0700 (Sun, 19 Apr 2009) | 4 lines
+
+throw away mode in totempg was operating as a global variable, when it 
+is possible for different nodes to be in different configurations of 
+throw away.  This patch makes the variable instanced.
+
+------------------------------------------------------------------------
+r2091 | fabbione | 2009-04-19 21:28:33 -0700 (Sun, 19 Apr 2009) | 3 lines
+
+Add logsys v3
+
+
+------------------------------------------------------------------------
+r2090 | sdake | 2009-04-18 07:42:09 -0700 (Sat, 18 Apr 2009) | 2 lines
+
+Add missing schedwrk files.
+
+------------------------------------------------------------------------
+r2089 | sdake | 2009-04-18 07:39:57 -0700 (Sat, 18 Apr 2009) | 2 lines
+
+add schedwrk_create and schedwrk_destroy coroapi functions.
+
+------------------------------------------------------------------------
+r2088 | sdake | 2009-04-18 07:13:02 -0700 (Sat, 18 Apr 2009) | 2 lines
+
+Initialize pload context properly.
+
+------------------------------------------------------------------------
+r2087 | sdake | 2009-04-18 04:57:34 -0700 (Sat, 18 Apr 2009) | 2 lines
+
+Move QUICKSTART to INSTALL and update it.
+
+------------------------------------------------------------------------
+r2086 | sdake | 2009-04-18 04:36:07 -0700 (Sat, 18 Apr 2009) | 2 lines
+
+Add AUTHORS file.
+
+------------------------------------------------------------------------
+r2085 | sdake | 2009-04-18 00:43:33 -0700 (Sat, 18 Apr 2009) | 2 lines
+
+Remove declaration of data struct inside code.
+
+------------------------------------------------------------------------
+r2084 | sdake | 2009-04-18 00:42:25 -0700 (Sat, 18 Apr 2009) | 2 lines
+
+Remove warning in evsbench.
+
+------------------------------------------------------------------------
+r2083 | sdake | 2009-04-18 00:37:15 -0700 (Sat, 18 Apr 2009) | 2 lines
+
+Add fatal error call to ipc initializations.y
+
+------------------------------------------------------------------------
+r2082 | sdake | 2009-04-18 00:25:04 -0700 (Sat, 18 Apr 2009) | 2 lines
+
+check result of fgets in testcpg.
+
+------------------------------------------------------------------------
+r2081 | sdake | 2009-04-18 00:21:35 -0700 (Sat, 18 Apr 2009) | 2 lines
+
+Remove warnings about objdb that casts a const char * to a char *.
+
+------------------------------------------------------------------------
+r2080 | sdake | 2009-04-18 00:18:08 -0700 (Sat, 18 Apr 2009) | 2 lines
+
+Remove warnings about typedefs in apidef.c.
+
+------------------------------------------------------------------------
+r2079 | sdake | 2009-04-18 00:06:14 -0700 (Sat, 18 Apr 2009) | 2 lines
+
+Rework how dispatch functions so service engines work properly.
+
+------------------------------------------------------------------------
+r2078 | meyering | 2009-04-15 12:13:37 -0700 (Wed, 15 Apr 2009) | 3 lines
+
+configure.ac: enable gcc's -Wshadow warning
+
+* configure.ac (WARNLIST): Add -Wshadow to the list.
+------------------------------------------------------------------------
+r2077 | meyering | 2009-04-15 12:13:28 -0700 (Wed, 15 Apr 2009) | 3 lines
+
+cpg.c: rename file-scoped global to avoid shadowing warnings
+
+* services/cpg.c: s/req_exec_cpg_downlist/g_req_exec_cpg_downlist/
+------------------------------------------------------------------------
+r2076 | meyering | 2009-04-15 12:13:20 -0700 (Wed, 15 Apr 2009) | 4 lines
+
+vsf_ykd.c: Rename param to avoid shadowing global "ydk_state"
+
+* exec/vsf_ykd.c (ykd_state_endian_convert): Rename param:
+s/ydk_state/state/
+------------------------------------------------------------------------
+r2075 | meyering | 2009-04-15 12:13:11 -0700 (Wed, 15 Apr 2009) | 3 lines
+
+services/cfg.c move shadowed decl into scope where used
+
+* services/cfg.c (message_handler_req_lib_cfg_tryshutdown):
+------------------------------------------------------------------------
+r2074 | meyering | 2009-04-15 12:13:03 -0700 (Wed, 15 Apr 2009) | 3 lines
+
+corosync-fplay.c: don't shadow file-scoped global, "record"
+
+* tools/corosync-fplay.c: Rename: s/record/g_record/.
+------------------------------------------------------------------------
+r2073 | meyering | 2009-04-15 12:12:56 -0700 (Wed, 15 Apr 2009) | 3 lines
+
+testvotequorum1.c: don't shadow file-scoped global, "handle"
+
+* test/testvotequorum1.c (main): Rename: s/handle/g_handle/.
+------------------------------------------------------------------------
+r2072 | meyering | 2009-04-15 12:12:48 -0700 (Wed, 15 Apr 2009) | 3 lines
+
+corosync-fplay.c: avoid shadowin: s/index/idx/
+
+* tools/corosync-fplay.c (printer_totempg_mcast_fits):
+------------------------------------------------------------------------
+r2071 | meyering | 2009-04-15 12:12:40 -0700 (Wed, 15 Apr 2009) | 5 lines
+
+coroipcs.c: don't shadow functions read and write
+
+* exec/coroipcs.c (req_setup_recv): rename locals:
+s/read/n_read/; s/write/n_write.
+Also declare param to be const.
+------------------------------------------------------------------------
+r2070 | meyering | 2009-04-15 12:12:33 -0700 (Wed, 15 Apr 2009) | 4 lines
+
+totemnet.c: don't shadow crypto.h type, "hmac_state"
+
+* exec/totemnet.c (encrypt_and_sign_worker): Rename a local var:
+s/hmac_state/hmac_st/
+------------------------------------------------------------------------
+r2069 | meyering | 2009-04-15 12:12:25 -0700 (Wed, 15 Apr 2009) | 3 lines
+
+don't shadow file-scoped global, "handle"
+
+* test/testquorum.c: Rename: s/handle/g_handle/.
+------------------------------------------------------------------------
+r2068 | meyering | 2009-04-15 12:12:17 -0700 (Wed, 15 Apr 2009) | 7 lines
+
+wthread.c: Rename file-scoped type to avoid shadows.
+
+* exec/wthread.c (struct worker_thread_t): Rename from
+struct worker_thread.
+(start_worker_thread): Rename from function "worker_thread".
+* exec/wthread.h (struct worker_thread_group) [threads]: Update
+member type: s/struct worker_thread/struct worker_thread_t/
+------------------------------------------------------------------------
+r2067 | meyering | 2009-04-15 12:12:10 -0700 (Wed, 15 Apr 2009) | 7 lines
+
+don't shadow the global type name, "timer_handle"
+
+* exec/coropoll.c (poll_timer_delete): Rename locals and/or params.
+* exec/timer.c (corosync_timer_delete): Likewise.
+(corosync_timer_expire_time_get): Likewise.
+* exec/tlist.h (timerlist_del, timerlist_expire_time): Likewise.
+(timerlist_pre_dispatch, timerlist_post_dispatch): Likewise.
+------------------------------------------------------------------------
+r2066 | meyering | 2009-04-15 12:12:02 -0700 (Wed, 15 Apr 2009) | 3 lines
+
+list.h: avoid shadowing warning
+
+* include/corosync/list.h: Don't use "remove" as param name.
+------------------------------------------------------------------------
+r2065 | meyering | 2009-04-15 12:11:54 -0700 (Wed, 15 Apr 2009) | 3 lines
+
+coroipcc.c: avoid shadowing warning
+
+* lib/coroipcc.c: Don't use "read" as param name.
+------------------------------------------------------------------------
+r2064 | meyering | 2009-04-15 12:11:46 -0700 (Wed, 15 Apr 2009) | 5 lines
+
+totemsrp.c: more "const" propagation
+
+* exec/totemsrp.c (message_handler_memb_commit_token): Don't cast away
+const on "memb_commit_token".  This exposed a const violation.
+Fix that with minor rearrangement and an added memcpy.
+------------------------------------------------------------------------
+r2063 | meyering | 2009-04-15 00:48:47 -0700 (Wed, 15 Apr 2009) | 5 lines
+
+totemsrp.c: avoid a const-correctness problem
+
+* exec/totemsrp.c (message_handler_memb_merge_detect): Don't modify
+the now-const "msg" parameter.  Instead, use a local copy.
+Patch by Steven Dake.
+------------------------------------------------------------------------
+r2062 | meyering | 2009-04-15 00:48:39 -0700 (Wed, 15 Apr 2009) | 22 lines
+
+totemrrp.h, totemsrp.h, totemnet.h: const+size_t
+
+* exec/totemrrp.c (totemrrp_initialize):
+* exec/totemrrp.h (totemrrp_initialize):
+* exec/totemsrp.c (handler_functions, main_deliver_fn):
+(main_iface_change_fn):
+* exec/totemnet.c (totemnet_deliver_fn, totemnet_iface_change_fn):
+(encrypt_and_sign_worker, ucast_sendmsg, mcast_sendmsg):
+(totemnet_mcast_worker_fn, totemnet_initialize):
+(totemnet_token_send, totemnet_mcast_flush_send):
+(totemnet_mcast_noflush_send, totemnet_token_target_set):
+* exec/totemnet.h (TOTEMNET_FLUSH):
+* exec/totemrrp.c (totemrrp_deliver_fn, totemrrp_iface_change_fn):
+(totemrrp_token_seqid_get, rrp_deliver_fn, rrp_iface_change_fn):
+* exec/totemsrp.c (handler_functions, main_token_seqid_get):
+(srp_addr_copy_endian_convert, message_handler_orf_token):
+(message_handler_mcast, message_handler_memb_merge_detect):
+(memb_join_endian_convert, memb_commit_token_endian_convert):
+(orf_token_endian_convert, mcast_endian_convert):
+(memb_merge_detect_endian_convert, message_handler_memb_join):
+(message_handler_memb_commit_token):
+(message_handler_token_hold_cancel, main_deliver_fn):
+------------------------------------------------------------------------
+r2061 | meyering | 2009-04-14 23:52:25 -0700 (Tue, 14 Apr 2009) | 1 line
+
+* README.devmap: Update a prototype.
+------------------------------------------------------------------------
+r2060 | meyering | 2009-04-14 23:52:16 -0700 (Tue, 14 Apr 2009) | 6 lines
+
+change a few "int msg_len" to "size_t msg_len"; adjust docs
+
+* lib/cpg.c (cpg_mcast_joined):
+* lib/evs.c (evs_mcast_joined, evs_mcast_groups):
+* man/cpg_initialize.3:
+* man/evs_initialize.3:
+------------------------------------------------------------------------
+r2059 | meyering | 2009-04-14 23:47:34 -0700 (Tue, 14 Apr 2009) | 4 lines
+
+corosync-keygen.c: diagnose a few more failures
+
+* tools/corosync-keygen.c (main): Diagnose short reads, failed mkdir
+and fchmod; detect write failure.  Close file descriptors.
+------------------------------------------------------------------------
+r2058 | sdake | 2009-04-13 23:35:46 -0700 (Mon, 13 Apr 2009) | 2 lines
+
+Autodetect build environment for configure for developers.
+
+------------------------------------------------------------------------
+r2057 | sdake | 2009-04-09 20:17:17 -0700 (Thu, 09 Apr 2009) | 2 lines
+
+Fix compile warning in main.c.
+
+------------------------------------------------------------------------
+r2056 | sdake | 2009-04-09 20:10:24 -0700 (Thu, 09 Apr 2009) | 2 lines
+
+Cast a const away in an iovector.
+
+------------------------------------------------------------------------
+r2055 | sdake | 2009-04-09 20:08:17 -0700 (Thu, 09 Apr 2009) | 2 lines
+
+Remove warnings from wthread.
+
+------------------------------------------------------------------------
+r2054 | sdake | 2009-04-09 20:07:17 -0700 (Thu, 09 Apr 2009) | 2 lines
+
+Remove qualifier check in warnings list.
+
+------------------------------------------------------------------------
+r2053 | sdake | 2009-04-09 19:56:48 -0700 (Thu, 09 Apr 2009) | 2 lines
+
+Remove admin_state_set and admin_state_get.
+
+------------------------------------------------------------------------
+r2052 | sdake | 2009-04-09 19:44:51 -0700 (Thu, 09 Apr 2009) | 2 lines
+
+Remove warning in keygen and report error on fchown appropriately.
+
+------------------------------------------------------------------------
+r2051 | sdake | 2009-04-09 19:40:33 -0700 (Thu, 09 Apr 2009) | 2 lines
+
+Remove warning in corosync-objctl.
+
+------------------------------------------------------------------------
+r2050 | sdake | 2009-04-09 19:24:01 -0700 (Thu, 09 Apr 2009) | 2 lines
+
+Add spin locks for critical sections in hdb api.
+
+------------------------------------------------------------------------
+r2049 | meyering | 2009-04-09 13:53:13 -0700 (Thu, 09 Apr 2009) | 4 lines
+
+coroapi.h: Make totem_mcast's *iovec param const.
+
+* include/corosync/engine/coroapi.h (struct corosync_api_v1):
+[totem_mcast]: Make *iovec param const.
+------------------------------------------------------------------------
+r2048 | meyering | 2009-04-09 13:53:03 -0700 (Thu, 09 Apr 2009) | 8 lines
+
+cpg.h, objdb.h, coroaph.h: more const/size_t
+
+* include/corosync/cpg.h (cpg_callbacks_t):
+* include/corosync/mar_cpg.h (marshall_to_mar_cpg_name_t):
+* lib/cpg.c (cpg_join, cpg_leave):
+* lib/cpg.c (cpg_mcast_joined): make iovec const.
+* include/corosync/cpg.h (cpg_mcast_joined): update prototype
+...
+------------------------------------------------------------------------
+r2047 | meyering | 2009-04-09 05:32:59 -0700 (Thu, 09 Apr 2009) | 21 lines
+
+coroapi.h: change lib_handler_fn's *msg to be const
+
+Make a tiny type change and watch it propagate.
+* include/corosync/engine/coroapi.h
+(struct corosync_lib_handler) [lib_handler_fn]: Change type
+of 2nd parameter: s/void *msg/const void *msg/.
+Propagate the above into cfg.c and votequorum.c:
+* services/cfg.c (message_handler_req_lib_cfg_get_node_addrs):
+Constification exposed a bug in this function whereby it mistakenly
+modified storage through its now-const *msg parameter.  Since it
+did that solely to store a temporary result, we've changed it
+to use a local variable instead.
+* services/votequorum.c (message_handler_req_lib_votequorum_setvotes):
+Likewise.
+* exec/vsf_quorum.c: add const to msg param.
+* services/evs.c: Likewise.
+* services/pload.c: Likewise.
+* services/cpg.c: Likewise.
+* services/confdb.c: Likewise.
+* exec/coroipcs.h: signature of coroipcs_handler_fn_lvalue must match
+that of lib_handler_fn; noted via main.c.
+------------------------------------------------------------------------
+r2046 | meyering | 2009-04-09 05:32:49 -0700 (Thu, 09 Apr 2009) | 1 line
+
+testevsth.c: const+size_t: evs_deliver_fn, evs_confchg_fn
+------------------------------------------------------------------------
+r2045 | meyering | 2009-04-08 10:30:02 -0700 (Wed, 08 Apr 2009) | 5 lines
+
+coroipcc.h (coroipcc_msg_send_reply_receive): Make res_len size_t.
+
+* include/corosync/coroipcc.h (coroipcc_msg_send_reply_receive):
+change type of res_len parameter.
+* lib/coroipcc.c (coroipcc_reply_receive): Likewise.
+------------------------------------------------------------------------
+r2044 | meyering | 2009-04-08 10:29:53 -0700 (Wed, 08 Apr 2009) | 10 lines
+
+sync the rest of the code with previous header changes
+
+* exec/coroipcs.c (coroipcs_response_send)
+(coroipcs_dispatch_send):
+* exec/coroipcs.h (handler_fn_get):
+* include/corosync/cpg.h (cpg_deliver_fn_t, cpg_confchg_fn_t):
+* test/cpgbench.c (cpg_bm_confchg_fn, cpg_bm_deliver_fn):
+* test/testcpg.c (print_cpgname, DeliverCallback)
+(ConfchgCallback):
+* test/testcpg2.c (deliver, confch):
+------------------------------------------------------------------------
+r2043 | meyering | 2009-04-08 10:29:45 -0700 (Wed, 08 Apr 2009) | 7 lines
+
+cpg.h, coroapi.h: more size_t and const changes
+
+* include/corosync/cpg.h (cpg_deliver_fn_t, cpg_confchg_fn_t)
+(cpg_groups_get_fn_t):
+* include/corosync/engine/coroapi.h (ipc_response_send)
+(ipc_dispatch_send, tpg_join, tpg_leave, tpg_groups_mcast)
+(tpg_groups_reserve):
+------------------------------------------------------------------------
+r2042 | meyering | 2009-04-08 10:29:37 -0700 (Wed, 08 Apr 2009) | 1 line
+
+sync the rest of the code with previous header changes
+------------------------------------------------------------------------
+r2041 | meyering | 2009-04-08 10:29:27 -0700 (Wed, 08 Apr 2009) | 14 lines
+
+make all priv_data_pt pointers non-"const"
+
+I'd suspected this would be necessary, but until now hadn't
+found a case in which it actually was.  That case:
+totemconfig.c's totem_key_change_notify.
+It has a priv_data_pt parameter that is used like this:
+
+  struct totem_config *totem_config = priv_data_pt;
+
+and totem_config is in turn passed as arg #2 to
+totem_volatile_config_read, where it is decidedly non-const.
+
+git grep -l 'const void \*priv' \
+  |xargs perl -pi -e 's,const (void \*priv_data_pt),$1,'
+------------------------------------------------------------------------
+r2040 | meyering | 2009-04-08 10:29:16 -0700 (Wed, 08 Apr 2009) | 35 lines
+
+coroapi.h, confdb.h, objdb.h: big s/int/size_t/ change
+
+* exec/mainconfig.c (objdb_get_string, objdb_get_int):
+* exec/totemconfig.c (objdb_get_string, objdb_get_int)
+(totem_config_keyread, totem_key_change_notify):
+* include/corosync/confdb.h (confdb_callbacks_t):
+* include/corosync/engine/coroapi.h (group_len, object_len)
+(key_len, validate_callback, object_key_change_notify_fn_t)
+(object_create_notify_fn_t, object_destroy_notify_fn_t)
+(object_notify_callback_fn_t, object_reload_notify_fn_t)
+(object_create, object_key_create, object_find_create)
+(object_key_get, object_key_replace, object_key_delete)
+(object_iter, object_key_iter, object_name_get)
+(object_key_iter_from, object_key_increment)
+(object_key_decrement):
+* include/corosync/engine/objdb.h (object_key_change_notify_fn_t)
+(object_create_notify_fn_t, object_destroy_notify_fn_t)
+(object_len, key_len, validate_callback, object_create)
+(object_key_create, object_find_create, object_key_get)
+(object_key_replace, object_key_delete, object_iter)
+(object_key_iter, object_name_get, object_key_iter_from)
+(object_key_increment, object_key_decrement):
+* lib/confdb.c (confdb_object_create, confdb_key_create)
+(confdb_key_delete, confdb_key_get, confdb_key_increment)
+(confdb_key_decrement, confdb_key_replace, confdb_object_find)
+(confdb_object_iter, confdb_key_iter):
+* lib/sa-confdb.c (confdb_sa_object_create, confdb_sa_key_create)
+(confdb_sa_key_delete, confdb_sa_key_get)
+(confdb_sa_key_increment, confdb_sa_key_decrement)
+(confdb_sa_key_replace, confdb_sa_object_find)
+(confdb_sa_object_iter, confdb_sa_key_iter):
+* lib/sa-confdb.h:
+* services/confdb.c (message_handler_req_lib_confdb_key_replace):
+* services/votequorum.c (objdb_get_string, objdb_get_int)
+(quorum_key_change_notify, votequorum_objdb_reload_notify):
+------------------------------------------------------------------------
+r2039 | meyering | 2009-04-08 10:29:07 -0700 (Wed, 08 Apr 2009) | 5 lines
+
+totemconfig.c: don't hard-code "128"...
+
+* exec/totemconfig.c (read_keyfile): Don't hard-code "128".
+Use sizeof(...) instead.
+Avoid duplicate "close(fd)" calls.
+------------------------------------------------------------------------
+r2038 | meyering | 2009-04-08 10:28:56 -0700 (Wed, 08 Apr 2009) | 4 lines
+
+totemconfig.c: don't let a key of length > 128 clobber memory
+
+* exec/totemconfig.c (totem_config_keyread): Reject a key with length
+greater than that of our private_key buffer.
+------------------------------------------------------------------------
+r2037 | meyering | 2009-04-08 10:28:48 -0700 (Wed, 08 Apr 2009) | 5 lines
+
+totem.h: use symbolic array dimensions in public struct members
+
+* include/corosync/totem/totem.h:
+(TOTEM_PRIVATE_KEY_LEN, TOTEM_RRP_MODE_BYTES): Define.
+(struct totem_config): Use the new names, rather than literals.
+------------------------------------------------------------------------
+r2036 | meyering | 2009-04-08 10:28:40 -0700 (Wed, 08 Apr 2009) | 4 lines
+
+totempg.h: change type of totempg_group.group_len from int to size_t
+
+* include/corosync/totem/totempg.h (struct totempg_group) [group_len]:
+Change member type from int to size_t.
+------------------------------------------------------------------------
+r2035 | meyering | 2009-04-08 10:28:31 -0700 (Wed, 08 Apr 2009) | 4 lines
+
+rmd.h: adjust types (const+size_t) of prototype
+
+* include/corosync/rmd.h: ...even though there are no definitions
+for these functions.
+------------------------------------------------------------------------
+r2034 | meyering | 2009-04-08 00:57:36 -0700 (Wed, 08 Apr 2009) | 3 lines
+
+sync.c: avoid printf format warning
+
+* exec/sync.c (sync_deliver_fn): cast to unsigned long int, use %lu
+------------------------------------------------------------------------
+r2033 | meyering | 2009-04-08 00:57:18 -0700 (Wed, 08 Apr 2009) | 4 lines
+
+sync.c: avoid warning about now-unused variables
+
+* exec/sync.c (vsf_none, vsf_iface): Remove decls of now-unused
+file-scoped variables.
+------------------------------------------------------------------------
+r2032 | meyering | 2009-04-08 00:56:54 -0700 (Wed, 08 Apr 2009) | 15 lines
+
+convert each "size_t iov_len" declaration to "unsigned int iov_len"
+
+Via this command:
+git grep -l -E 'size_t[[:blank:]]+iov_len' \
+  | xargs perl -pi -e 's/((?:^|,)\s*)size_t\s+(iov_len)/${1}unsigned int $2/'
+
+Affected files and (functions/macros):
+* exec/totempg.c (totempg_groups_mcast_groups)
+(totempg_groups_send_ok_groups):
+* include/corosync/evs.h (evs_callbacks_t):
+* include/corosync/totem/totempg.h (TOTEMPG_SAFE):
+* lib/evs.c (evs_mcast_joined, evs_mcast_groups):
+* man/cpg_mcast_joined.3:
+* man/evs_mcast_groups.3:
+* man/evs_mcast_joined.3:
+------------------------------------------------------------------------
+r2031 | meyering | 2009-04-08 00:56:45 -0700 (Wed, 08 Apr 2009) | 42 lines
+
+Convert all "int iov_len" decls to "unsigned int iov_len".
+
+Used this command:
+git grep -l 'int iov_len' \
+  | xargs perl -pi -e 's/((?:^|,)\s*)(int iov_len)/${1}unsigned $2/'
+
+Here's an approximate (autogenerated by vc-chlog) list of affected
+file names and functions/macros:
+* README.devmap:
+* exec/coroipcs.c (sending_allowed_private_data)
+(coroipcs_response_iov_send, msg_send, msg_send_or_queue)
+(coroipcs_dispatch_iov_send):
+* exec/coroipcs.h (handler_fn_get):
+* exec/main.c (deliver_fn, main_mcast):
+* exec/main.h (FALSE):
+* exec/sync.c (vsf_iface, sync_deliver_fn):
+* exec/totemmrp.c (totemsrp_handle_in, pg_deliver_fn)
+(totemmrp_deliver_fn, totemmrp_initialize, totemmrp_mcast):
+* exec/totemmrp.h (TOTEMMRP_H_DEFINED):
+* exec/totemnet.c (iov_len, encrypt_and_sign_worker)
+(ucast_sendmsg, mcast_sendmsg, totemnet_token_send):
+* exec/totemnet.h (TOTEMNET_FLUSH):
+* exec/totempg.c (deliver_fn, totempg_deliver_fn, mcast_msg)
+(totempg_groups_initialize, totempg_groups_mcast_joined)
+(totempg_groups_joined_reserve):
+* exec/totemsrp.c (iov_len, totemsrp_recv, totemsrp_deliver_fn)
+(totemsrp_initialize, totemsrp_mcast, token_send):
+* exec/totemsrp.h (TOTEMSRP_H_DEFINED):
+* exec/vsf_ykd.c (ykd_deliver_fn):
+* include/corosync/coroipcc.h (handleInstanceDestructor):
+* include/corosync/cpg.h (cpg_callbacks_t):
+* include/corosync/engine/coroapi.h (ipc_response_iov_send)
+(ipc_dispatch_iov_send, totem_mcast, tpg_init, tpg_joined_mcast)
+(tpg_joined_reserve, tpg_groups_mcast, tpg_groups_reserve):
+* include/corosync/totem/totempg.h (TOTEMPG_SAFE):
+* lib/coroipcc.c (coroipcc_msg_send)
+(coroipcc_msg_send_reply_receive)
+(coroipcc_msg_send_reply_receive_in_buf):
+* lib/cpg.c (cpg_mcast_joined):
+* lib/util.h (versionsSupported):
+* services/pload.c (send_message):
+* services/votequorum.c (conn, quorum_deliver_fn):
+------------------------------------------------------------------------
+r2030 | meyering | 2009-04-07 23:44:59 -0700 (Tue, 07 Apr 2009) | 28 lines
+
+continue pulling previous thread: mostly constification
+
+* exec/apidef.c (typedef_tpg_join, typedef_tpg_leave)
+(typedef_tpg_groups_mcast, typedef_tpg_groups_send_ok):
+* exec/sync.c (barrier_data_process, sync_barrier_send)
+(sync_start_init, sync_service_init, sync_start_process)
+(sync_service_process, sync_deliver_fn, sync_request_send)
+(sync_request):
+* exec/sync.h (name):
+* exec/totemmrp.c (totemmrp_callback_token_create):
+* exec/totemmrp.h (TOTEMMRP_H_DEFINED):
+* exec/totempg.c (list, app_confchg_fn)
+(callback_token_received_fn, totempg_callback_token_create)
+(totempg_groups_mcast_joined, totempg_groups_joined_release)
+(totempg_groups_mcast_groups):
+* exec/totemsrp.c (callback_fn, totemsrp_confchg_fn)
+(totemsrp_initialize, totemsrp_callback_token_create):
+* exec/totemsrp.h (TOTEMSRP_H_DEFINED):
+* exec/vsf_ykd.c (ykd_state_send_msg, ykd_attempt_send_msg)
+(ykd_confchg_fn):
+* include/corosync/engine/coroapi.h (timer_add_absolute)
+(totem_ifaces_print, totem_ip_print, totem_callback_token_create)
+(sync_request, plugin_interface_reference):
+* include/corosync/totem/totempg.h (TOTEMPG_SAFE):
+* services/cpg.c (cpg_confchg_fn):
+* services/pload.c (msgs_sent, pload_service_engine)
+(send_message, start_mcasting):
+* services/votequorum.c (conn, quorum_confchg_fn):
+------------------------------------------------------------------------
+r2029 | meyering | 2009-04-07 23:44:50 -0700 (Tue, 07 Apr 2009) | 22 lines
+
+*_confchg_fn: make pointer params const, change *_entries to be size_t
+
+* exec/main.c (confchg_fn):
+* exec/quorum.h (sync_callback_fn_t):
+* exec/sync.c (sync_ring_id, barrier_data_process)
+(sync_start_init, sync_service_process, sync_primary_callback_fn)
+(sync_deliver_fn, sync_confchg_fn):
+* exec/sync.h (name):
+* exec/totemmrp.c (totemsrp_handle_in, pg_confchg_fn)
+(totemmrp_confchg_fn, totemmrp_initialize):
+* exec/totemmrp.h (TOTEMMRP_H_DEFINED):
+* exec/totempg.c (confchg_fn, totempg_confchg_fn)
+(totempg_groups_initialize):
+* include/corosync/engine/coroapi.h (tpg_init, confchg_fn)
+(sync_abort):
+* include/corosync/totem/totempg.h (TOTEMPG_SAFE):
+* services/cfg.c (shutdown_reply, cfg_confchg_fn)
+(message_handler_req_exec_cfg_ringreenable):
+* services/cpg.c (api, cpg_confchg_fn):
+* services/evs.c (MESSAGE_REQ_EXEC_EVS_MCAST, evs_confchg_fn):
+* services/pload.c (MESSAGE_REQ_EXEC_PLOAD_MCAST)
+(pload_confchg_fn):
+------------------------------------------------------------------------
+r2028 | meyering | 2009-04-07 23:44:41 -0700 (Tue, 07 Apr 2009) | 4 lines
+
+no-op change: s/gruop/group/ in prototypes and documentation
+
+* include/corosync/engine/coroapi.h (tpg_join, tpg_leave):
+* man/evs_mcast_groups.3:
+------------------------------------------------------------------------
+r2027 | meyering | 2009-04-07 23:44:20 -0700 (Tue, 07 Apr 2009) | 7 lines
+
+totem: const+unsigned+size_t
+
+* exec/totempg.c (totempg_groups_mcast_groups):
+(totempg_groups_send_ok_groups):
+* include/corosync/totem/totem.h (interface_count):
+(private_key_len, threads, heartbeat_failures_allowed):
+* include/corosync/totem/totempg.h:
+------------------------------------------------------------------------
+r2026 | meyering | 2009-04-07 23:44:12 -0700 (Tue, 07 Apr 2009) | 3 lines
+
+rmd.h: s/int/size_t; const-correctness changes...
+
+* include/corosync/rmd.h: in spite of these being unused interfaces
+------------------------------------------------------------------------
+r2025 | meyering | 2009-04-07 23:43:54 -0700 (Tue, 07 Apr 2009) | 1 line
+
+lcr_ckpt.h: unused file: const/size_t
+------------------------------------------------------------------------
+r2024 | meyering | 2009-04-07 23:43:36 -0700 (Tue, 07 Apr 2009) | 5 lines
+
+ipc_evs.h: s/int/size_t
+
+* include/corosync/ipc_evs.h (msglen, member_list_entries):
+(left_list_entries, joined_list_entries, group_entries, msg_len):
+(group_entries, msg_len, member_list_entries):
+------------------------------------------------------------------------
+r2023 | meyering | 2009-04-07 23:43:17 -0700 (Tue, 07 Apr 2009) | 10 lines
+
+evs.h: s/int/size_t; const-correctness changes
+
+* exec/sync.c (barrier_data_confchg_entries):
+* include/corosync/evs.h (evs_deliver_fn_t, evs_confchg_fn_t):
+(evs_callbacks_t):
+* lib/evs.c (MIN, evs_join, evs_leave, evs_mcast_joined):
+(evs_mcast_groups, evs_membership_get):
+* test/evsbench.c (evs_deliver_fn, evs_confchg_fn):
+* test/evsverify.c (evs_deliver_fn, evs_confchg_fn, main):
+* test/testevs.c (evs_deliver_fn, evs_confchg_fn, main):
+------------------------------------------------------------------------
+r2022 | meyering | 2009-04-07 23:43:03 -0700 (Tue, 07 Apr 2009) | 10 lines
+
+quorum.h (quorum_set_quorate_fn_t): make first param const
+
+* exec/quorum.h (sync_callback_fn_t):
+* exec/sync.c (current_members_cnt, sync_primary_callback_fn):
+* exec/sync.h (name):
+* exec/vsf_quorum.c (sync_primary_callback_fn):
+(quorum_api_set_quorum):
+* exec/vsf_ykd.c (ykd_primary_callback_fn):
+* include/corosync/engine/coroapi.h (sync_callback_fn_t):
+* include/corosync/engine/quorum.h (quorum_set_quorate_fn_t):
+------------------------------------------------------------------------
+r2021 | meyering | 2009-04-07 23:42:29 -0700 (Tue, 07 Apr 2009) | 7 lines
+
+quorum.h (quorum_set_quorate_fn_t): s/int/size_t/
+
+propagate the change:
+* include/corosync/engine/quorum.h (quorum_set_quorate_fn_t):
+* exec/vsf_quorum.c (quorum_view_list_entries):
+(quorum_api_set_quorum, quorum_exec_init_fn):
+* exec/vsf_ykd.c (ykd_primary_callback_fn):
+------------------------------------------------------------------------
+r2020 | sdake | 2009-04-07 14:42:59 -0700 (Tue, 07 Apr 2009) | 2 lines
+
+Remove wrong project name.
+
+------------------------------------------------------------------------
+r2019 | sdake | 2009-04-07 14:41:25 -0700 (Tue, 07 Apr 2009) | 3 lines
+
+Forward port of sync v1 engine from whitetank and rework of quorum 
+engine to not break syncing.
+
+------------------------------------------------------------------------
+r2018 | meyering | 2009-04-07 11:48:04 -0700 (Tue, 07 Apr 2009) | 5 lines
+
+accommodate iov_len of type size_t (i.e., never negative)
+
+* services/pload.c (send_message): Don't test for iov_len < 0,
+since it can no longer happen.
+* lib/evs.c: Fix a typo in an iov_len-related FIXME comment.
+------------------------------------------------------------------------
+r2017 | meyering | 2009-04-07 06:04:19 -0700 (Tue, 07 Apr 2009) | 3 lines
+
+jhash.h (jhash2): make first parameter const
+
+* include/corosync/jhash.h (jhash2): const.
+------------------------------------------------------------------------
+r2016 | meyering | 2009-04-07 06:04:11 -0700 (Tue, 07 Apr 2009) | 3 lines
+
+lcr_comp.h: size_t
+
+* include/corosync/lcr/lcr_comp.h (struct lcr_comp, struct lcr_iface):
+------------------------------------------------------------------------
+r2015 | meyering | 2009-04-07 06:04:04 -0700 (Tue, 07 Apr 2009) | 3 lines
+
+list.h (list_empty): Make param const.
+
+* include/corosync/list.h (list_empty): Make param const.
+------------------------------------------------------------------------
+r2014 | meyering | 2009-04-07 06:03:51 -0700 (Tue, 07 Apr 2009) | 3 lines
+
+mar_cpg.h: make "src" params const.
+
+* include/corosync/mar_cpg.h:
+------------------------------------------------------------------------
+r2013 | meyering | 2009-04-07 06:03:30 -0700 (Tue, 07 Apr 2009) | 4 lines
+
+mar_gen.h: make params const
+
+* include/corosync/mar_gen.h (get_mar_name_t, mar_name_match): const
+* exec/util.h (get_mar_name_t, mar_name_match): Remove unneeded decls.
+------------------------------------------------------------------------
+r2012 | meyering | 2009-04-07 06:03:07 -0700 (Tue, 07 Apr 2009) | 6 lines
+
+totemip.h: const'ify
+
+* include/corosync/totem/totemip.h: Add const to prototypes.
+* exec/totemip.c (totemip_equal, totemip_copy): Adjust.
+(totemip_copy_endian_convert, totemip_localhost_check): Likewise.
+(totemip_sockaddr_to_totemip_convert): Likewise.
+------------------------------------------------------------------------
+r2011 | meyering | 2009-04-07 06:02:43 -0700 (Tue, 07 Apr 2009) | 3 lines
+
+sq.h: const'ify, and avoid NULL-deref
+
+* include/corosync/sq.h (sq_init): Avoid NULL-deref on malloc failure.
+------------------------------------------------------------------------
+r2010 | meyering | 2009-04-07 06:02:13 -0700 (Tue, 07 Apr 2009) | 4 lines
+
+queue.h: Replace #ifdef COROSYNC_SOLARIS...
+
+* include/corosync/queue.h: Remove #ifdef COROSYNC_SOLARIS
+in favor of agnostic "#ifdef queue".
+------------------------------------------------------------------------
+r2009 | meyering | 2009-04-07 06:01:55 -0700 (Tue, 07 Apr 2009) | 7 lines
+
+logsys.h (logsys_format_set): Change return type, adjust param type.
+
+* include/corosync/engine/logsys.h:
+* exec/logsys.c (logsys_format_set): Return -1 upon strdup failure.
+Change type of param to "const char *".
+* exec/logsys.c (logsys_init): Adjust use.
+* exec/mainconfig.c (corosync_main_config_read_logging): Adjust uses.
+------------------------------------------------------------------------
+r2008 | sdake | 2009-04-03 14:11:55 -0700 (Fri, 03 Apr 2009) | 2 lines
+
+Revert constructor priority in logsys.
+
+------------------------------------------------------------------------
+r2007 | sdake | 2009-04-03 14:07:23 -0700 (Fri, 03 Apr 2009) | 2 lines
+
+Remove extra printf from coropoll.
+
+------------------------------------------------------------------------
+r2006 | sdake | 2009-04-03 14:07:11 -0700 (Fri, 03 Apr 2009) | 2 lines
+
+Fix timers not expiring.
+
+------------------------------------------------------------------------
+r2005 | meyering | 2009-04-03 13:31:45 -0700 (Fri, 03 Apr 2009) | 1 line
+
+remove 3 useless casts
+------------------------------------------------------------------------
+r2004 | meyering | 2009-04-03 13:31:38 -0700 (Fri, 03 Apr 2009) | 7 lines
+
+confdb.h (confdb_reload) Add errbuf_len parameter and propagate.
+
+* include/corosync/confdb.h (confdb_callbacks_t):
+* lib/confdb.c (confdb_reload):
+* lib/sa-confdb.c (confdb_sa_reload):
+* lib/sa-confdb.h:
+* test/testconfdb.c (main):
+------------------------------------------------------------------------
+r2003 | meyering | 2009-04-03 13:31:24 -0700 (Fri, 03 Apr 2009) | 4 lines
+
+confdb_sa_write: propagate errbuf_len parameter
+
+* lib/sa-confdb.c (confdb_sa_write): Propagate errbuf_len parameter.
+* lib/sa-confdb.h: Update prototype
+------------------------------------------------------------------------
+r2002 | meyering | 2009-04-03 13:31:12 -0700 (Fri, 03 Apr 2009) | 7 lines
+
+confdb.h: error_text vs. buflen
+
+* lib/confdb.c (MIN): Define.
+(confdb_write): Use new errbuf_len parameter.
+Also note bugs (Chrissie confirms) that error_text is not
+set in two error-return cases.
+* test/testconfdb.c (do_write_tests): Update use of confdb_write.
+------------------------------------------------------------------------
+r2001 | meyering | 2009-04-03 13:30:54 -0700 (Fri, 03 Apr 2009) | 5 lines
+
+confdb.h: continue API changes: const+size_t
+
+* include/corosync/confdb.h (confdb_object_create_notify_fn_t):
+(confdb_object_delete_notify_fn_t):
+* tools/corosync-objctl.c (tail_object_created, tail_object_deleted):
+------------------------------------------------------------------------
+r2000 | meyering | 2009-04-03 13:30:41 -0700 (Fri, 03 Apr 2009) | 7 lines
+
+print "?" in place of non-printing bytes of obj/key/val values
+
+* tools/corosync-objctl.c: Include <ctype.h>
+(print_name): New function.
+(tail_key_changed): Use it to avoid printing garbage to screen.
+* include/corosync/confdb.h (confdb_key_change_notify_fn_t): Convert
+type of "int" length params to "size_t".
+------------------------------------------------------------------------
+r1999 | meyering | 2009-04-03 13:30:33 -0700 (Fri, 03 Apr 2009) | 6 lines
+
+confdb.h (confdb_key_change_notify_fn_t): Make 3 params "const"
+
+* include/corosync/confdb.h (confdb_key_change_notify_fn_t):
+Make 3 params const.
+* tools/corosync-objctl.c (find_object_of_type_t, callbacks):
+(tail_key_changed): Don't write into would-be-const members.
+------------------------------------------------------------------------
+r1998 | meyering | 2009-04-03 13:30:11 -0700 (Fri, 03 Apr 2009) | 3 lines
+
+cfg.h: mark "address_length" as an unused member
+
+* include/corosync/cfg.h: Add a FIXME comment.
+------------------------------------------------------------------------
+r1997 | meyering | 2009-04-03 13:29:50 -0700 (Fri, 03 Apr 2009) | 5 lines
+
+cfg.h: adjust parameter types: const+s/int/size_t/
+
+* lib/cfg.c (corosync_cfg_get_node_addrs): Make "max_addrs" size_t.
+(corosync_cfg_kill_node): Make "reason" const.
+* include/corosync/cfg.h: Update prototypes.
+------------------------------------------------------------------------
+r1996 | meyering | 2009-04-03 13:29:32 -0700 (Fri, 03 Apr 2009) | 5 lines
+
+cfg.h: add const
+
+* lib/cfg.c (corosync_cfg_service_load): Make service_name "const".
+(corosync_cfg_service_unload): Likewise.
+* include/corosync/cfg.h: Update prototypes.
+------------------------------------------------------------------------
+r1995 | meyering | 2009-04-03 11:35:04 -0700 (Fri, 03 Apr 2009) | 11 lines
+
+coroipcc. h (coroipcc_dispatch_recv): Add a buflen parameter.
+
+* lib/coroipcc.c (coroipcc_dispatch_recv): Update definition, and...
+(memcpy_swrap): ... add a parameter here, too.
+* include/corosync/coroipcc.h (coroipcc_dispatch_recv):
+* lib/cfg.c (corosync_cfg_dispatch):
+* lib/confdb.c (confdb_dispatch):
+* lib/cpg.c (cpg_dispatch, cpg_flow_control_state_get):
+* lib/evs.c (evs_dispatch):
+* lib/quorum.c (quorum_dispatch):
+* lib/votequorum.c (votequorum_dispatch):
+------------------------------------------------------------------------
+r1994 | meyering | 2009-04-03 09:25:43 -0700 (Fri, 03 Apr 2009) | 7 lines
+
+coroipcc.h: add "const" to msg_send_reply_* "iov" parameters
+
+* include/corosync/coroipcc.h (coroipcc_msg_send_reply_receive_in_buf):
+Make "iov" const.
+* lib/coroipcc.c (coroipcc_msg_send): Make iov const.
+(coroipcc_msg_send_reply_receive): Likewise.
+(coroipcc_msg_send_reply_receive_in_buf): Likewise.
+------------------------------------------------------------------------
+r1993 | meyering | 2009-04-03 09:22:41 -0700 (Fri, 03 Apr 2009) | 8 lines
+
+confdb.c: add missing mutex-unlock calls after coroipcc_dispatch_recv
+
+* lib/confdb.c (confdb_dispatch):
+The code in lib/cfg.c's (corosync_cfg_dispatch) is nearly identical
+to that in lib/confdb.c's (confdb_dispatch), but lacked two
+pthread_mutex_unlock calls.
+
+2009-04-03  Jim Meyering  <meyering@redhat.com>
+------------------------------------------------------------------------
+r1992 | fabbione | 2009-04-02 22:46:01 -0700 (Thu, 02 Apr 2009) | 2 lines
+
+Drop unrequired struct
+
+------------------------------------------------------------------------
+r1991 | fabbione | 2009-04-02 22:45:36 -0700 (Thu, 02 Apr 2009) | 2 lines
+
+Fix logsys construct execution priority
+
+------------------------------------------------------------------------
+r1990 | sdake | 2009-04-02 11:49:24 -0700 (Thu, 02 Apr 2009) | 2 lines
+
+Patch to use snprintf where appropriate to avoid buffer overrun.
+
+------------------------------------------------------------------------
+r1989 | meyering | 2009-04-01 10:55:41 -0700 (Wed, 01 Apr 2009) | 4 lines
+
+corosync-objctl.c: remove a just-added "const"
+
+* tools/corosync-objctl.c (get_key): Remove just-added const from
+2nd parameter.
+------------------------------------------------------------------------
+r1988 | sdake | 2009-04-01 10:39:18 -0700 (Wed, 01 Apr 2009) | 3 lines
+
+Patch to document uid/gid and to default to allowing ais user to access 
+services of corosync.
+
+------------------------------------------------------------------------
+r1987 | fabbione | 2009-04-01 06:24:20 -0700 (Wed, 01 Apr 2009) | 3 lines
+
+add fileline/function_name support in corosync
+
+
+------------------------------------------------------------------------
+r1986 | fabbione | 2009-04-01 05:54:20 -0700 (Wed, 01 Apr 2009) | 5 lines
+
+Fix last build warning in mainconfig.
+
+Add a missing const.
+
+
+------------------------------------------------------------------------
+r1985 | meyering | 2009-04-01 02:34:01 -0700 (Wed, 01 Apr 2009) | 3 lines
+
+remove unused file-scoped global
+
+* tools/corosync-fplay.c (records_printed): Remove.
+------------------------------------------------------------------------
+r1984 | meyering | 2009-04-01 02:33:49 -0700 (Wed, 01 Apr 2009) | 3 lines
+
+avoid prototype warnings, constify
+
+* tools/corosync-fplay.c: Make many parameters and local pointers const.
+------------------------------------------------------------------------
+r1983 | meyering | 2009-04-01 02:33:36 -0700 (Wed, 01 Apr 2009) | 5 lines
+
+remove unused functions and variable
+
+* tools/corosync-fplay.c (sync_printer_nada): Remove function.
+* tools/corosync-objctl.c (get_child_name): Remove function.
+* test/evsverify.c (msg): Remove unused variable.
+------------------------------------------------------------------------
+r1982 | meyering | 2009-04-01 02:33:23 -0700 (Wed, 01 Apr 2009) | 9 lines
+
+avoid prototype warnings
+
+* test/evsbench.c: Declare functions/vars static.
+* test/evsverify.c: Likewise.
+* test/testcpg2.c: Likewise.
+* test/testcpg.c: Likewise.
+* test/logsysbench.c: Likewise.
+* test/cpgbench.c: Likewise.
+* exec/sync.c: Likewise.
+------------------------------------------------------------------------
+r1981 | meyering | 2009-04-01 02:33:15 -0700 (Wed, 01 Apr 2009) | 1 line
+
+* test/testevs.c: avoid 2 warnings, decl "static"
+------------------------------------------------------------------------
+r1980 | meyering | 2009-04-01 02:33:07 -0700 (Wed, 01 Apr 2009) | 22 lines
+
+declare many functions "static" (also avoids missing prototype warnings)
+
+* exec/main.c (sigintr_handler, serialize_lock, serialize_unlock):
+(serialize_lock, serialize_unlock):
+* exec/sync.c (sync_start_init, sync_callbacks_load):
+* exec/vsf_ykd.c (ykd_state_init):
+* lcr/uis.c (cmd1):
+* services/pload.c (send_message, token_callback, start_mcasting):
+* tools/corosync-cfgtool.c (service_load_do, service_unload_do):
+(shutdown_do, showaddrs_do, killnode_do, usage_do):
+* tools/corosync-fplay.c (totemip_print, print_string_len):
+(sync_printer_confchg_set_sync, sync_printer_set_sync_state):
+(sync_printer_process_currentstate):
+(sync_printer_process_get_shouldsync):
+(sync_printer_checkpoint_release):
+(sync_printer_checkpoint_transmit, sync_printer_section_transmit):
+(sync_printer_checkpoint_receive, sync_printer_section_receive):
+(sync_printer_nada, sync_printer_confchg_fn):
+(printer_totemsrp_mcast, printer_totemsrp_delv):
+(printer_totempg_mcast_fits, sync_printer_service_process):
+* tools/corosync-objctl.c (get_child_name, get_parent_name):
+(get_key):
+------------------------------------------------------------------------
+r1979 | meyering | 2009-04-01 02:32:48 -0700 (Wed, 01 Apr 2009) | 1 line
+
+* exec/apidef.c: Include "apidef.h".
+------------------------------------------------------------------------
+r1978 | meyering | 2009-04-01 02:32:40 -0700 (Wed, 01 Apr 2009) | 5 lines
+
+timer.c: connect with its published prototypes
+
+* exec/timer.c: Include "timer.h".
+* exec/timer.h (corosync_timer_init): Make return type in prototype
+match the one in the function definition.
+------------------------------------------------------------------------
+r1977 | meyering | 2009-04-01 02:32:32 -0700 (Wed, 01 Apr 2009) | 7 lines
+
+add "void" parameter list to avoid "isn't prototype" warning
+
+* exec/objdb.c (objdb_wrlock, objdb_rdlock, objdb_rdunlock):
+(objdb_wrunlock):
+* services/cfg.c (send_shutdown, check_shutdown_status):
+* services/votequorum.c (send_expectedvotes_notification):
+* tools/corosync-cfgtool.c (shutdown_do):
+------------------------------------------------------------------------
+r1976 | fabbione | 2009-04-01 02:01:52 -0700 (Wed, 01 Apr 2009) | 2 lines
+
+Fix internal API usage and add support for file_name
+
+------------------------------------------------------------------------
+r1975 | fabbione | 2009-03-31 22:48:03 -0700 (Tue, 31 Mar 2009) | 2 lines
+
+Fix build warning
+
+------------------------------------------------------------------------
+r1974 | meyering | 2009-03-30 14:18:29 -0700 (Mon, 30 Mar 2009) | 4 lines
+
+totemip.c: avoid 1 warning
+
+* exec/totemip.c (totemip_print): Add const.
+* include/corosync/totem/totemip.h: Ditto.
+------------------------------------------------------------------------
+r1973 | meyering | 2009-03-30 14:18:21 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+evsverify.c: avoid 1 warning
+
+* test/evsverify.c: Add a const.
+------------------------------------------------------------------------
+r1972 | meyering | 2009-03-30 14:18:11 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+testcpg.c: avoid 1 warning
+
+* test/testcpg.c (sigintr_handler): Mark as "noreturn".
+------------------------------------------------------------------------
+r1971 | meyering | 2009-03-30 14:18:04 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+evsbench.c: avoid 1 warning
+
+* test/evsbench.c (sigintr_handler): Mark as "noreturn".
+------------------------------------------------------------------------
+r1970 | meyering | 2009-03-30 14:17:56 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+apidef.c: avoid 1 warning
+
+* exec/apidef.c (_corosync_public_exit_error): Mark as "noreturn".
+------------------------------------------------------------------------
+r1969 | meyering | 2009-03-30 14:17:49 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+main.h: avoid 1 warning
+
+* exec/main.c (corosync_exit): Mark as "noreturn".
+------------------------------------------------------------------------
+r1968 | meyering | 2009-03-30 14:17:42 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+logsys.c: avoid 1 warning
+
+* exec/logsys.c (logsys_conf): Add const.
+------------------------------------------------------------------------
+r1967 | meyering | 2009-03-30 14:17:34 -0700 (Mon, 30 Mar 2009) | 4 lines
+
+util.h: avoid 2 warnings
+
+* exec/util.h (_corosync_out_of_memory_error): Mark as "noreturn".
+(_corosync_exit_error): Likewise.
+------------------------------------------------------------------------
+r1966 | meyering | 2009-03-30 14:17:27 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+logsys.c: avoid 1 warning
+
+* exec/logsys.c (logsys_worker_thread): Mark function as "noreturn".
+------------------------------------------------------------------------
+r1965 | meyering | 2009-03-30 14:17:19 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+wthread.c: avoid 1 warning
+
+* exec/wthread.c (worker_thread): Mark function as "noreturn".
+------------------------------------------------------------------------
+r1964 | meyering | 2009-03-30 14:17:10 -0700 (Mon, 30 Mar 2009) | 4 lines
+
+uis.c: don't infloop upon poll failure (e.g., ENOMEM)
+
+* lcr/uis.c (lcr_uis_server): Return NULL for any poll failure
+other than EINTR.  This also avoids a warning.
+------------------------------------------------------------------------
+r1963 | meyering | 2009-03-30 14:17:00 -0700 (Mon, 30 Mar 2009) | 4 lines
+
+mar_gen.h, cfg.c: avoid 1 warning
+
+* services/cfg.c (message_handler_req_exec_cfg_killnode):
+* include/corosync/mar_gen.h (marshall_to_mar_name_t):
+------------------------------------------------------------------------
+r1962 | meyering | 2009-03-30 14:16:52 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+mainconfig.c: avoid 2 warnings
+
+* exec/mainconfig.c (uid_determine, gid_determine): Add const.
+------------------------------------------------------------------------
+r1961 | meyering | 2009-03-30 14:16:44 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+service.c: avoid 5 warnings
+
+* exec/service.c (struct default_service): Make "name" const.
+------------------------------------------------------------------------
+r1960 | meyering | 2009-03-30 14:16:37 -0700 (Mon, 30 Mar 2009) | 4 lines
+
+totempg.h: avoid a warning
+
+* include/corosync/totem/totempg.h (struct totempg_group):
+Make "group" const.
+------------------------------------------------------------------------
+r1959 | meyering | 2009-03-30 14:16:24 -0700 (Mon, 30 Mar 2009) | 4 lines
+
+main.c: avoid a few warnings FIXME: merge with another?
+
+* exec/main.c (ipc_log_printf): Add const.
+(main): tweak config_iface handling
+------------------------------------------------------------------------
+r1958 | meyering | 2009-03-30 14:16:17 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+testvotequorum1.c: avoid 5 warnings
+
+* test/testvotequorum1.c (node_state): Return "const char *".
+------------------------------------------------------------------------
+r1957 | meyering | 2009-03-30 14:16:05 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+evsbench.c; avoid a format mismatch warning
+
+* test/evsbench.c (evs_deliver_fn): %s vs. void*
+------------------------------------------------------------------------
+r1956 | meyering | 2009-03-30 14:15:57 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+coroparse.c: add const: avoid 2 warnings
+
+* exec/coroparse.c: Add const.  Tweak s/fp==0/fp==NULL/
+------------------------------------------------------------------------
+r1955 | meyering | 2009-03-30 14:15:50 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+services/testquorum.c: avoid a warning
+
+* services/testquorum.c (key_change_notify): Add const attributes.
+------------------------------------------------------------------------
+r1954 | meyering | 2009-03-30 14:15:32 -0700 (Mon, 30 Mar 2009) | 4 lines
+
+avoid format mismatch warning
+
+* test/testquorum.c (quorum_notification_fn): Add casts to
+match formats.  Use unsigned formats for unsigned values.
+------------------------------------------------------------------------
+r1953 | meyering | 2009-03-30 14:15:25 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+testcpg2.c: avoid 1 warning
+
+* test/testcpg2.c (main): Add a const-discarding cast.
+------------------------------------------------------------------------
+r1952 | meyering | 2009-03-30 14:15:17 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+testevs.c: avoid 2 more warnings
+
+* test/testevs.c: Declare global to be "static const".
+------------------------------------------------------------------------
+r1951 | meyering | 2009-03-30 14:15:05 -0700 (Mon, 30 Mar 2009) | 1 line
+
+* test/testcpg.c (main): Remove decl of unused var.
+------------------------------------------------------------------------
+r1950 | meyering | 2009-03-30 14:14:57 -0700 (Mon, 30 Mar 2009) | 1 line
+
+confdb.c, objdb.h, coroapi.h: add a few const, remove one: 4 fewer warnings
+------------------------------------------------------------------------
+r1949 | meyering | 2009-03-30 14:14:49 -0700 (Mon, 30 Mar 2009) | 1 line
+
+confdb.c: add a few const: avoid 3 more
+------------------------------------------------------------------------
+r1948 | meyering | 2009-03-30 14:14:41 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+coroipcs.h: avoid 3 warnings
+
+* exec/coroipcs.h: Forward-declare "struct iovec".
+------------------------------------------------------------------------
+r1947 | meyering | 2009-03-30 14:14:28 -0700 (Mon, 30 Mar 2009) | 4 lines
+
+avoid 1 warning
+
+* services/evs.c (message_handler_req_exec_mcast): Introduce
+a deliberate const-discarding cast and mark it with a comment.
+------------------------------------------------------------------------
+r1946 | meyering | 2009-03-30 14:14:16 -0700 (Mon, 30 Mar 2009) | 1 line
+
+object_write_config: add const to remove one more
+------------------------------------------------------------------------
+r1945 | meyering | 2009-03-30 14:14:08 -0700 (Mon, 30 Mar 2009) | 1 line
+
+logsys.c: fix two more warnings
+------------------------------------------------------------------------
+r1944 | meyering | 2009-03-30 14:14:00 -0700 (Mon, 30 Mar 2009) | 1 line
+
+merge with "in progress" -- down 6 to 73 warnings
+------------------------------------------------------------------------
+r1943 | meyering | 2009-03-30 14:13:47 -0700 (Mon, 30 Mar 2009) | 1 line
+
+in progress: avoid warnings
+------------------------------------------------------------------------
+r1942 | meyering | 2009-03-30 14:13:39 -0700 (Mon, 30 Mar 2009) | 1 line
+
+votequorum.c (votequorum_qdisk_register): add "const" to avoid 1 more warnings
+------------------------------------------------------------------------
+r1941 | meyering | 2009-03-30 14:13:32 -0700 (Mon, 30 Mar 2009) | 1 line
+
+votequorum.c: add "const" to avoid 2 more warnings
+------------------------------------------------------------------------
+r1940 | meyering | 2009-03-30 14:13:19 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+avoid 3 warnings
+
+votequorum.c (kill_reason): Use "const char*" as return type, not "char *".
+------------------------------------------------------------------------
+r1939 | meyering | 2009-03-30 14:13:02 -0700 (Mon, 30 Mar 2009) | 4 lines
+
+avoid 7 warnings
+
+(struct sync_callbacks), (struct corosync_service_engine) [name]:
+Make member const.
+------------------------------------------------------------------------
+r1938 | meyering | 2009-03-30 14:12:54 -0700 (Mon, 30 Mar 2009) | 1 line
+
+votequorum.c: add "const" to avoid 2 more warnings
+------------------------------------------------------------------------
+r1937 | meyering | 2009-03-30 14:12:31 -0700 (Mon, 30 Mar 2009) | 1 line
+
+totem*: add "const" to avoid 3 more warnings
+------------------------------------------------------------------------
+r1936 | meyering | 2009-03-30 14:12:19 -0700 (Mon, 30 Mar 2009) | 1 line
+
+totem*: add "const" to avoid 1 more warning
+------------------------------------------------------------------------
+r1935 | meyering | 2009-03-30 14:12:11 -0700 (Mon, 30 Mar 2009) | 1 line
+
+totem*: add "const" to avoid 1 more warning
+------------------------------------------------------------------------
+r1934 | meyering | 2009-03-30 14:12:03 -0700 (Mon, 30 Mar 2009) | 1 line
+
+vsf_type: add "const" to avoid warning
+------------------------------------------------------------------------
+r1933 | meyering | 2009-03-30 14:11:55 -0700 (Mon, 30 Mar 2009) | 1 line
+
+totemconfig.c: avoid another warning
+------------------------------------------------------------------------
+r1932 | meyering | 2009-03-30 14:11:46 -0700 (Mon, 30 Mar 2009) | 1 line
+
+* exec/totemconfig.c: eliminate 8 const-related warnings
+------------------------------------------------------------------------
+r1931 | meyering | 2009-03-30 14:11:38 -0700 (Mon, 30 Mar 2009) | 1 line
+
+objdb.c (object_reload_config): add const
+------------------------------------------------------------------------
+r1930 | meyering | 2009-03-30 14:11:25 -0700 (Mon, 30 Mar 2009) | 1 line
+
+* exec/objdb.c (object_create): make "object_name" param const
+------------------------------------------------------------------------
+r1929 | meyering | 2009-03-30 14:11:17 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+add const to 3 params
+
+* include/corosync/engine/objdb.h (object_key_change_notify_fn_t):
+------------------------------------------------------------------------
+r1928 | meyering | 2009-03-30 14:11:09 -0700 (Mon, 30 Mar 2009) | 5 lines
+
+objdb.c, etc: add "const" to avoid warnings
+
+* exec/objdb.c:
+* include/corosync/engine/coroapi.h:
+* include/corosync/engine/objdb.h:
+------------------------------------------------------------------------
+r1927 | meyering | 2009-03-30 14:11:00 -0700 (Mon, 30 Mar 2009) | 1 line
+
+uis.c: avoid warnings
+------------------------------------------------------------------------
+r1926 | meyering | 2009-03-30 14:10:53 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+corosync-fplay.c: make more robust, avoid warnings
+
+* tools/corosync-fplay.c (main): Diagnose malloc,open, and read failures
+------------------------------------------------------------------------
+r1925 | meyering | 2009-03-30 14:10:45 -0700 (Mon, 30 Mar 2009) | 1 line
+
+service.[ch]: remove 7 const-related warnings
+------------------------------------------------------------------------
+r1924 | meyering | 2009-03-30 14:10:37 -0700 (Mon, 30 Mar 2009) | 1 line
+
+coroipcs.[ch]: remove 4 const-related warnings
+------------------------------------------------------------------------
+r1923 | meyering | 2009-03-30 14:10:30 -0700 (Mon, 30 Mar 2009) | 1 line
+
+totempg.c: remove one const-related warning
+------------------------------------------------------------------------
+r1922 | meyering | 2009-03-30 14:10:21 -0700 (Mon, 30 Mar 2009) | 5 lines
+
+objdb.h: sync const-related from coroapi.h
+
+* include/corosync/engine/objdb.h: mirror const-related changes
+to coroapi.h.  FIXME: all of these identical API's should not
+be separately modifiable.
+------------------------------------------------------------------------
+r1921 | meyering | 2009-03-30 14:10:13 -0700 (Mon, 30 Mar 2009) | 1 line
+
+totempg.c: remove one const-related warning
+------------------------------------------------------------------------
+r1920 | meyering | 2009-03-30 14:10:04 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+pload.c: make a couple functions/interfaces const-correct
+
+* services/pload.c: Remove unused file-scoped global "msg_no".
+------------------------------------------------------------------------
+r1919 | meyering | 2009-03-30 14:09:56 -0700 (Mon, 30 Mar 2009) | 1 line
+
+logsys_config_facility_set: make "name" parameter const
+------------------------------------------------------------------------
+r1918 | meyering | 2009-03-30 14:09:47 -0700 (Mon, 30 Mar 2009) | 1 line
+
+cfg.c: nearly warning-free
+------------------------------------------------------------------------
+r1917 | meyering | 2009-03-30 14:09:38 -0700 (Mon, 30 Mar 2009) | 1 line
+
+cpg.c: resolve almost all warnings
+------------------------------------------------------------------------
+r1916 | meyering | 2009-03-30 09:33:39 -0700 (Mon, 30 Mar 2009) | 8 lines
+
+timer.c: don't infloop upon poll failure (e.g., ENOMEM)
+
+* exec/timer.c (prioritized_timer_thread): Remove unreached
+call to pthread_exit after infloop.
+Return NULL for any poll failure other than EINTR.
+Use "continue" rather than an equivalent "goto".
+Return NULL upon failed pthread_setschedparam.
+This also avoids a warning.
+------------------------------------------------------------------------
+r1915 | meyering | 2009-03-30 07:33:49 -0700 (Mon, 30 Mar 2009) | 4 lines
+
+logsys: detect write failure and avoid a file descriptor leak
+
+* exec/logsys.c (logsys_log_rec_store): Close output file descriptor
+and detect any failure.
+------------------------------------------------------------------------
+r1914 | meyering | 2009-03-30 07:33:42 -0700 (Mon, 30 Mar 2009) | 3 lines
+
+totemconfig: avoid a file descriptor leak in the common case
+
+* exec/totemconfig.c (read_keyfile): Don't leak a file descriptor.
+------------------------------------------------------------------------
+r1913 | fabbione | 2009-03-29 23:52:00 -0700 (Sun, 29 Mar 2009) | 3 lines
+
+Fix pkgconfig generation
+
+
+------------------------------------------------------------------------
+r1912 | sdake | 2009-03-25 11:25:18 -0700 (Wed, 25 Mar 2009) | 3 lines
+
+Make all threads use same scheduling priority even with -p option 
+specified to avoid deadlock in spinlocks.
+
+------------------------------------------------------------------------
+r1911 | chrissie | 2009-03-25 08:54:31 -0700 (Wed, 25 Mar 2009) | 6 lines
+
+Fix IPC when running on mac OS/X
+
+Note that OS/X seems to be rather stingy about its IPC resources, so if things
+crash you will probably have to clean up before starting it all again.
+
+
+------------------------------------------------------------------------
+r1910 | chrissie | 2009-03-25 08:38:56 -0700 (Wed, 25 Mar 2009) | 10 lines
+
+The IPC system smply concatenates SOCKETDIR with run/<socketname> so if
+th euser forgets to add a trailing slash to the name: eg
+
+./configure --with-socket-dir=/var/run
+
+then the socket is created as /var/runcorosync.ipc
+
+This patch adds the slash into the name generation printf.
+
+
+------------------------------------------------------------------------
+r1909 | sdake | 2009-03-24 09:03:46 -0700 (Tue, 24 Mar 2009) | 2 lines
+
+Appears to fix compile errors on macosx.
+
+------------------------------------------------------------------------
+r1908 | sdake | 2009-03-24 08:33:55 -0700 (Tue, 24 Mar 2009) | 2 lines
+
+Change strcpy to sprintf to fix compile error.
+
+------------------------------------------------------------------------
+r1907 | meyering | 2009-03-24 06:05:55 -0700 (Tue, 24 Mar 2009) | 4 lines
+
+Do not perform arithmetic on "void*" pointers.
+
+* exec/vsf_ykd.c (ykd_deliver_fn): Do not perform "void*" arithmetic.
+* services/votequorum.c (quorum_deliver_fn): Likewise.
+------------------------------------------------------------------------
+r1906 | meyering | 2009-03-24 06:05:47 -0700 (Tue, 24 Mar 2009) | 1 line
+
+avoid performing 'void *' arithmetic, and add a few const attributes
+------------------------------------------------------------------------
+r1905 | meyering | 2009-03-24 03:39:00 -0700 (Tue, 24 Mar 2009) | 3 lines
+
+avoid 6 warnings
+
+* services/votequorum.c (objdb_get_int): Make "key" const.
+------------------------------------------------------------------------
+r1904 | meyering | 2009-03-24 03:38:52 -0700 (Tue, 24 Mar 2009) | 3 lines
+
+avoid 8 warnings
+
+* exec/totemconfig.c (objdb_get_string): Make "key" const.
+------------------------------------------------------------------------
+r1903 | meyering | 2009-03-24 03:38:39 -0700 (Tue, 24 Mar 2009) | 3 lines
+
+avoid 9 warnings
+
+* test/logsysbench.c (bm_finish): Make parameter "const".
+------------------------------------------------------------------------
+r1902 | meyering | 2009-03-24 03:38:26 -0700 (Tue, 24 Mar 2009) | 3 lines
+
+avoid 13 warnings
+
+* exec/mainconfig.c (objdb_get_string): Make "key" const.
+------------------------------------------------------------------------
+r1901 | meyering | 2009-03-24 03:38:13 -0700 (Tue, 24 Mar 2009) | 3 lines
+
+avoid 22 warnings
+
+* exec/totemconfig.c (objdb_get_int): Make "key" const.
+------------------------------------------------------------------------
+r1900 | meyering | 2009-03-24 03:38:00 -0700 (Tue, 24 Mar 2009) | 3 lines
+
+avoid compiler warnings
+
+* lcr/lcr_ifact.c (lcr_component_register): Remove decl of unused var.
+------------------------------------------------------------------------
+r1899 | meyering | 2009-03-24 03:05:43 -0700 (Tue, 24 Mar 2009) | 6 lines
+
+avoid infloop upon out-of-memory or out-of-semaphores
+
+* coroipc.c (cslib_service_connect): Upon shmget failure
+loop only when errno == EEXIST.  Any other error now translates
+to res_setup.error.
+Likewise for semget.
+------------------------------------------------------------------------
+r1898 | fabbione | 2009-03-24 01:14:58 -0700 (Tue, 24 Mar 2009) | 2 lines
+
+Make confdb log level consistent with the other services
+
+------------------------------------------------------------------------
+r1895 | fabbione | 2009-03-23 14:58:58 -0700 (Mon, 23 Mar 2009) | 4 lines
+
+Fix expansion order within the Makefile.am with the pleasent
+effect to avoid to include .lcrso files in make dist target
+
+
+------------------------------------------------------------------------
+r1893 | meyering | 2009-03-23 10:04:37 -0700 (Mon, 23 Mar 2009) | 3 lines
+
+autogen.sh: prefer "automake" over automake-1.9
+
+* autogen.sh: ...and don't accept ancient versions of automake.
+------------------------------------------------------------------------
+r1891 | sdake | 2009-03-23 07:42:38 -0700 (Mon, 23 Mar 2009) | 3 lines
+
+Change dist to build corosync-trunk.tar.gz.
+
+
+------------------------------------------------------------------------
+r1890 | fabbione | 2009-03-22 11:44:33 -0700 (Sun, 22 Mar 2009) | 2 lines
+
+Fix pkgconfig list of libraries we provide after ipc rework
+
+------------------------------------------------------------------------
+r1889 | fabbione | 2009-03-22 11:35:06 -0700 (Sun, 22 Mar 2009) | 3 lines
+
+Fix 64bit alignment issue in totempg
+
+
+------------------------------------------------------------------------
+r1888 | sdake | 2009-03-22 08:38:05 -0700 (Sun, 22 Mar 2009) | 2 lines
+
+Change OPENAIS to COROSYNC in libversions definitions.
+
+------------------------------------------------------------------------
+r1887 | sdake | 2009-03-22 08:37:48 -0700 (Sun, 22 Mar 2009) | 2 lines
+
+Change OPENAIS to COROSYNC in ipc ifdefs.
+
+------------------------------------------------------------------------
+r1886 | sdake | 2009-03-22 08:31:40 -0700 (Sun, 22 Mar 2009) | 3 lines
+
+Allow ipcc library to work on some arches which have different parameter 
+passing requirements for enums.
+
+------------------------------------------------------------------------
+r1885 | sdake | 2009-03-22 08:28:54 -0700 (Sun, 22 Mar 2009) | 2 lines
+
+Abstracted Shared Memory IPC library
+
+------------------------------------------------------------------------
+r1884 | sdake | 2009-03-21 04:25:48 -0700 (Sat, 21 Mar 2009) | 4 lines
+
+This patch fixes a crash in cpg.c where a group is left befopre
+cpg_finalise is called. It can cause the process_info structure to be
+removed twice from the group list.
+
+------------------------------------------------------------------------
+r1883 | meyering | 2009-03-20 08:48:35 -0700 (Fri, 20 Mar 2009) | 7 lines
+
+avoid buffer overrun when there are more than 128 path entries
+
+* lcr_ifact.c (PATH_LIST_SIZE): Define.
+(path_list): Use it.
+(ld_library_path_build): Don't store into path_list[path_list_entries]
+if the counter is too large.
+(ldso_path_build): Likewise.
+------------------------------------------------------------------------
+r1882 | meyering | 2009-03-20 08:48:27 -0700 (Fri, 20 Mar 2009) | 4 lines
+
+don't store (and later deref) NULL upon strdup failure
+
+* lcr_ifact.c (ld_library_path_build, ldso_path_build):
+Handle strdup failure.
+------------------------------------------------------------------------
+r1881 | meyering | 2009-03-20 08:48:19 -0700 (Fri, 20 Mar 2009) | 3 lines
+
+don't segfault upon failed strdup
+
+* sa-confdb.c (load_config): Handle out-of-memory.
+------------------------------------------------------------------------
+r1880 | sdake | 2009-03-19 23:55:49 -0700 (Thu, 19 Mar 2009) | 2 lines
+
+Revert last change which broke corosync.
+
+------------------------------------------------------------------------
+r1879 | sdake | 2009-03-19 17:01:18 -0700 (Thu, 19 Mar 2009) | 3 lines
+
+Reworked not to require stmt-after-decl support, plus another to fix a 
+bug that would arise when parsing more than 128 paths.
+
+------------------------------------------------------------------------
+r1878 | sdake | 2009-03-19 16:50:35 -0700 (Thu, 19 Mar 2009) | 4 lines
+
+While looking at used of LCRSODIR, I saw an unchecked strdup.
+That could lead to a NULL dereference.
+
+
+------------------------------------------------------------------------
+r1877 | fabbione | 2009-03-19 05:58:53 -0700 (Thu, 19 Mar 2009) | 17 lines
+
+- Every .c file should include "config.h" to get the right defines...
+
+- services/Makefile.am: add include search paths for config.h
+
+- include/corosync/cs_config.h.in exports LCRSODIR and SOCKETDIR
+
+- tools/Makefile.am: drop -D defines for dirs that are now in
+cs_config.h or config.h
+
+- configure.ac: sanitize prefix and exec_prefix paths. Export DIRS in
+*config.h
+
+- lib/Makefile.am: : drop -D defines for dirs that are now in
+cs_config.h or config.h. Add rule to build lcr_ifact.o or building from
+lib/ fails miserably
+
+
+------------------------------------------------------------------------
+r1876 | sdake | 2009-03-19 03:27:17 -0700 (Thu, 19 Mar 2009) | 2 lines
+
+Remove some unnecessary serializer functions.
+
+------------------------------------------------------------------------
+r1875 | sdake | 2009-03-19 03:20:37 -0700 (Thu, 19 Mar 2009) | 2 lines
+
+Dont clobber stck on strings with length of zero.
+
+------------------------------------------------------------------------
+r1874 | sdake | 2009-03-19 03:20:19 -0700 (Thu, 19 Mar 2009) | 2 lines
+
+Don't clobber stack on strings with length of zero.
+
+------------------------------------------------------------------------
+r1873 | sdake | 2009-03-19 02:56:39 -0700 (Thu, 19 Mar 2009) | 2 lines
+
+Updated TODO for corosync.
+
+------------------------------------------------------------------------
+r1872 | fabbione | 2009-03-19 00:54:55 -0700 (Thu, 19 Mar 2009) | 2 lines
+
+Fix corosync.pc installation
+
+------------------------------------------------------------------------
+r1871 | fabbione | 2009-03-18 22:41:23 -0700 (Wed, 18 Mar 2009) | 2 lines
+
+Add missing libs from pkgconfig generation
+
+------------------------------------------------------------------------
+r1870 | fabbione | 2009-03-18 22:21:17 -0700 (Wed, 18 Mar 2009) | 2 lines
+
+Fix logsys SONAME
+
+------------------------------------------------------------------------
+r1869 | fabbione | 2009-03-18 21:52:44 -0700 (Wed, 18 Mar 2009) | 2 lines
+
+Don't use EXTRA_DIST in install/uninstall
+
+------------------------------------------------------------------------
+r1868 | sdake | 2009-03-18 14:51:07 -0700 (Wed, 18 Mar 2009) | 2 lines
+
+Serialize access to service engines.
+
+------------------------------------------------------------------------
+r1867 | sdake | 2009-03-18 14:28:50 -0700 (Wed, 18 Mar 2009) | 2 lines
+
+Fix coroapi.h header errors.
+
+------------------------------------------------------------------------
+r1866 | fabbione | 2009-03-18 03:17:50 -0700 (Wed, 18 Mar 2009) | 2 lines
+
+Add missing uninstall-local targets and fix configuration intall target
+
+------------------------------------------------------------------------
+r1865 | fabbione | 2009-03-18 02:17:40 -0700 (Wed, 18 Mar 2009) | 2 lines
+
+More cleanup for distcheck to work
+
+------------------------------------------------------------------------
+r1864 | chrissie | 2009-03-18 01:37:10 -0700 (Wed, 18 Mar 2009) | 3 lines
+
+Add a dummy parameter to totemip_iface check so that it compiles on Darwin.
+
+
+------------------------------------------------------------------------
+r1863 | fabbione | 2009-03-18 01:30:25 -0700 (Wed, 18 Mar 2009) | 2 lines
+
+Fix DARWIN_OPTS expansion
+
+------------------------------------------------------------------------
+r1862 | fabbione | 2009-03-18 00:52:48 -0700 (Wed, 18 Mar 2009) | 6 lines
+
+Fix more soname= at linking
+
+Start fixing distcheck
+
+White space cleanups
+
+------------------------------------------------------------------------
+r1861 | fabbione | 2009-03-17 11:37:03 -0700 (Tue, 17 Mar 2009) | 9 lines
+
+- tidy up whitespaces
+
+- try to keep everything < 80 cols
+
+- stop installing testing lcrso
+
+- fix soname= invokation
+
+
+------------------------------------------------------------------------
+r1860 | fabbione | 2009-03-17 06:25:12 -0700 (Tue, 17 Mar 2009) | 2 lines
+
+Fix doc stuff
+
+------------------------------------------------------------------------
+r1859 | fabbione | 2009-03-17 06:06:56 -0700 (Tue, 17 Mar 2009) | 2 lines
+
+Update index.html to reflect new changes in man/Makefile.am
+
+------------------------------------------------------------------------
+r1858 | fabbione | 2009-03-17 05:44:47 -0700 (Tue, 17 Mar 2009) | 2 lines
+
+Drop tarball name from AC_INIT as it confuses the hell out of what we need
+
+------------------------------------------------------------------------
+r1857 | fabbione | 2009-03-17 05:43:41 -0700 (Tue, 17 Mar 2009) | 2 lines
+
+Fix the whole manpage stuff
+
+------------------------------------------------------------------------
+r1856 | fabbione | 2009-03-17 03:46:19 -0700 (Tue, 17 Mar 2009) | 2 lines
+
+Add support for SOCKETDIR
+
+------------------------------------------------------------------------
+r1855 | fabbione | 2009-03-17 03:03:18 -0700 (Tue, 17 Mar 2009) | 2 lines
+
+Add corosync.pc support
+
+------------------------------------------------------------------------
+r1854 | fabbione | 2009-03-17 02:53:39 -0700 (Tue, 17 Mar 2009) | 3 lines
+
+remove hardcoded /var and use localstatedir
+instead.
+
+------------------------------------------------------------------------
+r1853 | fabbione | 2009-03-16 06:54:40 -0700 (Mon, 16 Mar 2009) | 15 lines
+
+configure.ac:
+ - Fix white space for --help.
+ - Drop LCRSODIR as global and move it to local directory.
+
+all */Makefile.am:
+ - export -DDIRECTORY_NAME as required (for now only LCRSO and
+SYSCONFDIR)
+
+top level Makefile.am:
+- drop hardcoded ETCDIR that is just wrong and use the configured one
+
+*.c files around:
+- drop hardcoded ETCDIR and use configured one.
+
+
+------------------------------------------------------------------------
+r1852 | fabbione | 2009-03-16 06:15:25 -0700 (Mon, 16 Mar 2009) | 3 lines
+
+Fix LCRSO handling
+
+
+------------------------------------------------------------------------
+r1851 | fabbione | 2009-03-16 04:50:19 -0700 (Mon, 16 Mar 2009) | 2 lines
+
+Make everything < 80 cols
+
+------------------------------------------------------------------------
+r1850 | fabbione | 2009-03-16 04:36:49 -0700 (Mon, 16 Mar 2009) | 6 lines
+
+remove comment
+
+fix quoting
+
+make GCC test portable
+
+------------------------------------------------------------------------
+r1849 | fabbione | 2009-03-16 04:01:50 -0700 (Mon, 16 Mar 2009) | 3 lines
+
+Major configure.in/ac cleanup
+
+
+------------------------------------------------------------------------
+r1848 | fabbione | 2009-03-13 03:02:09 -0700 (Fri, 13 Mar 2009) | 18 lines
+
+- Fix macro typo for PROG_CC_C_O.
+
+- add --enable-debug configure option to #define DEBUG 1 and set
+compiler options to default to -O0.
+
+- restore default -O3.
+
+- Drop some random leftovers (CC_IN_CONFIGURE, AISPREFIX, SSH path check
+and ppc64 -m64).
+
+- Remove yet another GCC test as -g is automatically detected by
+autoconf macros.
+
+- Cleanup a bit deprecated ARCH section.
+
+- Tidy up RESULT section.
+
+
+------------------------------------------------------------------------
+r1847 | fabbione | 2009-03-13 01:26:56 -0700 (Fri, 13 Mar 2009) | 12 lines
+
+- remove --enable-static option as it is not required. This was a
+leftover from gcc-2.x something time. corosync binary should always be
+built dynamic.
+
+- fix quorum_* target as it was missing the list of objects to be linked
+in.. doh!
+
+- fix object dependencies between TARGET, TARGET_OBJS and TARGET_SRC.
+This also fixes the build/relink issues at install times that have been
+noted before.
+
+
+------------------------------------------------------------------------
+r1846 | sdake | 2009-03-12 10:13:42 -0700 (Thu, 12 Mar 2009) | 2 lines
+
+All integers received from objdb_get_int had invalid handle type.
+
+------------------------------------------------------------------------
+r1845 | sdake | 2009-03-12 09:15:34 -0700 (Thu, 12 Mar 2009) | 2 lines
+
+Use nocheck flagging on confchg iteration of handle ids.
+
+------------------------------------------------------------------------
+r1844 | chrissie | 2009-03-12 07:30:58 -0700 (Thu, 12 Mar 2009) | 2 lines
+
+Fix testconfdb use of object handles.
+
+------------------------------------------------------------------------
+r1843 | sdake | 2009-03-11 16:48:05 -0700 (Wed, 11 Mar 2009) | 2 lines
+
+Set correct OBJECT_PARENT_HANDLE define in coroapi.h
+
+------------------------------------------------------------------------
+r1842 | sdake | 2009-03-11 16:28:01 -0700 (Wed, 11 Mar 2009) | 2 lines
+
+Add handle checking to the hdb system.
+
+------------------------------------------------------------------------
+r1841 | sdake | 2009-03-11 16:09:04 -0700 (Wed, 11 Mar 2009) | 4 lines
+
+Fix several errors in objdb notification handling, hdb_handle_t type 
+conversion errors, indentation, and do hdb_handle_put after instance 
+data is used instead of before.
+
+------------------------------------------------------------------------
+r1840 | sdake | 2009-03-11 16:06:18 -0700 (Wed, 11 Mar 2009) | 2 lines
+
+Use hdb_handle_t for handle type in service.c.
+
+------------------------------------------------------------------------
+r1839 | sdake | 2009-03-11 16:05:41 -0700 (Wed, 11 Mar 2009) | 2 lines
+
+Use hdb_handle_t for handle type in lcr_ifact.
+
+------------------------------------------------------------------------
+r1838 | fabbione | 2009-03-11 05:30:52 -0700 (Wed, 11 Mar 2009) | 2 lines
+
+Fix library linking
+
+------------------------------------------------------------------------
+r1837 | fabbione | 2009-03-11 04:33:19 -0700 (Wed, 11 Mar 2009) | 2 lines
+
+Fix more build/install glitches
+
+------------------------------------------------------------------------
+r1836 | sdake | 2009-03-11 04:27:20 -0700 (Wed, 11 Mar 2009) | 2 lines
+
+Fix broken error check in commit 1818.
+
+------------------------------------------------------------------------
+r1835 | fabbione | 2009-03-11 02:06:35 -0700 (Wed, 11 Mar 2009) | 19 lines
+
+1) kill all those "for" shell loops. They are dangerous (as they don't
+report install failures) and it's just overhead since $(INSTALL) can do
+the same.
+
+2) make sure to create our directories with $(INSTALL). Not sure I did
+catch them all yet, but at least a good bunch. This also fix the
+corosync.conf install error I introduced in the previous commit.
+
+3) Handle SONAME automatically. This is the most intrusive change across
+the board:
+
+ * configure.in now defines the system wide SOMAJOR, SOMINOR, SOMICRO
+and SONAME and exports them to the Makefile.
+ * exec/Makefile.am, lib/Makefile.am are now updated to use those vars
+rather than hardcoded version.
+
+4) Bump the SOMAJOR to 3 as agreed since we did change both API and ABI.
+
+
+------------------------------------------------------------------------
+r1834 | fabbione | 2009-03-11 01:03:55 -0700 (Wed, 11 Mar 2009) | 2 lines
+
+Dear pacemaker.. you will not take over this project! MUAHAH
+
+------------------------------------------------------------------------
+r1833 | fabbione | 2009-03-11 00:54:30 -0700 (Wed, 11 Mar 2009) | 2 lines
+
+Drop ld.conf file that is now unrequired
+
+------------------------------------------------------------------------
+r1832 | fabbione | 2009-03-11 00:28:12 -0700 (Wed, 11 Mar 2009) | 3 lines
+
+Readd pkgconfig subdir to the build system and port it
+to autoconf
+
+------------------------------------------------------------------------
+r1831 | fabbione | 2009-03-10 22:52:48 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Add entries to maintainer-clean target
+
+------------------------------------------------------------------------
+r1830 | sdake | 2009-03-10 21:47:08 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove warnings from coroipc.c.
+
+------------------------------------------------------------------------
+r1829 | sdake | 2009-03-10 21:41:23 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove warnings from ipc.c
+
+------------------------------------------------------------------------
+r1828 | chrissie | 2009-03-10 10:13:37 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Fix some const warnings
+
+------------------------------------------------------------------------
+r1827 | fabbione | 2009-03-10 06:18:11 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Add dynamic timestamp on/off
+
+------------------------------------------------------------------------
+r1826 | sdake | 2009-03-10 05:22:55 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove const warnings in crypto.c.
+
+------------------------------------------------------------------------
+r1825 | sdake | 2009-03-10 05:22:38 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove qualifier errors in main.c
+
+------------------------------------------------------------------------
+r1824 | sdake | 2009-03-10 05:08:32 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove const warnings from uic system.
+
+------------------------------------------------------------------------
+r1823 | sdake | 2009-03-10 04:57:21 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+change some char * to const char * to match usage in system in lcr.
+
+------------------------------------------------------------------------
+r1822 | sdake | 2009-03-10 04:53:43 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Fix const qualifiers in lcr_ifact.c.
+
+------------------------------------------------------------------------
+r1821 | sdake | 2009-03-10 04:45:00 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Fix missing prototypes in totempg.c.
+
+------------------------------------------------------------------------
+r1820 | sdake | 2009-03-10 04:42:10 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Fix missing prototypes in totemmrp.
+
+------------------------------------------------------------------------
+r1819 | sdake | 2009-03-10 04:40:12 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Fix missing prototypes and mismatched prototypes in totemmrp.
+
+------------------------------------------------------------------------
+r1818 | sdake | 2009-03-10 04:30:34 -0700 (Tue, 10 Mar 2009) | 4 lines
+
+Add missing hdb_handle_put in totemsrp and handle errors in mkdir and 
+chdir properly.
+
+
+------------------------------------------------------------------------
+r1817 | sdake | 2009-03-10 04:23:57 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove string literal warnings from totemsrp.
+
+------------------------------------------------------------------------
+r1816 | sdake | 2009-03-10 04:21:23 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Add missing prototypes in totemsrp.
+
+------------------------------------------------------------------------
+r1815 | sdake | 2009-03-10 04:14:28 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove pointer math warnings from totemsrp.
+
+------------------------------------------------------------------------
+r1814 | sdake | 2009-03-10 04:08:49 -0700 (Tue, 10 Mar 2009) | 3 lines
+
+Define undefined prototypes
+
+
+------------------------------------------------------------------------
+r1813 | sdake | 2009-03-10 04:04:12 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove string literal warnings from totemrrp.
+
+------------------------------------------------------------------------
+r1812 | sdake | 2009-03-10 03:35:14 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove const warnings from main.c.
+
+------------------------------------------------------------------------
+r1811 | sdake | 2009-03-10 03:32:09 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove type casting to (char *) in logsys.h.
+
+------------------------------------------------------------------------
+r1810 | sdake | 2009-03-10 03:12:52 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove pointer math from totempg.
+
+------------------------------------------------------------------------
+r1809 | sdake | 2009-03-10 03:09:43 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove pointer math warnings from totemnet.
+
+------------------------------------------------------------------------
+r1808 | sdake | 2009-03-10 03:05:40 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove const warnings in totemip code.
+
+------------------------------------------------------------------------
+r1807 | chrissie | 2009-03-10 02:58:07 -0700 (Tue, 10 Mar 2009) | 8 lines
+
+Quorum checks the ring ID is new before initiating a sync. Unfortunately
+it copies the ring ID BEFORE checking it so there is always a match.
+
+Sigh
+
+This patch fixes it.
+
+
+------------------------------------------------------------------------
+r1806 | sdake | 2009-03-10 02:48:34 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove const warnings relating to logsys global definitions.
+
+------------------------------------------------------------------------
+r1805 | sdake | 2009-03-10 02:40:54 -0700 (Tue, 10 Mar 2009) | 3 lines
+
+Remove logsys warnings.
+
+
+------------------------------------------------------------------------
+r1804 | sdake | 2009-03-10 02:34:20 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove const warnings in totempg.
+
+------------------------------------------------------------------------
+r1803 | sdake | 2009-03-10 02:30:29 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove const warnings from totemsrp.
+
+------------------------------------------------------------------------
+r1802 | sdake | 2009-03-10 02:25:43 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove qualifier warnings regarding totemrrp.
+
+------------------------------------------------------------------------
+r1801 | sdake | 2009-03-10 02:22:08 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove const/nonconst assignment warnings in totemnet.
+
+------------------------------------------------------------------------
+r1800 | sdake | 2009-03-10 02:00:15 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Remove leftover from automake merge.
+
+------------------------------------------------------------------------
+r1799 | sdake | 2009-03-10 01:39:48 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Add missing committed file for automake.
+
+------------------------------------------------------------------------
+r1798 | sdake | 2009-03-10 01:35:41 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+Automake.  The journey begins.
+
+------------------------------------------------------------------------
+r1797 | fabbione | 2009-03-10 01:03:50 -0700 (Tue, 10 Mar 2009) | 3 lines
+
+Add logsys_format_get to logsys API.
+
+
+------------------------------------------------------------------------
+r1796 | fabbione | 2009-03-10 00:11:17 -0700 (Tue, 10 Mar 2009) | 2 lines
+
+logsys_format_set should use its own internal copy of format_buffer
+
+------------------------------------------------------------------------
+r1795 | fabbione | 2009-03-09 05:59:40 -0700 (Mon, 09 Mar 2009) | 2 lines
+
+Cleanup logsys format init around to use default settings
+
+------------------------------------------------------------------------
+r1794 | chrissie | 2009-03-06 03:07:35 -0700 (Fri, 06 Mar 2009) | 15 lines
+
+The IPC patch broke CFG shutdown in several places, this patches fixes
+all of them.
+
+In particular, cfg_try_shutdown asks all applications that are
+registered for callbacks if they approve the shutdown. This caused a bit
+of a re-entrancy problem because it also asked the process that called
+for the shutdown! The patch causes cfg to only ask OTHER applications in
+the assumption that any application that calls
+corosync_cfg_tryshutdown() will approve of the action :-)
+
+In addition it adds the response to cfg_replyto_shutdown which was
+missing (it couldn't be used with the old system but is mandatory now),
+and removes a double-free in the library finalise code.
+
+
+------------------------------------------------------------------------
+r1793 | sdake | 2009-03-06 00:38:34 -0700 (Fri, 06 Mar 2009) | 3 lines
+
+Add reserve/release functionality to totem to reserve message queue 
+space.
+
+------------------------------------------------------------------------
+r1792 | fabbione | 2009-03-06 00:09:24 -0700 (Fri, 06 Mar 2009) | 3 lines
+
+Allow logsys_format_set to reset to default.
+
+
+------------------------------------------------------------------------
+r1791 | sdake | 2009-03-05 19:42:48 -0700 (Thu, 05 Mar 2009) | 3 lines
+
+Use list_del on process info in the condition that lib_exit_fn is called 
+to prevent segfault from processes later processing that list entry.
+
+------------------------------------------------------------------------
+r1790 | fabbione | 2009-03-04 03:14:36 -0700 (Wed, 04 Mar 2009) | 3 lines
+
+logsys: re-add support for timestamp that was lost in the
+upgrade from v1 to v2
+
+------------------------------------------------------------------------
+r1789 | fabbione | 2009-03-04 03:13:26 -0700 (Wed, 04 Mar 2009) | 3 lines
+
+Fix logsys_set_format by updating the right bits
+
+
+------------------------------------------------------------------------
+r1788 | fabbione | 2009-03-02 20:57:37 -0700 (Mon, 02 Mar 2009) | 3 lines
+
+Fix uninitialized memory. Spotted by valgrind
+
+
+------------------------------------------------------------------------
+r1786 | sdake | 2009-03-02 17:58:16 -0700 (Mon, 02 Mar 2009) | 3 lines
+
+Rework a bit of how lib_exit_fn works so that reference counts may be 
+used in the exit functions for services such as cpg.
+
+------------------------------------------------------------------------
+r1785 | sdake | 2009-03-02 17:57:44 -0700 (Mon, 02 Mar 2009) | 3 lines
+
+Lock cpg ipc connections into memory on lib_init_fn and remove lock on 
+lib_exit_fn.
+
+------------------------------------------------------------------------
+r1784 | chrissie | 2009-02-26 07:51:18 -0700 (Thu, 26 Feb 2009) | 9 lines
+
+This patch fixes some minor bugs in the expected_votes behaviour and
+adds a couple of new features:
+
+- When total_votes exceeds the expected_votes value then expected_votes
+is increased to that value.
+
+- A callback can be sent to a client whenever expected_votes is changed
+
+
+------------------------------------------------------------------------
+r1783 | chrissie | 2009-02-26 07:49:41 -0700 (Thu, 26 Feb 2009) | 9 lines
+
+The current object database allows duplicate key names per object. This
+is a bit of a nightmare to manage and provides no useful functionality
+that I can see. Making keys unique has been discussed on IRC several
+times and there seem to be no objections...so here is the patch:
+
+Note that I have removed some now-useless parameters from the objdb API
+too.
+
+
+------------------------------------------------------------------------
+r1782 | sdake | 2009-02-25 04:14:47 -0700 (Wed, 25 Feb 2009) | 2 lines
+
+Unification around hdb_handle_t data type.
+
+------------------------------------------------------------------------
+r1781 | sdake | 2009-02-24 23:54:42 -0700 (Tue, 24 Feb 2009) | 2 lines
+
+Send configuration changes to CPG listeners.  (regression in IPC patch).
+
+------------------------------------------------------------------------
+r1780 | fabbione | 2009-02-24 21:58:08 -0700 (Tue, 24 Feb 2009) | 2 lines
+
+Install corosync-fplay and corosync-pload binaries
+
+------------------------------------------------------------------------
+r1779 | sdake | 2009-02-24 21:55:32 -0700 (Tue, 24 Feb 2009) | 2 lines
+
+Fix possible segfault with IPC service.
+
+------------------------------------------------------------------------
+r1778 | sdake | 2009-02-24 21:55:06 -0700 (Tue, 24 Feb 2009) | 2 lines
+
+Remove extra printf debug.
+
+------------------------------------------------------------------------
+r1777 | sdake | 2009-02-24 03:32:23 -0700 (Tue, 24 Feb 2009) | 2 lines
+
+Remove installation of static libcoroipc.a.
+
+------------------------------------------------------------------------
+r1776 | sdake | 2009-02-23 23:15:17 -0700 (Mon, 23 Feb 2009) | 2 lines
+
+Fix problem with 1722 commit which broke ipc.
+
+------------------------------------------------------------------------
+r1775 | chrissie | 2009-02-23 08:26:21 -0700 (Mon, 23 Feb 2009) | 2 lines
+
+Move VOTEQUORUM_SERVICE to ipc_gen.h where it belongs.
+
+------------------------------------------------------------------------
+r1774 | chrissie | 2009-02-23 01:53:45 -0700 (Mon, 23 Feb 2009) | 10 lines
+
+When a quorum device registers it tells the corosync quorum engine of
+the new quorum which then tries to do a new sync(). But that's no use
+because the nodelist and ring_id is identical to before. Also it can try
+and register while a sync is already in operation ... which gets it
+awfully stuck!
+
+So this patch makes the sync conditional on there being a new ring ID to
+do a sync on.
+
+
+------------------------------------------------------------------------
+r1773 | chrissie | 2009-02-20 09:02:06 -0700 (Fri, 20 Feb 2009) | 5 lines
+
+Fix problem in disallowed mode that prevented a HASSTATE node joining
+a cluster without state or vice-versa
+see Red Hat BZ#485026
+
+
+------------------------------------------------------------------------
+r1772 | chrissie | 2009-02-20 01:24:40 -0700 (Fri, 20 Feb 2009) | 2 lines
+
+Don't crash if a library tries to talk to a module that is not loaded
+
+------------------------------------------------------------------------
+r1771 | chrissie | 2009-02-20 00:46:15 -0700 (Fri, 20 Feb 2009) | 2 lines
+
+Allow CPG messages to be sent on an inquorate cluster
+
+------------------------------------------------------------------------
+r1770 | chrissie | 2009-02-19 08:30:20 -0700 (Thu, 19 Feb 2009) | 2 lines
+
+Fix crash in confdb_finalize
+
+------------------------------------------------------------------------
+r1769 | chrissie | 2009-02-19 01:42:31 -0700 (Thu, 19 Feb 2009) | 2 lines
+
+Get rid of one crash in confdb. It still double-frees in confdb_finalize though.
+
+------------------------------------------------------------------------
+r1768 | chrissie | 2009-02-19 01:38:40 -0700 (Thu, 19 Feb 2009) | 2 lines
+
+Fix crashes in quorum_initialize & votequorum_initialize
+
+------------------------------------------------------------------------
+r1767 | fabbione | 2009-02-19 01:05:52 -0700 (Thu, 19 Feb 2009) | 7 lines
+
+Fix build error spotted by gcc-4.4
+
+#elif with no clause is clearly wrong and continuing when we don't
+know the byte order only defers the problem to a point where its much
+harder to debug
+
+
+------------------------------------------------------------------------
+r1766 | sdake | 2009-02-18 19:23:58 -0700 (Wed, 18 Feb 2009) | 3 lines
+
+Whitetank IPC Forward Port.
+
+
+------------------------------------------------------------------------
+r1764 | sdake | 2009-02-17 19:13:30 -0700 (Tue, 17 Feb 2009) | 2 lines
+
+Remove redundant statement in totemsrp.
+
+------------------------------------------------------------------------
+r1763 | sdake | 2009-02-17 19:07:59 -0700 (Tue, 17 Feb 2009) | 2 lines
+
+Use definition instead of magic number.
+
+------------------------------------------------------------------------
+r1762 | sdake | 2009-02-17 19:06:13 -0700 (Tue, 17 Feb 2009) | 2 lines
+
+Update link for upstream crypto code.
+
+------------------------------------------------------------------------
+r1761 | rohara | 2009-02-17 18:28:35 -0700 (Tue, 17 Feb 2009) | 4 lines
+
+Add timer_expire_time_get
+Add timer_expire_time_get corosync API call.
+
+
+------------------------------------------------------------------------
+r1760 | rohara | 2009-02-13 19:06:20 -0700 (Fri, 13 Feb 2009) | 4 lines
+
+
+Add timer_time_get to the corosync API.
+
+
+------------------------------------------------------------------------
+r1759 | chrissie | 2009-02-13 02:21:57 -0700 (Fri, 13 Feb 2009) | 3 lines
+
+Add corosync_cfg_local_get() call to get the local NodeID in libcfg
+
+
+------------------------------------------------------------------------
+r1758 | rohara | 2009-02-11 17:45:19 -0700 (Wed, 11 Feb 2009) | 4 lines
+
+
+Add TMR_SERVICE to the list of service_types.
+
+
+------------------------------------------------------------------------
+r1757 | chrissie | 2009-02-03 09:30:02 -0700 (Tue, 03 Feb 2009) | 4 lines
+
+Fix "leave" function where the remaining nodes recalculate quorum when a 
+node leaves. Also add a timeout to the leave flag.
+
+
+------------------------------------------------------------------------
+r1756 | fabbione | 2009-01-30 11:44:13 -0700 (Fri, 30 Jan 2009) | 2 lines
+
+fix pkgconfig builddir creation
+
+------------------------------------------------------------------------
+r1755 | fabbione | 2009-01-30 11:25:04 -0700 (Fri, 30 Jan 2009) | 2 lines
+
+Add .pc file support for corosync libs
+
+------------------------------------------------------------------------
+r1754 | chrissie | 2009-01-30 06:31:40 -0700 (Fri, 30 Jan 2009) | 2 lines
+
+Add quorum_fd_get and votequorum_fd_get prototypes
+
+------------------------------------------------------------------------
+r1753 | chrissie | 2009-01-30 04:56:34 -0700 (Fri, 30 Jan 2009) | 2 lines
+
+Make cfg_get_node_addrs return CS_OK rather than 0 when it succeeds.
+
+------------------------------------------------------------------------
+r1752 | chrissie | 2009-01-29 07:21:05 -0700 (Thu, 29 Jan 2009) | 2 lines
+
+Fix votequorum_getinfo returning the wrong value for expected_votes
+
+------------------------------------------------------------------------
+r1751 | chrissie | 2009-01-29 02:17:43 -0700 (Thu, 29 Jan 2009) | 2 lines
+
+Remove the last bicapitalised name from cfg
+
+------------------------------------------------------------------------
+r1750 | chrissie | 2009-01-27 01:59:14 -0700 (Tue, 27 Jan 2009) | 5 lines
+
+Don't automatically load the quorum service.
+
+This will, for the time being, unbreak synchronisation.
+
+
+------------------------------------------------------------------------
+r1749 | sdake | 2009-01-26 13:46:45 -0700 (Mon, 26 Jan 2009) | 2 lines
+
+Fix node masking for 32 bit node ids.
+
+------------------------------------------------------------------------
+r1746 | sdake | 2009-01-26 13:22:28 -0700 (Mon, 26 Jan 2009) | 2 lines
+
+Allow crypto to work on systems where unsigned long evaluates to 8 bytes. (s390x).
+
+------------------------------------------------------------------------
+r1745 | chrissie | 2009-01-26 03:46:08 -0700 (Mon, 26 Jan 2009) | 2 lines
+
+Add the votequorum service
+
+------------------------------------------------------------------------
+r1744 | sdake | 2009-01-25 14:25:25 -0700 (Sun, 25 Jan 2009) | 4 lines
+
+Fix error where entire message was not rejected during startup of a new
+node resulting in partial delivery of a complete message and segfaulting
+the executive.
+
+------------------------------------------------------------------------
+r1743 | sdake | 2009-01-25 14:15:25 -0700 (Sun, 25 Jan 2009) | 2 lines
+
+Fix message rejection problem.
+
+------------------------------------------------------------------------
+r1742 | fabbione | 2009-01-23 09:12:13 -0700 (Fri, 23 Jan 2009) | 2 lines
+
+cleanup handling of uid/gid config
+
+------------------------------------------------------------------------
+r1741 | chrissie | 2009-01-23 08:41:06 -0700 (Fri, 23 Jan 2009) | 9 lines
+
+Fix a couple of memory leaks
+
+The objdb occurred because object_find_destroy wasn't implemented!
+ 
+The one in confdb occurred because object_find_destroy wasn't called if
+object_find_next returned an error the first time it was invoked (ie
+there were no subobjects).
+
+
+------------------------------------------------------------------------
+r1740 | fabbione | 2009-01-23 07:27:58 -0700 (Fri, 23 Jan 2009) | 2 lines
+
+fix logging reload operation and clean up main init
+
+------------------------------------------------------------------------
+r1739 | fabbione | 2009-01-23 07:25:30 -0700 (Fri, 23 Jan 2009) | 3 lines
+
+don't keep logsys fd open unless it's required
+
+
+------------------------------------------------------------------------
+r1738 | chrissie | 2009-01-22 02:48:23 -0700 (Thu, 22 Jan 2009) | 2 lines
+
+Install quorum.h 
+
+------------------------------------------------------------------------
+r1737 | chrissie | 2009-01-21 08:57:12 -0700 (Wed, 21 Jan 2009) | 2 lines
+
+Install quorum library
+
+------------------------------------------------------------------------
+r1735 | sdake | 2009-01-20 10:59:10 -0700 (Tue, 20 Jan 2009) | 2 lines
+
+Complete poll_stop function.
+
+------------------------------------------------------------------------
+r1734 | sdake | 2009-01-20 10:41:45 -0700 (Tue, 20 Jan 2009) | 2 lines
+
+Cancel token holding mode when a totem token callback is added to the system.
+
+------------------------------------------------------------------------
+r1733 | chrissie | 2009-01-20 06:19:05 -0700 (Tue, 20 Jan 2009) | 2 lines
+
+Add OBJDB_RELOAD_NOTIFY_FAILED which was missing from coroapi
+
+------------------------------------------------------------------------
+r1732 | chrissie | 2009-01-19 01:31:21 -0700 (Mon, 19 Jan 2009) | 2 lines
+
+Make all the bicapitalised names in cfg more sensible.
+
+------------------------------------------------------------------------
+r1731 | fabbione | 2009-01-16 01:59:09 -0700 (Fri, 16 Jan 2009) | 4 lines
+
+Clean up tag handling and provide functions to match name with values and
+viceversa.
+
+
+------------------------------------------------------------------------
+r1730 | fabbione | 2009-01-16 01:44:15 -0700 (Fri, 16 Jan 2009) | 3 lines
+
+restore the priority setting that was lost
+
+
+------------------------------------------------------------------------
+r1729 | fabbione | 2009-01-15 05:06:40 -0700 (Thu, 15 Jan 2009) | 3 lines
+
+Remove duplicate code and use the right library call into logsys
+that also cover cases that were not handled at all.
+
+------------------------------------------------------------------------
+r1728 | fabbione | 2009-01-15 04:33:47 -0700 (Thu, 15 Jan 2009) | 3 lines
+
+Fix small memory leak on config reload operations
+
+
+------------------------------------------------------------------------
+r1727 | fabbione | 2009-01-14 04:00:23 -0700 (Wed, 14 Jan 2009) | 3 lines
+
+Fix logsys write to file crash.
+
+
+------------------------------------------------------------------------
+r1726 | chrissie | 2009-01-14 02:27:40 -0700 (Wed, 14 Jan 2009) | 3 lines
+
+add corosync_cfg_get_node_addrs() call.
+
+
+------------------------------------------------------------------------
+r1725 | chrissie | 2009-01-14 01:33:44 -0700 (Wed, 14 Jan 2009) | 2 lines
+
+Add some mussing pthread_mutex_lock() calls.
+
+------------------------------------------------------------------------
+r1724 | chrissie | 2009-01-08 09:55:47 -0700 (Thu, 08 Jan 2009) | 2 lines
+
+Build testquorum on Darwin
+
+------------------------------------------------------------------------
+r1723 | chrissie | 2009-01-08 04:38:17 -0700 (Thu, 08 Jan 2009) | 2 lines
+
+Don't always overwrite /etc/corosync.conf when make install is run.
+
+------------------------------------------------------------------------
+r1722 | chrissie | 2009-01-08 04:12:10 -0700 (Thu, 08 Jan 2009) | 6 lines
+
+If there was a quorum {} section in corosync.conf but no provider specified
+then  we would always report inquorate.
+
+This was wrong, if no provider is specified then we are always quorate.
+
+
+------------------------------------------------------------------------
+r1721 | sdake | 2009-01-07 23:29:16 -0700 (Wed, 07 Jan 2009) | 2 lines
+
+Patch to allow cpg_membership_get to work properly.
+
+------------------------------------------------------------------------
+r1720 | asalkeld | 2009-01-07 10:42:10 -0700 (Wed, 07 Jan 2009) | 2 lines
+
+Fix coverity bug ID 6: FORWARD_NULL
+
+------------------------------------------------------------------------
+r1719 | fabbione | 2009-01-07 04:40:02 -0700 (Wed, 07 Jan 2009) | 2 lines
+
+Check against the right var and silence a few warnings at build time
+
+------------------------------------------------------------------------
+r1718 | asalkeld | 2009-01-05 21:06:51 -0700 (Mon, 05 Jan 2009) | 16 lines
+
+Fix coverity bug ID 9: OVERRUN_STATIC
+
+CID: 9
+Checker: OVERRUN_STATIC (help)
+File: lib/cfg.c
+Function: corosync_cfg_service_unload
+Description: Overrun of static array
+"&(req_lib_cfg_serviceunload).service_name" of size 1024 bytes by
+passing it to a function which indexes it with argument "1023" at byte
+position 4088
+
+The main problem here is the way the service_name is defined:
+-       char *service_name[256] __attribute__((aligned(8)));
++       char service_name[256] __attribute__((aligned(8)));
+
+
+------------------------------------------------------------------------
+r1717 | asalkeld | 2008-12-28 02:25:17 -0700 (Sun, 28 Dec 2008) | 6 lines
+
+Fix coverity bug ID 4: remove unused code & fix compile error
+
+In evs_dispatch()  the local ignore_dispatch is not used.
+So I have removed this code.
+
+
+------------------------------------------------------------------------
+r1716 | asalkeld | 2008-12-28 02:05:05 -0700 (Sun, 28 Dec 2008) | 7 lines
+
+Fix coverity bug ID 1: overused local variable
+
+coverity says that in exec/objdb.c: 1075 the found is always == 1
+therefore the code is dead.  But this is just a case of an overused
+local variable. "found" is used for two different searches.
+
+
+------------------------------------------------------------------------
+r1715 | asalkeld | 2008-12-28 02:01:35 -0700 (Sun, 28 Dec 2008) | 7 lines
+
+Fix coverity bug ID 7: add NULL pointer check
+
+Here coverity checks that if in a function a pointer is checked
+for NULL then it is checked through out the function.
+
+So below I have just add some more checks for NULL.
+
+------------------------------------------------------------------------
+r1714 | asalkeld | 2008-12-28 01:55:57 -0700 (Sun, 28 Dec 2008) | 8 lines
+
+Fix coverity bug ID 5
+
+In poll_timer_add() if you pass in a NULL for the callback function
+the pointer will be dereferenced.
+
+I have moved the check for the NULL up.
+
+
+------------------------------------------------------------------------
+r1713 | chrissie | 2008-12-19 09:08:25 -0700 (Fri, 19 Dec 2008) | 2 lines
+
+If there is no quorum provider specified, then always return quorate.
+
+------------------------------------------------------------------------
+r1712 | chrissie | 2008-12-18 01:28:46 -0700 (Thu, 18 Dec 2008) | 2 lines
+
+If we exit with an error, set the returned status code for the shell.
+
+------------------------------------------------------------------------
+r1711 | asalkeld | 2008-12-17 10:44:50 -0700 (Wed, 17 Dec 2008) | 3 lines
+
+Don't segfault if the ais group is not found.
+
+
+------------------------------------------------------------------------
+r1710 | chrissie | 2008-12-17 01:34:26 -0700 (Wed, 17 Dec 2008) | 9 lines
+
+Add config reload support for logsys
+
+If objdb is reloaded, then we re-parse the logging options.
+
+This allows logging options to be changed/enabled/disabled without 
+restarting corosync
+
+
+
+------------------------------------------------------------------------
+r1709 | chrissie | 2008-12-12 04:27:27 -0700 (Fri, 12 Dec 2008) | 4 lines
+
+This patch adds this capability for a limited number of totem keys using
+the existing reload mechanism.
+
+
+------------------------------------------------------------------------
+r1708 | chrissie | 2008-12-11 02:42:17 -0700 (Thu, 11 Dec 2008) | 2 lines
+
+Install quorum.h file
+
+------------------------------------------------------------------------
+r1707 | chrissie | 2008-12-09 06:51:23 -0700 (Tue, 09 Dec 2008) | 2 lines
+
+Add another missing file
+
+------------------------------------------------------------------------
+r1706 | chrissie | 2008-12-09 06:48:47 -0700 (Tue, 09 Dec 2008) | 2 lines
+
+Add some missing files, sorry
+
+------------------------------------------------------------------------
+r1705 | sdake | 2008-12-08 09:11:07 -0700 (Mon, 08 Dec 2008) | 2 lines
+
+Patch to fix compilation of macosx and linux in some platform configurations.
+
+------------------------------------------------------------------------
+r1704 | chrissie | 2008-12-08 08:55:41 -0700 (Mon, 08 Dec 2008) | 14 lines
+
+quorum is now an optional loadable module (though I've put it into the
+defaults in services.c) and can load another module to do the quorum
+work (eg YKD which I've made more compliant too). All the quorum code
+has been removed from sync.c. quorum.c is simply a shim later for the
+coroapi, the main module is in vsf_quorum.c
+
+There are coroapi calls to query quorate status and also to get
+notifications when it changes.
+
+I've included the testquorum.lcrso module in this patch because I think
+it's really helpful for testing. It sets the quorum state based on an 
+objdb variable, this can be set or cleared using corosync-cfgtool
+
+
+------------------------------------------------------------------------
+r1703 | sdake | 2008-12-02 08:51:03 -0700 (Tue, 02 Dec 2008) | 2 lines
+
+Fix deadlock in logsys during startup.
+
+------------------------------------------------------------------------
+r1702 | beekhof | 2008-12-02 07:50:51 -0700 (Tue, 02 Dec 2008) | 8 lines
+
+Correctly compare local addresses with bindnetaddr
+
+This patch allows whitetank/corosync to behave correctly when the supplied value of bindnetaddr has more precision than the netmask, but is not a full IPv4 address.
+
+For example, currently, if the netmask is /16 but the user specifies 192.168.1.0, then OpenAIS is unable to determine the correct address and uses the loopback address instead.
+
+The following patch allows OpenAIS to correctly determine which interface/address to use.
+
+------------------------------------------------------------------------
+r1701 | asalkeld | 2008-12-01 11:44:55 -0700 (Mon, 01 Dec 2008) | 3 lines
+
+change get node_id() to return an unsigned int
+
+
+------------------------------------------------------------------------
+r1700 | asalkeld | 2008-12-01 10:43:40 -0700 (Mon, 01 Dec 2008) | 6 lines
+
+depending on your ip address, cpg doesn't always send config changes
+
+If you ip addresses are larger than 0xffffff then you will never
+get sent group leave notifications.
+
+
+------------------------------------------------------------------------
+r1699 | chrissie | 2008-11-13 02:54:34 -0700 (Thu, 13 Nov 2008) | 2 lines
+
+Don't crash if we get a message for a service that isn't loaded.
+
+------------------------------------------------------------------------
+r1698 | chrissie | 2008-11-13 02:54:09 -0700 (Thu, 13 Nov 2008) | 2 lines
+
+Make the port numbers into Network Byte Order.
+
+------------------------------------------------------------------------
+r1697 | asalkeld | 2008-11-12 10:39:37 -0700 (Wed, 12 Nov 2008) | 4 lines
+
+LINT: fix confd_sa API error.
+
+remove extra parent_object_handle parameter.
+
+------------------------------------------------------------------------
+r1696 | asalkeld | 2008-11-11 11:13:47 -0700 (Tue, 11 Nov 2008) | 3 lines
+
+LINT: fix "Assignment of ssize_t to int" warnings
+
+
+------------------------------------------------------------------------
+r1695 | asalkeld | 2008-11-11 10:28:22 -0700 (Tue, 11 Nov 2008) | 6 lines
+
+LINT: tweek the lint make rules.
+
+Makefile.inc: add -unrecog (don't complain about things like strdup().
+tools/Makefile: don't use *.c as it complains about duplicate main() functions
+																		  
+
+------------------------------------------------------------------------
+r1694 | asalkeld | 2008-11-11 10:26:58 -0700 (Tue, 11 Nov 2008) | 2 lines
+
+LINT: rename the overlay struct so they are uniq.
+
+------------------------------------------------------------------------
+r1693 | asalkeld | 2008-11-11 10:25:22 -0700 (Tue, 11 Nov 2008) | 7 lines
+
+LINT: fix or ignore unchecked return values.
+
+If we don't care about the return value then typecase the return
+value to void.
+Else do something useful with the return value.
+
+
+------------------------------------------------------------------------
+r1692 | sdake | 2008-11-10 01:58:12 -0700 (Mon, 10 Nov 2008) | 2 lines
+
+Fix missing message in delivery of messages under certain circumstances.
+
+------------------------------------------------------------------------
+r1691 | sdake | 2008-11-10 01:57:50 -0700 (Mon, 10 Nov 2008) | 2 lines
+
+Fix received_flg to contain proper values.
+
+------------------------------------------------------------------------
+r1690 | asalkeld | 2008-11-06 18:34:43 -0700 (Thu, 06 Nov 2008) | 3 lines
+
+Add corotype.h and delete saAis.h
+
+
+------------------------------------------------------------------------
+r1689 | asalkeld | 2008-11-06 14:49:07 -0700 (Thu, 06 Nov 2008) | 5 lines
+
+cleanup the last of the SAF headers and types
+
+This includes the rename of identifiers from corosync to cs.
+
+
+------------------------------------------------------------------------
+r1688 | sdake | 2008-11-05 17:17:19 -0700 (Wed, 05 Nov 2008) | 2 lines
+
+Make width of service 6 bytes instead of 5.
+
+------------------------------------------------------------------------
+r1687 | sdake | 2008-11-05 17:17:01 -0700 (Wed, 05 Nov 2008) | 2 lines
+
+Null terminate string which resulted in failure of confdb during logging.
+
+------------------------------------------------------------------------
+r1686 | asalkeld | 2008-11-03 18:35:15 -0700 (Mon, 03 Nov 2008) | 3 lines
+
+Make lib/ clean up after itself properly.
+
+
+------------------------------------------------------------------------
+r1685 | asalkeld | 2008-11-01 01:22:51 -0700 (Sat, 01 Nov 2008) | 3 lines
+
+fix build error, can't complie if openais not installed.
+
+
+------------------------------------------------------------------------
+r1684 | asalkeld | 2008-11-01 01:19:18 -0700 (Sat, 01 Nov 2008) | 3 lines
+
+Add a top level "make lint"
+
+
+------------------------------------------------------------------------
+r1683 | chrissie | 2008-10-31 06:20:29 -0700 (Fri, 31 Oct 2008) | 10 lines
+
+This patch adds two extra features to the CFG service in corosync, these
+are taken (conceptually at least) from cman.
+
+1. corosync_cfg_killnode()    this will tell a remote node to exit.
+2. corosync_cfg_tryshutdown() this will do a semi-controlled shutdown in
+that it will consult any interested attached daemons if they are willing
+to let corosync be shut down. If they all agree then the rest of the
+cluster will be informed before the node dies.
+
+
+------------------------------------------------------------------------
+r1682 | sdake | 2008-10-30 15:41:34 -0700 (Thu, 30 Oct 2008) | 2 lines
+
+performance loading service engine first implementation.
+
+------------------------------------------------------------------------
+r1681 | sdake | 2008-10-30 15:25:56 -0700 (Thu, 30 Oct 2008) | 2 lines
+
+Logsys flight recorder.
+
+------------------------------------------------------------------------
+r1680 | asalkeld | 2008-10-30 12:32:23 -0700 (Thu, 30 Oct 2008) | 7 lines
+
+Fix a memory violation in objdb (caught by valgrind)
+
+If the new length is larger then memory will be overwritten.
+
+I could make this ">=" but we can save memory if the new size is smaller by using "!=".
+
+
+------------------------------------------------------------------------
+r1679 | chrissie | 2008-10-27 08:56:46 -0700 (Mon, 27 Oct 2008) | 2 lines
+
+Improve the usage message of corosync_objctl.
+
+------------------------------------------------------------------------
+r1678 | chrissie | 2008-10-27 01:25:53 -0700 (Mon, 27 Oct 2008) | 8 lines
+
+Currently if a reload operation fails, any subsystems listening for
+notifications will get a RELOAD_NOTIFY_START callback but not a
+RELOAD_NOTIFY_END callback.
+
+This patch adds a RELOAD_NOTIFY_FAILED callback so that interested
+parties will know when the reload has finished and that it failed.
+
+
+------------------------------------------------------------------------
+r1677 | asalkeld | 2008-10-21 14:44:29 -0700 (Tue, 21 Oct 2008) | 3 lines
+
+remove some new warnings from corosync
+
+
+------------------------------------------------------------------------
+r1676 | asalkeld | 2008-10-20 15:05:51 -0700 (Mon, 20 Oct 2008) | 3 lines
+
+Remove unused global debug option from the man page.
+
+
+------------------------------------------------------------------------
+r1675 | sdake | 2008-10-20 14:52:25 -0700 (Mon, 20 Oct 2008) | 2 lines
+
+Remove unneeded totem_timeout_types global define.
+
+------------------------------------------------------------------------
+r1674 | chrissie | 2008-10-13 07:27:41 -0700 (Mon, 13 Oct 2008) | 15 lines
+
+This is an initial pass at a top-level quorum system. As it stands, this
+module doesn't provide quorum itself, merely a framework for setting and
+querying it. I envisage YKD plugging into this rather than straight into
+sync() eventually.
+
+I've plugged this into the sync() routines rather than replacing them so
+that quorum is itself a VSF, rather than a replacement - I'm not sure if
+that is best or not. Opinions are welcome.
+
+I've added an extra enum member to the service_handler so that we can
+send IPC messages when the cluster isn't quorate. This will default to
+NO (as now) but allows us to query and set quorum when we don't have it
+.. a useful feature !
+
+
+------------------------------------------------------------------------
+r1673 | chrissie | 2008-10-06 05:14:40 -0700 (Mon, 06 Oct 2008) | 10 lines
+
+Add locking around objdb calls so that reloads and writes are atomic.
+
+Also add a notification callback for reload. Both the start and the stop
+are notified so that the user can decide what to do with the flurry of 
+updates that occur.
+
+Note than the reload callback notification MUST be registered against
+OBJECT_PARENT_HANDLE. Registering it lower down the hierarchy makes no sense.
+
+
+------------------------------------------------------------------------
+r1672 | chrissie | 2008-10-06 00:46:04 -0700 (Mon, 06 Oct 2008) | 2 lines
+
+Fix some compile warnings.
+
+------------------------------------------------------------------------
+r1671 | sdake | 2008-10-05 06:23:22 -0700 (Sun, 05 Oct 2008) | 2 lines
+
+Fix CFLAGS and LDFLAGS overrides to work for DEBUG and RELEASE modes.
+
+------------------------------------------------------------------------
+r1669 | sdake | 2008-09-24 22:21:27 -0700 (Wed, 24 Sep 2008) | 2 lines
+
+Fix makefile error in test directory.
+
+------------------------------------------------------------------------
+r1668 | sdake | 2008-09-23 10:32:51 -0700 (Tue, 23 Sep 2008) | 2 lines
+
+Add evs verify tool and allow Makefile to build in test directory properly.
+
+------------------------------------------------------------------------
 r1667 | asalkeld | 2008-09-17 12:15:00 -0700 (Wed, 17 Sep 2008) | 28 lines
 
 Propagate the flow control state between AIS exec and library

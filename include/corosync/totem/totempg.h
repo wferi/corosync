@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2003-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -36,15 +36,18 @@
 #ifndef TOTEMPG_H_DEFINED
 #define TOTEMPG_H_DEFINED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <netinet/in.h>
 #include "totem.h"
 #include "coropoll.h"
-
-typedef unsigned int totempg_groups_handle;
+#include <corosync/hdb.h>
 
 struct totempg_group {
-	void *group;
-	int group_len;
+	const void *group;
+	size_t group_len;
 };
 
 #define TOTEMPG_AGREED			0
@@ -59,7 +62,7 @@ struct totempg_group {
  * Initialize the totem process groups abstraction
  */
 extern int totempg_initialize (
-	poll_handle poll_handle,
+	hdb_handle_t poll_handle,
 	struct totem_config *totem_config
 );
 
@@ -68,8 +71,8 @@ extern void totempg_finalize (void);
 extern int totempg_callback_token_create (void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, void *),
-	void *data);
+	int (*callback_fn) (enum totem_callback_token_type type, const void *),
+	const void *data);
 
 extern void totempg_callback_token_destroy (void *handle);
 
@@ -77,72 +80,81 @@ extern void totempg_callback_token_destroy (void *handle);
  * Initialize a groups instance
  */
 extern int totempg_groups_initialize (
-	totempg_groups_handle *handle,
+	hdb_handle_t *handle,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
-		struct iovec *iovec,
-		int iov_len,
+		const void *msg,
+		unsigned int msg_len,
 		int endian_conversion_required),
 
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		unsigned int *member_list, int member_list_entries,
-		unsigned int *left_list, int left_list_entries,
-		unsigned int *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id));
+		const unsigned int *member_list, size_t member_list_entries,
+		const unsigned int *left_list, size_t left_list_entries,
+		const unsigned int *joined_list, size_t joined_list_entries,
+		const struct memb_ring_id *ring_id));
 
 extern int totempg_groups_finalize (
-	totempg_groups_handle handle);
+	hdb_handle_t handle);
 
 extern int totempg_groups_join (
-	totempg_groups_handle handle,
-	struct totempg_group *groups,
-	int gruop_cnt);
+	hdb_handle_t handle,
+	const struct totempg_group *groups,
+	size_t group_cnt);
 
 extern int totempg_groups_leave (
-	totempg_groups_handle handle,
-	struct totempg_group *groups,
-	int gruop_cnt);
+	hdb_handle_t handle,
+	const struct totempg_group *groups,
+	size_t group_cnt);
 
 extern int totempg_groups_mcast_joined (
-	totempg_groups_handle handle,
-	struct iovec *iovec,
-	int iov_len,
+	hdb_handle_t handle,
+	const struct iovec *iovec,
+	unsigned int iov_len,
 	int guarantee);
 
-extern int totempg_groups_send_ok_joined (
-	totempg_groups_handle handle,
-	struct iovec *iovec,
-	int iov_len);
-	
+extern int totempg_groups_joined_reserve (
+	hdb_handle_t handle,
+	const struct iovec *iovec,
+	unsigned int iov_len);
+
+extern int totempg_groups_joined_release (
+	int msg_count);
+
 extern int totempg_groups_mcast_groups (
-	totempg_groups_handle handle,
+	hdb_handle_t handle,
 	int guarantee,
-	struct totempg_group *groups,
-	int groups_cnt,
-	struct iovec *iovec,
-	int iov_len);
+	const struct totempg_group *groups,
+	size_t groups_cnt,
+	const struct iovec *iovec,
+	unsigned int iov_len);
 
 extern int totempg_groups_send_ok_groups (
-	totempg_groups_handle handle,
-	struct totempg_group *groups,
-	int groups_cnt,
-	struct iovec *iovec,
-	int iov_len);
-	
+	hdb_handle_t handle,
+	const struct totempg_group *groups,
+	size_t groups_cnt,
+	const struct iovec *iovec,
+	unsigned int iov_len);
+
 extern int totempg_ifaces_get (
 	unsigned int nodeid,
         struct totem_ip_address *interfaces,
 	char ***status,
         unsigned int *iface_count);
 
-extern char *totempg_ifaces_print (unsigned int nodeid);
+extern const char *totempg_ifaces_print (unsigned int nodeid);
 
-extern int totempg_my_nodeid_get (void);
+extern unsigned int totempg_my_nodeid_get (void);
 
 extern int totempg_my_family_get (void);
 
+extern int totempg_crypto_set (unsigned int type);
+
 extern int totempg_ring_reenable (void);
-	
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* TOTEMPG_H_DEFINED */

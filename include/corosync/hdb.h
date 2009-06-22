@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -36,10 +36,21 @@
 #ifndef HDB_H_DEFINED
 #define HDB_H_DEFINED
 
+#include <errno.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <pthread.h>
+#include <stdint.h>
+#include <inttypes.h>
+
+typedef uint64_t hdb_handle_t;
+
+/*
+ * Formatting for string printing on 32/64 bit systems
+ */
+#define HDB_D_FORMAT "%"PRIu64
+#define HDB_X_FORMAT "%"PRIx64
 
 enum HDB_HANDLE_STATE {
 	HDB_HANDLE_STATE_EMPTY,
@@ -50,6 +61,7 @@ enum HDB_HANDLE_STATE {
 struct hdb_handle {
 	int state;
 	void *instance;
+	int check;
 	int ref_count;
 };
 
@@ -57,23 +69,93 @@ struct hdb_handle_database {
 	unsigned int handle_count;
 	struct hdb_handle *handles;
 	unsigned int iterator;
-	pthread_mutex_t mutex;
+        void (*destructor) (void *);
+#if defined(HAVE_PTHREAD_SPIN_LOCK)
+	pthread_spinlock_t lock;
+#else
+	pthread_mutex_t lock;
+#endif
+	unsigned int first_run;
 };
+
+#if defined(HAVE_PTHREAD_SPIN_LOCK)
+static inline void hdb_database_lock (pthread_spinlock_t *spinlock)
+{
+	pthread_spin_lock (spinlock);
+}
+
+static inline void hdb_database_unlock (pthread_spinlock_t *spinlock)
+{
+	pthread_spin_unlock (spinlock);
+}
+static inline void hdb_database_lock_init (pthread_spinlock_t *spinlock)
+{
+	pthread_spin_init (spinlock, 0);
+}
+
+static inline void hdb_database_lock_destroy (pthread_spinlock_t *spinlock)
+{
+	pthread_spin_destroy (spinlock);
+}
+
+#else
+static inline void hdb_database_lock (pthread_mutex_t *mutex)
+{
+	pthread_mutex_lock (mutex);
+}
+
+static inline void hdb_database_unlock (pthread_mutex_t *mutex)
+{
+	pthread_mutex_unlock (mutex);
+}
+static inline void hdb_database_lock_init (pthread_mutex_t *mutex)
+{
+	pthread_mutex_init (mutex, NULL);
+}
+
+static inline void hdb_database_lock_destroy (pthread_mutex_t *mutex)
+{
+	pthread_mutex_destroy (mutex);
+}
+#endif
+
+#define DECLARE_HDB_DATABASE(database_name,destructor_function)		\
+static struct hdb_handle_database (database_name) = {			\
+	.handle_count	= 0,						\
+	.handles 	= NULL,						\
+	.iterator	= 0,						\
+	.destructor	= destructor_function,				\
+	.first_run	= 0						\
+};									\
+static void database_name##_init(void)__attribute__((constructor));	\
+static void database_name##_init(void)					\
+{                                                                       \
+	hdb_database_lock_init (&(database_name).lock);		\
+}
+
+#define DECLARE_HDB_DATABASE_FIRSTRUN(database_name)			\
+static struct hdb_handle_database (database_name) = {			\
+	.first_run = 1, 						\
+};									\
+static void database_name##_init(void)__attribute__((constructor));	\
+static void database_name##_init(void)					\
+{                                                                       \
+	memset (&(database_name), 0, sizeof (struct hdb_handle_database));\
+	hdb_database_lock_init (&(database_name).lock);		\
+}
 
 static inline void hdb_create (
 	struct hdb_handle_database *handle_database)
 {
 	memset (handle_database, 0, sizeof (struct hdb_handle_database));
-	pthread_mutex_init (&handle_database->mutex, NULL);
+	hdb_database_lock_init (&handle_database->lock);
 }
 
 static inline void hdb_destroy (
 	struct hdb_handle_database *handle_database)
 {
-	if (handle_database->handles) {
-		free (handle_database->handles);
-	}
-	pthread_mutex_destroy (&handle_database->mutex);
+	free (handle_database->handles);
+	hdb_database_lock_destroy (&handle_database->lock);
 	memset (handle_database, 0, sizeof (struct hdb_handle_database));
 }
 
@@ -81,14 +163,20 @@ static inline void hdb_destroy (
 static inline int hdb_handle_create (
 	struct hdb_handle_database *handle_database,
 	int instance_size,
-	unsigned int *handle_id_out)
+	hdb_handle_t *handle_id_out)
 {
 	int handle;
+	unsigned int check;
 	void *new_handles;
 	int found = 0;
 	void *instance;
+	int i;
 
-	pthread_mutex_lock (&handle_database->mutex);
+	if (handle_database->first_run == 1) {
+		memset (handle_database, 0, sizeof (struct hdb_handle_database));
+		hdb_database_lock_init (&handle_database->lock);
+	}
+	hdb_database_lock (&handle_database->lock);
 
 	for (handle = 0; handle < handle_database->handle_count; handle++) {
 		if (handle_database->handles[handle].state == HDB_HANDLE_STATE_EMPTY) {
@@ -102,7 +190,8 @@ static inline int hdb_handle_create (
 		new_handles = (struct hdb_handle *)realloc (handle_database->handles,
 			sizeof (struct hdb_handle) * handle_database->handle_count);
 		if (new_handles == NULL) {
-			pthread_mutex_unlock (&handle_database->mutex);
+			hdb_database_unlock (&handle_database->lock);
+			errno = ENOMEM;
 			return (-1);
 		}
 		handle_database->handles = new_handles;
@@ -110,8 +199,23 @@ static inline int hdb_handle_create (
 
 	instance = (void *)malloc (instance_size);
 	if (instance == 0) {
+		errno = ENOMEM;
 		return (-1);
 	}
+
+	/*
+	 * This code makes sure the random number isn't zero
+	 * We use 0 to specify an invalid handle out of the 1^64 address space
+	 * If we get 0 200 times in a row, the RNG may be broken
+	 */
+	for (i = 0; i < 200; i++) {
+		check = random();
+
+		if (check != 0 && check != 0xffffffff) {
+			break;
+		}
+	}
+
 	memset (instance, 0, instance_size);
 
 	handle_database->handles[handle].state = HDB_HANDLE_STATE_ACTIVE;
@@ -120,28 +224,43 @@ static inline int hdb_handle_create (
 
 	handle_database->handles[handle].ref_count = 1;
 
-	*handle_id_out = handle;
+	handle_database->handles[handle].check = check;
 
-	pthread_mutex_unlock (&handle_database->mutex);
+	*handle_id_out = (((unsigned long long)(check)) << 32) | handle;
+
+	hdb_database_unlock (&handle_database->lock);
 
 	return (0);
 }
 
 static inline int hdb_handle_get (
 	struct hdb_handle_database *handle_database,
-	unsigned int handle,
+	hdb_handle_t handle_in,
 	void **instance)
 {
-	pthread_mutex_lock (&handle_database->mutex);
+	unsigned int check = ((unsigned int)(((unsigned long long)handle_in) >> 32));
+	unsigned int handle = handle_in & 0xffffffff;
+
+	hdb_database_lock (&handle_database->lock);
 
 	*instance = NULL;
 	if (handle >= handle_database->handle_count) {
-		pthread_mutex_unlock (&handle_database->mutex);
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
 		return (-1);
 	}
 
 	if (handle_database->handles[handle].state != HDB_HANDLE_STATE_ACTIVE) {
-		pthread_mutex_unlock (&handle_database->mutex);
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
+		return (-1);
+	}
+
+	if (check != 0xffffffff &&
+		check != handle_database->handles[handle].check) {
+
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
 		return (-1);
 	}
 
@@ -149,34 +268,76 @@ static inline int hdb_handle_get (
 
 	handle_database->handles[handle].ref_count += 1;
 
-	pthread_mutex_unlock (&handle_database->mutex);
+	hdb_database_unlock (&handle_database->lock);
 	return (0);
 }
 
-static inline void hdb_handle_put (
+static inline int hdb_handle_put (
 	struct hdb_handle_database *handle_database,
-	unsigned int handle)
+	hdb_handle_t handle_in)
 {
-	pthread_mutex_lock (&handle_database->mutex);
+	unsigned int check = ((unsigned int)(((unsigned long long)handle_in) >> 32));
+	unsigned int handle = handle_in & 0xffffffff;
+
+	hdb_database_lock (&handle_database->lock);
+
+	if (handle >= handle_database->handle_count) {
+		hdb_database_unlock (&handle_database->lock);
+
+		errno = EBADF;
+		return (-1);
+	}
+
+	if (check != 0xffffffff &&
+		check != handle_database->handles[handle].check) {
+
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
+		return (-1);
+	}
+
 	handle_database->handles[handle].ref_count -= 1;
 	assert (handle_database->handles[handle].ref_count >= 0);
 
 	if (handle_database->handles[handle].ref_count == 0) {
+		if (handle_database->destructor) {
+			handle_database->destructor (handle_database->handles[handle].instance);
+		}
 		free (handle_database->handles[handle].instance);
 		memset (&handle_database->handles[handle], 0, sizeof (struct hdb_handle));
 	}
-	pthread_mutex_unlock (&handle_database->mutex);
+	hdb_database_unlock (&handle_database->lock);
+	return (0);
 }
 
-static inline void hdb_handle_destroy (
+static inline int hdb_handle_destroy (
 	struct hdb_handle_database *handle_database,
-	unsigned int handle)
+	hdb_handle_t handle_in)
 {
-	pthread_mutex_lock (&handle_database->mutex);
+	unsigned int check = ((unsigned int)(((unsigned long long)handle_in) >> 32));
+	unsigned int handle = handle_in & 0xffffffff;
+	int res;
+
+	hdb_database_lock (&handle_database->lock);
+
+	if (handle >= handle_database->handle_count) {
+		hdb_database_unlock (&handle_database->lock);
+
+		errno = EBADF;
+		return (-1);
+	}
+
+	if (check != 0xffffffff &&
+		check != handle_database->handles[handle].check) {
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
+		return (-1);
+	}
 
 	handle_database->handles[handle].state = HDB_HANDLE_STATE_PENDINGREMOVAL;
-	pthread_mutex_unlock (&handle_database->mutex);
-	hdb_handle_put (handle_database, handle);
+	hdb_database_unlock (&handle_database->lock);
+	res = hdb_handle_put (handle_database, handle_in);
+	return (res);
 }
 
 static inline void hdb_iterator_reset (
@@ -188,15 +349,15 @@ static inline void hdb_iterator_reset (
 static inline int hdb_iterator_next (
 	struct hdb_handle_database *handle_database,
 	void **instance,
-	unsigned int *handle)
+	hdb_handle_t *handle)
 {
 	int res = -1;
 
 	while (handle_database->iterator < handle_database->handle_count) {
-		*handle = handle_database->iterator;
+		*handle = ((unsigned long long)(handle_database->handles[handle_database->iterator].check) << 32) | handle_database->iterator;
 		res = hdb_handle_get (
 			handle_database,
-			handle_database->iterator,
+			*handle,
 			instance);
 
 		handle_database->iterator += 1;
@@ -205,6 +366,18 @@ static inline int hdb_iterator_next (
 		}
 	}
 	return (res);
+}
+
+static inline unsigned int hdb_base_convert (hdb_handle_t handle)
+{
+	return (handle & 0xffffffff);
+}
+
+static inline unsigned long long hdb_nocheck_convert (unsigned int handle)
+{
+	unsigned long long retvalue = 0xffffffffULL << 32 | handle;
+
+	return (retvalue);
 }
 
 #endif /* HDB_H_DEFINED */

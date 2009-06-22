@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 Red Hat, Inc.
+ * Copyright (c) 2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -31,31 +31,35 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <assert.h>
 #include <stdio.h>
 #include <poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
-void deliver(
+static void deliver(
 	cpg_handle_t handle,
-	struct cpg_name *group_name,
+	const struct cpg_name *group_name,
 	uint32_t nodeid,
 	uint32_t pid,
 	void *msg,
-	int msg_len)
+	size_t msg_len)
 {
     printf("self delivered nodeid: %x\n", nodeid);
 }
 
-void confch(
+static void confch(
 	cpg_handle_t handle,
-	struct cpg_name *group_name,
-	struct cpg_address *member_list, int member_list_entries,
-	struct cpg_address *left_list, int left_list_entries,
-	struct cpg_address *joined_list, int joined_list_entries)
+	const struct cpg_name *group_name,
+	const struct cpg_address *member_list, size_t member_list_entries,
+	const struct cpg_address *left_list, size_t left_list_entries,
+	const struct cpg_address *joined_list, size_t joined_list_entries)
 {
 	printf("confchg nodeid %x\n", member_list[0].nodeid);
 }
@@ -65,22 +69,22 @@ int main(int argc, char** argv) {
 	cpg_callbacks_t cb={&deliver,&confch};
 	unsigned int nodeid=0;
 	struct cpg_name group={3,"foo"};
+	struct iovec msg={(void *)"hello", 5}; /* discard const */
 
 	struct pollfd pfd;
 	int fd;
 
 	printf ("All of the nodeids should match on a single node configuration\n for the test to pass.");
-	assert(CPG_OK==cpg_initialize(&handle, &cb));
-	assert(CPG_OK==cpg_local_get(handle,&nodeid));
+	assert(CS_OK==cpg_initialize(&handle, &cb));
+	assert(CS_OK==cpg_local_get(handle,&nodeid));
 	printf("local_get: %x\n", nodeid);
-	assert(CPG_OK==cpg_join(handle, &group));
-	struct iovec msg={"hello", 5};
-	assert(CPG_OK==cpg_mcast_joined(handle,CPG_TYPE_AGREED,&msg,1));
+	assert(CS_OK==cpg_join(handle, &group));
+	assert(CS_OK==cpg_mcast_joined(handle,CPG_TYPE_AGREED,&msg,1));
 	cpg_fd_get (handle, &fd);
 	pfd.fd = fd;
 	pfd.events = POLLIN;
-		
+
 	poll (&pfd, 1, 1000);
-	cpg_dispatch(handle, CPG_DISPATCH_ALL);
+	cpg_dispatch(handle, CS_DISPATCH_ALL);
 	return (0);
 }

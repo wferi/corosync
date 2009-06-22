@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -36,20 +36,23 @@
  * when aisexec is not running.
  */
 
+#include <config.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <sys/types.h>
 #include <errno.h>
 
-#include <corosync/saAis.h>
-#include <corosync/ais_util.h>
+#include <corosync/corotypes.h>
+#include <corosync/coroipcc.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 #include <corosync/engine/logsys.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/lcr/lcr_ifact.h>
+
+#include "sa-confdb.h"
 
 static struct objdb_iface_ver0 *objdb;
 
@@ -57,10 +60,11 @@ static int num_config_modules;
 
 static struct config_iface_ver0 *config_modules[128];
 
+void main_get_config_modules(struct config_iface_ver0 ***modules, int *num);
 
-static int load_objdb()
+static int load_objdb(void)
 {
-	unsigned int objdb_handle;
+	hdb_handle_t objdb_handle;
 	void *objdb_p;
 	int res;
 
@@ -72,7 +76,7 @@ static int load_objdb()
 		"objdb",
 		0,
 		&objdb_p,
-		0);
+		(void *)0);
 	if (res == -1) {
 		return -1;
 	}
@@ -80,28 +84,32 @@ static int load_objdb()
 	objdb = (struct objdb_iface_ver0 *)objdb_p;
 
 	objdb->objdb_init ();
-	return SA_AIS_OK;
+	return CS_OK;
 }
 
-static int load_config()
+static int load_config(void)
 {
 	char *config_iface;
 	char *iface;
 	int res;
-	unsigned int config_handle;
-	unsigned int config_version = 0;
+	hdb_handle_t config_handle;
+	hdb_handle_t config_version = 0;
 	void *config_p;
 	struct config_iface_ver0 *config;
-	char *error_string;
+	const char *error_string;
 
 	/* User's bootstrap config service */
 	config_iface = getenv("COROSYNC_DEFAULT_CONFIG_IFACE");
 	if (!config_iface) {
-		config_iface = "corosync_parser";
+		if ((config_iface = strdup("corosync_parser")) == NULL) {
+			return -1;
+		}
 	}
 
 	/* Make a copy so we can deface it with strtok */
-	config_iface = strdup(config_iface);
+	if ((config_iface = strdup(config_iface)) == NULL) {
+		return -1;
+	}
 
 	iface = strtok(config_iface, ":");
 	while (iface)
@@ -127,10 +135,9 @@ static int load_config()
 
 		iface = strtok(NULL, ":");
 	}
-	if (config_iface)
-		free(config_iface);
+	free(config_iface);
 
-	return SA_AIS_OK;
+	return CS_OK;
 }
 
 /* Needed by objdb when it writes back the configuration */
@@ -140,41 +147,12 @@ void main_get_config_modules(struct config_iface_ver0 ***modules, int *num)
 	*num = num_config_modules;
 }
 
-/* Needed by some modules ... */
-char *strstr_rs (const char *haystack, const char *needle)
-{
-	char *end_address;
-	char *new_needle;
-
-	new_needle = (char *)strdup (needle);
-	new_needle[strlen (new_needle) - 1] = '\0';
-
-	end_address = strstr (haystack, new_needle);
-	if (end_address) {
-		end_address += strlen (new_needle);
-		end_address = strstr (end_address, needle + strlen (new_needle));
-	}
-	if (end_address) {
-		end_address += 1; /* skip past { or = */
-		do {
-			if (*end_address == '\t' || *end_address == ' ') {
-				end_address++;
-			} else {
-				break;
-			}
-		} while (*end_address != '\0');
-	}
-
-	free (new_needle);
-	return (end_address);
-}
-
 int confdb_sa_init (void)
 {
 	int res;
 
 	res = load_objdb();
-	if (res != SA_AIS_OK)
+	if (res != CS_OK)
 		return res;
 
 	res = load_config();
@@ -184,10 +162,10 @@ int confdb_sa_init (void)
 
 
 int confdb_sa_object_create (
-	unsigned int parent_object_handle,
-	void *object_name,
-	int object_name_len,
-	unsigned int *object_handle)
+	hdb_handle_t parent_object_handle,
+	const void *object_name,
+	size_t object_name_len,
+	hdb_handle_t *object_handle)
 {
 	return objdb->object_create(parent_object_handle,
 				    object_handle,
@@ -195,24 +173,24 @@ int confdb_sa_object_create (
 }
 
 int confdb_sa_object_destroy (
-	unsigned int object_handle)
+	hdb_handle_t object_handle)
 {
 	return objdb->object_destroy(object_handle);
 }
 
 int confdb_sa_object_parent_get (
-	unsigned int object_handle,
-	unsigned int *parent_object_handle)
+	hdb_handle_t object_handle,
+	hdb_handle_t *parent_object_handle)
 {
 	return objdb->object_parent_get(object_handle, parent_object_handle);
 }
 
 int confdb_sa_key_create (
-	unsigned int parent_object_handle,
-	void *key_name,
-	int key_name_len,
-	void *value,
-	int value_len)
+	hdb_handle_t parent_object_handle,
+	const void *key_name,
+	size_t key_name_len,
+	const void *value,
+	size_t value_len)
 {
 	return objdb->object_key_create(parent_object_handle,
 					key_name, key_name_len,
@@ -220,23 +198,22 @@ int confdb_sa_key_create (
 }
 
 int confdb_sa_key_delete (
-	unsigned int parent_object_handle,
-	void *key_name,
-	int key_name_len,
-	void *value,
-	int value_len)
+	hdb_handle_t parent_object_handle,
+	const void *key_name,
+	size_t key_name_len,
+	const void *value,
+	size_t value_len)
 {
 	return objdb->object_key_delete(parent_object_handle,
-					key_name, key_name_len,
-					value, value_len);
+					key_name, key_name_len);
 }
 
 int confdb_sa_key_get (
-	unsigned int parent_object_handle,
-	void *key_name,
-	int key_name_len,
+	hdb_handle_t parent_object_handle,
+	const void *key_name,
+	size_t key_name_len,
 	void *value,
-	int *value_len)
+	size_t *value_len)
 {
 	int res;
 	void *kvalue;
@@ -251,9 +228,9 @@ int confdb_sa_key_get (
 }
 
 int confdb_sa_key_increment (
-	unsigned int parent_object_handle,
-	void *key_name,
-	int key_name_len,
+	hdb_handle_t parent_object_handle,
+	const void *key_name,
+	size_t key_name_len,
 	unsigned int *value)
 {
 	int res;
@@ -265,9 +242,9 @@ int confdb_sa_key_increment (
 }
 
 int confdb_sa_key_decrement (
-	unsigned int parent_object_handle,
-	void *key_name,
-	int key_name_len,
+	hdb_handle_t parent_object_handle,
+	const void *key_name,
+	size_t key_name_len,
 	unsigned int *value)
 {
 	int res;
@@ -280,82 +257,106 @@ int confdb_sa_key_decrement (
 
 
 int confdb_sa_key_replace (
-	unsigned int parent_object_handle,
-	void *key_name,
-	int key_name_len,
-	void *old_value,
-	int old_value_len,
-	void *new_value,
-	int new_value_len)
+	hdb_handle_t parent_object_handle,
+	const void *key_name,
+	size_t key_name_len,
+	const void *old_value,
+	size_t old_value_len,
+	const void *new_value,
+	size_t new_value_len)
 {
 	return objdb->object_key_replace(parent_object_handle,
 					 key_name, key_name_len,
-					 old_value, old_value_len,
 					 new_value, new_value_len);
 }
 
-int confdb_sa_write (
-	unsigned int parent_object_handle,
-	char *error_text)
+int confdb_sa_write (char *error_text, size_t errbuf_len)
 {
-	char *errtext;
+	const char *errtext;
 	int ret;
 
 	ret = objdb->object_write_config(&errtext);
-	if (!ret)
-		strcpy(error_text, errtext);
+	if (!ret) {
+		strncpy(error_text, errtext, errbuf_len);
+		if (errbuf_len > 0)
+			error_text[errbuf_len-1] = '\0';
+	}
 
 	return ret;
 }
 
 int confdb_sa_reload (
-	unsigned int parent_object_handle,
 	int flush,
-	char *error_text)
+	char *error_text,
+	size_t errbuf_len)
 {
 	char *errtext;
 	int ret;
 
-	ret = objdb->object_reload_config(flush, &errtext);
-	if (!ret)
-		strcpy(error_text, errtext);
+	ret = objdb->object_reload_config(flush, (const char **) &errtext);
+	if (!ret) {
+		strncpy(error_text, errtext, errbuf_len);
+		if (errbuf_len > 0)
+			error_text[errbuf_len-1] = '\0';
+	}
 
 	return ret;
 }
 
 int confdb_sa_object_find (
-	unsigned int parent_object_handle,
-	unsigned int *find_handle,
-	unsigned int *object_handle,
-	void *object_name,
-	int *object_name_len,
-	int copy_name)
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t *find_handle,
+	hdb_handle_t *object_handle,
+	const void *object_name,
+	size_t object_name_len)
 {
 	int res;
 
 	if (!*find_handle) {
 		objdb->object_find_create(parent_object_handle,
-					  object_name, *object_name_len,
+					  object_name, object_name_len,
+					  find_handle);
+	}
+
+	res = objdb->object_find_next(*find_handle,
+				      object_handle);
+	return res;
+}
+
+int confdb_sa_object_iter (
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t *find_handle,
+	hdb_handle_t *object_handle,
+	const void *object_name,
+	size_t object_name_len,
+	void *found_object_name,
+	size_t *found_object_name_len)
+{
+	int res;
+
+	if (!*find_handle) {
+		objdb->object_find_create(parent_object_handle,
+					  object_name, object_name_len,
 					  find_handle);
 	}
 
 	res = objdb->object_find_next(*find_handle,
 				      object_handle);
 	/* Return object name if we were called as _iter */
-	if (copy_name && !res) {
+	if (!res) {
 		objdb->object_name_get(*object_handle,
-				       object_name, object_name_len);
+				       found_object_name, found_object_name_len);
 	}
 	return res;
 }
 
 int confdb_sa_key_iter (
-	unsigned int parent_object_handle,
-	unsigned int start_pos,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t start_pos,
 	void *key_name,
-	int *key_name_len,
+	size_t *key_name_len,
 	void *value,
-	int *value_len)
+	size_t *value_len)
 {
 	int res;
 	void *kname, *kvalue;
@@ -372,7 +373,7 @@ int confdb_sa_key_iter (
 	return res;
 }
 
-int confdb_sa_find_destroy(unsigned int find_handle)
+int confdb_sa_find_destroy(hdb_handle_t find_handle)
 {
 	return objdb->object_find_destroy(find_handle);
 }

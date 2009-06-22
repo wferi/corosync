@@ -2,7 +2,7 @@
  * Copyright (C) 2006 Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -27,8 +27,12 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <assert.h>
 #include <unistd.h>
+#include <corosync/hdb.h>
 #include <corosync/lcr/lcr_ifact.h>
 
 struct iface {
@@ -38,15 +42,15 @@ struct iface {
 };
 
 int main (void) {
-	unsigned int a_ifact_handle_ver0;
-	unsigned int b_ifact_handle_ver0;
+	hdb_handle_t a_ifact_handle_ver0;
+	hdb_handle_t b_ifact_handle_ver0;
 	struct iface *a_iface_ver0;
 	struct iface *a_iface_ver1;
 	void *a_iface_ver0_p;
 	void *a_iface_ver1_p;
 
-	unsigned int a_ifact_handle_ver1;
-	unsigned int b_ifact_handle_ver1;
+	hdb_handle_t a_ifact_handle_ver1;
+	hdb_handle_t b_ifact_handle_ver1;
 	struct iface *b_iface_ver0;
 	struct iface *b_iface_ver1;
 	void *b_iface_ver0_p;

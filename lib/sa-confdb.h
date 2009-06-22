@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -33,15 +33,61 @@
  */
 
 extern int confdb_sa_init(void);
-extern int confdb_sa_object_create(unsigned int parent_object_handle, void *object_name, int object_name_len, unsigned int *object_handle);
-extern int confdb_sa_object_destroy(unsigned int object_handle);
-extern int confdb_sa_object_parent_get(unsigned int object_handle, unsigned int *parent_object_handle);
-extern int confdb_sa_key_create(unsigned int parent_object_handle, void *key_name, int key_name_len, void *value, int value_len);
-extern int confdb_sa_key_delete(unsigned int parent_object_handle, void *key_name, int key_name_len, void *value, int value_len);
-extern int confdb_sa_key_get(unsigned int parent_object_handle, void *key_name, int key_name_len, void *value, int *value_len);
-extern int confdb_sa_key_replace(unsigned int parent_object_handle, void *key_name, int key_name_len, void *old_value, int old_value_len, void *new_value, int new_value_len);
-extern int confdb_sa_object_find(unsigned int parent_object_handle, unsigned int *find_handle, unsigned int *object_handle, void *object_name, int *object_name_len, int copy_name);
-extern int confdb_sa_key_iter(unsigned int parent_object_handle, unsigned int start_pos, void *key_name, int *key_name_len, void *value, int *value_len);
-extern int confdb_sa_find_destroy(unsigned int find_handle);
-extern int confdb_sa_write(char *error_text);
-extern int confdb_sa_reload(int flush, char *error_text);
+extern int confdb_sa_object_create(hdb_handle_t parent_object_handle,
+				   const void *object_name,
+				   size_t object_name_len,
+				   hdb_handle_t *object_handle);
+extern int confdb_sa_object_destroy(hdb_handle_t object_handle);
+extern int confdb_sa_object_parent_get(hdb_handle_t object_handle,
+				       hdb_handle_t *parent_object_handle);
+extern int confdb_sa_key_create(hdb_handle_t parent_object_handle,
+				const void *key_name,
+				size_t key_name_len,
+				const void *value,
+				size_t value_len);
+extern int confdb_sa_key_delete(hdb_handle_t parent_object_handle,
+				const void *key_name,
+				size_t key_name_len,
+				const void *value,
+				size_t value_len);
+extern int confdb_sa_key_get(hdb_handle_t parent_object_handle,
+			     const void *key_name,
+			     size_t key_name_len,
+			     void *value,
+			     size_t *value_len);
+extern int confdb_sa_key_replace(hdb_handle_t parent_object_handle,
+				 const void *key_name,
+				 size_t key_name_len,
+				 const void *old_value,
+				 size_t old_value_len,
+				 const void *new_value,
+				 size_t new_value_len);
+extern int confdb_sa_object_find(hdb_handle_t parent_object_handle,
+				 hdb_handle_t *find_handle,
+				 hdb_handle_t *object_handle,
+				 const void *object_name,
+				 size_t object_name_len);
+extern int confdb_sa_object_iter(hdb_handle_t parent_object_handle,
+				 hdb_handle_t *find_handle,
+				 hdb_handle_t *object_handle,
+				 const void *object_name,
+				 size_t object_name_len,
+				 void *found_object_name,
+				 size_t *found_object_name_len);
+extern int confdb_sa_key_iter(hdb_handle_t parent_object_handle,
+			      hdb_handle_t start_pos,
+			      void *key_name,
+			      size_t *key_name_len,
+			      void *value,
+			      size_t *value_len);
+extern int confdb_sa_key_increment(hdb_handle_t parent_object_handle,
+				   const void *key_name,
+				   size_t key_name_len,
+				   unsigned int *value);
+extern int confdb_sa_key_decrement(hdb_handle_t parent_object_handle,
+				   const void *key_name,
+				   size_t key_name_len,
+				   unsigned int *value);
+extern int confdb_sa_find_destroy(hdb_handle_t find_handle);
+extern int confdb_sa_write(char *error_text, size_t errbuf_len);
+extern int confdb_sa_reload(int flush, char *error_text, size_t errbuf_len);

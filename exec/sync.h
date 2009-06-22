@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -44,13 +44,13 @@ struct sync_callbacks {
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
-	char *name;
+	const char *name;
 };
 
+struct corosync_api_v1;
 int sync_register (
 	int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callbacks),
-	void (*synchronization_completed) (void),
-	char *vsf_type);
+	void (*synchronization_completed) (void));
 
 int sync_in_process (void);
 
@@ -59,9 +59,9 @@ int sync_primary_designated (void);
 /**
  * Execute synchronization upon request for the named service
  * @param name service handler name to synchronize
- * 
+ *
  * @return int 0 OK, error code otherwise
  */
-extern int sync_request (char *name);
+extern int sync_request (const char *name);
 
 #endif /* SYNC_H_DEFINED */

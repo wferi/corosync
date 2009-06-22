@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2006 MontaVista Software, Inc.
- * Copyright (c) 2007-2008 Red Hat, Inc.
+ * Copyright (c) 2007-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -33,6 +33,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <errno.h>
 
@@ -41,33 +43,36 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
+#include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
 
 #include "main.h"
 
 struct object_key {
 	void *key_name;
-	int key_len;
+	size_t key_len;
 	void *value;
-	int value_len;
+	size_t value_len;
 	struct list_head list;
 };
 
 struct object_tracker {
-	unsigned int object_handle;
+	hdb_handle_t object_handle;
 	void * data_pt;
 	object_track_depth_t depth;
 	object_key_change_notify_fn_t key_change_notify_fn;
 	object_create_notify_fn_t object_create_notify_fn;
 	object_destroy_notify_fn_t object_destroy_notify_fn;
+	object_reload_notify_fn_t object_reload_notify_fn;
 	struct list_head tracker_list;
 	struct list_head object_list;
 };
 
 struct object_instance {
 	void *object_name;
-	int object_name_len;
-	unsigned int object_handle;
-	unsigned int parent_handle;
+	size_t object_name_len;
+	hdb_handle_t object_handle;
+	hdb_handle_t parent_handle;
 	struct list_head key_head;
 	struct list_head child_head;
 	struct list_head child_list;
@@ -86,30 +91,54 @@ struct object_find_instance {
 	struct list_head *find_child_list;
 	struct list_head *child_head;
 	void *object_name;
-	int object_len;
+	size_t object_len;
 };
 
 struct objdb_iface_ver0 objdb_iface;
 struct list_head objdb_trackers_head;
+static pthread_rwlock_t reload_lock;
+static pthread_t lock_thread;
+static pthread_mutex_t meta_lock;
 
-static struct hdb_handle_database object_instance_database = {
-	.handle_count	= 0,
-	.handles	= 0,
-	.iterator	= 0,
-	.mutex		= PTHREAD_MUTEX_INITIALIZER
-};
+DECLARE_HDB_DATABASE (object_instance_database,NULL);
 
-static struct hdb_handle_database object_find_instance_database = {
-	.handle_count	= 0,
-	.handles	= 0,
-	.iterator	= 0,
-	.mutex		= PTHREAD_MUTEX_INITIALIZER
-};
+DECLARE_HDB_DATABASE (object_find_instance_database,NULL);
 
+static void objdb_wrlock(void)
+{
+	pthread_mutex_lock(&meta_lock);
+	pthread_rwlock_wrlock(&reload_lock);
+	lock_thread = pthread_self();
+	pthread_mutex_unlock(&meta_lock);
+}
+
+static void objdb_rdlock(void)
+{
+	pthread_mutex_lock(&meta_lock);
+	if (lock_thread != pthread_self())
+		pthread_rwlock_rdlock(&reload_lock);
+	pthread_mutex_unlock(&meta_lock);
+}
+
+static void objdb_rdunlock(void)
+{
+	pthread_mutex_lock(&meta_lock);
+	if (lock_thread != pthread_self())
+		pthread_rwlock_unlock(&reload_lock);
+	pthread_mutex_unlock(&meta_lock);
+}
+
+static void objdb_wrunlock(void)
+{
+	pthread_mutex_lock(&meta_lock);
+	pthread_rwlock_unlock(&reload_lock);
+	lock_thread = 0;
+	pthread_mutex_unlock(&meta_lock);
+}
 
 static int objdb_init (void)
 {
-	unsigned int handle;
+	hdb_handle_t handle;
 	struct object_instance *instance;
 	unsigned int res;
 
@@ -124,9 +153,10 @@ static int objdb_init (void)
 		goto error_destroy;
 	}
 	instance->find_child_list = &instance->child_head;
-	instance->object_name = "parent";
+	instance->object_name = (char *)"parent";
 	instance->object_name_len = strlen ("parent");
 	instance->object_handle = handle;
+	instance->parent_handle = OBJECT_PARENT_HANDLE;
 	instance->priv = NULL;
 	instance->object_valid_list = NULL;
 	instance->object_valid_list_entries = 0;
@@ -135,6 +165,8 @@ static int objdb_init (void)
 	list_init (&instance->child_list);
 	list_init (&instance->track_head);
 	list_init (&objdb_trackers_head);
+	pthread_rwlock_init(&reload_lock, NULL);
+	pthread_mutex_init(&meta_lock, NULL);
 
 	hdb_handle_put (&object_instance_database, handle);
 	return (0);
@@ -181,22 +213,23 @@ static int _object_notify_deleted_children(struct object_instance *parent_pt)
 	return 0;
 }
 
-static void object_created_notification(unsigned int object_handle,
-										unsigned int parent_object_handle,
-										void *name_pt, int name_len)
+static void object_created_notification(
+	hdb_handle_t object_handle,
+	hdb_handle_t parent_object_handle,
+	const void *name_pt, size_t name_len)
 {
 	struct list_head * list;
 	struct object_instance * obj_pt;
 	struct object_tracker * tracker_pt;
-	unsigned int obj_handle = object_handle;
+	hdb_handle_t obj_handle = object_handle;
 	unsigned int res;
 
 	do {
 		res = hdb_handle_get (&object_instance_database,
-							  obj_handle, (void *)&obj_pt);
+			obj_handle, (void *)&obj_pt);
 
 		for (list = obj_pt->track_head.next;
-			 list != &obj_pt->track_head; list = list->next) {
+			list != &obj_pt->track_head; list = list->next) {
 
 			tracker_pt = list_entry (list, struct object_tracker, object_list);
 
@@ -211,24 +244,22 @@ static void object_created_notification(unsigned int object_handle,
 
 		hdb_handle_put (&object_instance_database, obj_handle);
 		obj_handle = obj_pt->parent_handle;
-
-	} while (obj_pt->object_handle != OBJECT_PARENT_HANDLE);
-
+	} while (obj_handle != OBJECT_PARENT_HANDLE);
 }
 
-static void object_pre_deletion_notification(unsigned int object_handle,
-											 unsigned int parent_object_handle,
-											 void *name_pt, int name_len)
-{
+static void object_pre_deletion_notification(hdb_handle_t object_handle,
+	hdb_handle_t parent_object_handle,
+	const void *name_pt, size_t name_len)
+	{
 	struct list_head * list;
 	struct object_instance * obj_pt;
 	struct object_tracker * tracker_pt;
-	unsigned int obj_handle = object_handle;
+	hdb_handle_t obj_handle = object_handle;
 	unsigned int res;
 
 	do {
 		res = hdb_handle_get (&object_instance_database,
-							  obj_handle, (void *)&obj_pt);
+			obj_handle, (void *)&obj_pt);
 
 		for (list = obj_pt->track_head.next;
 			 list != &obj_pt->track_head; list = list->next) {
@@ -238,37 +269,37 @@ static void object_pre_deletion_notification(unsigned int object_handle,
 			if (((obj_handle == parent_object_handle) ||
 				 (tracker_pt->depth == OBJECT_TRACK_DEPTH_RECURSIVE)) &&
 				(tracker_pt->object_destroy_notify_fn != NULL)) {
-				tracker_pt->object_destroy_notify_fn(parent_object_handle,
-									 name_pt, name_len,
-									 tracker_pt->data_pt);
+				tracker_pt->object_destroy_notify_fn(
+					parent_object_handle,
+					name_pt, name_len,
+					tracker_pt->data_pt);
 			}
 		}
 		/* notify child object listeners */
 		if (obj_handle == object_handle)
 			_object_notify_deleted_children(obj_pt);
 
-		hdb_handle_put (&object_instance_database, obj_handle);
 		obj_handle = obj_pt->parent_handle;
-
-	} while (obj_pt->object_handle != OBJECT_PARENT_HANDLE);
-
+		hdb_handle_put (&object_instance_database, obj_pt->object_handle);
+	} while (obj_handle != OBJECT_PARENT_HANDLE);
 }
 
-static void object_key_changed_notification(unsigned int object_handle,
-											void *name_pt,	int name_len,
-											void *value_pt, int value_len,
-											object_change_type_t type)
+static void object_key_changed_notification(hdb_handle_t object_handle,
+	const void *name_pt, size_t name_len,
+	const void *value_pt, size_t value_len,
+	object_change_type_t type)
 {
 	struct list_head * list;
 	struct object_instance * obj_pt;
 	struct object_instance * owner_pt = NULL;
 	struct object_tracker * tracker_pt;
-	unsigned int obj_handle = object_handle;
+	hdb_handle_t obj_handle = object_handle;
 	unsigned int res;
 
 	do {
 		res = hdb_handle_get (&object_instance_database,
-							  obj_handle, (void *)&obj_pt);
+			obj_handle, (void *)&obj_pt);
+
 		if (owner_pt == NULL)
 			owner_pt = obj_pt;
 
@@ -278,29 +309,53 @@ static void object_key_changed_notification(unsigned int object_handle,
 			tracker_pt = list_entry (list, struct object_tracker, object_list);
 
 			if (((obj_handle == object_handle) ||
-				 (tracker_pt->depth == OBJECT_TRACK_DEPTH_RECURSIVE)) &&
+				(tracker_pt->depth == OBJECT_TRACK_DEPTH_RECURSIVE)) &&
 				(tracker_pt->key_change_notify_fn != NULL))
 				tracker_pt->key_change_notify_fn(type, obj_pt->parent_handle, object_handle,
-												 owner_pt->object_name, owner_pt->object_name_len,
-												 name_pt, name_len,
-												 value_pt, value_len,
-												 tracker_pt->data_pt);
+				owner_pt->object_name, owner_pt->object_name_len,
+				name_pt, name_len,
+				value_pt, value_len,
+				tracker_pt->data_pt);
 		}
 
-		hdb_handle_put (&object_instance_database, obj_handle);
 		obj_handle = obj_pt->parent_handle;
+		hdb_handle_put (&object_instance_database, obj_pt->object_handle);
 
-	} while (obj_pt->object_handle != OBJECT_PARENT_HANDLE);
+	} while (obj_handle != OBJECT_PARENT_HANDLE);
 }
+
+static void object_reload_notification(int startstop, int flush)
+{
+	struct list_head * list;
+	struct object_instance * obj_pt;
+	struct object_tracker * tracker_pt;
+	unsigned int res;
+
+	res = hdb_handle_get (&object_instance_database,
+			      OBJECT_PARENT_HANDLE, (void *)&obj_pt);
+
+	for (list = obj_pt->track_head.next;
+	     list != &obj_pt->track_head; list = list->next) {
+
+		tracker_pt = list_entry (list, struct object_tracker, object_list);
+
+		if (tracker_pt->object_reload_notify_fn != NULL) {
+		        tracker_pt->object_reload_notify_fn(startstop, flush,
+							    tracker_pt->data_pt);
+		}
+	}
+	hdb_handle_put (&object_instance_database, OBJECT_PARENT_HANDLE);
+}
+
 
 /*
  * object db create/destroy/set
  */
 static int object_create (
-	unsigned int parent_object_handle,
-	unsigned int *object_handle,
-	void *object_name,
-	unsigned int object_name_len)
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t *object_handle,
+	const void *object_name,
+	size_t object_name_len)
 {
 	struct object_instance *object_instance;
 	struct object_instance *parent_instance;
@@ -308,6 +363,7 @@ static int object_create (
 	int found = 0;
 	int i;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		parent_object_handle, (void *)&parent_instance);
 	if (res != 0) {
@@ -380,7 +436,7 @@ static int object_create (
 								object_instance->parent_handle,
 								object_instance->object_name,
 								object_instance->object_name_len);
-
+	objdb_rdunlock();
 	return (0);
 
 error_put_destroy:
@@ -393,15 +449,18 @@ error_object_put:
 	hdb_handle_put (&object_instance_database, parent_object_handle);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
 static int object_priv_set (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	void *priv)
 {
 	int res;
 	struct object_instance *object_instance;
+
+	objdb_rdlock();
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&object_instance);
@@ -412,25 +471,29 @@ static int object_priv_set (
 	object_instance->priv = priv;
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 	return (0);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
 static int object_key_create (
-	unsigned int object_handle,
-	void *key_name,
-	int key_len,
-	void *value,
-	int value_len)
+	hdb_handle_t object_handle,
+	const void *key_name,
+	size_t key_len,
+	const void *value,
+	size_t value_len)
 {
 	struct object_instance *instance;
 	struct object_key *object_key;
 	unsigned int res;
+	struct list_head *list;
 	int found = 0;
 	int i;
-	unsigned int val;
+
+	objdb_rdlock();
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
@@ -470,30 +533,48 @@ static int object_key_create (
 		}
 	}
 
-	object_key = malloc (sizeof (struct object_key));
-	if (object_key == 0) {
-		goto error_put;
+	/* See if it already exists */
+	found = 0;
+	for (list = instance->key_head.next;
+		list != &instance->key_head; list = list->next) {
+
+		object_key = list_entry (list, struct object_key, list);
+
+		if ((object_key->key_len == key_len) &&
+		    (memcmp (object_key->key_name, key_name, key_len) == 0)) {
+			found = 1;
+			break;
+		}
 	}
-	object_key->key_name = malloc (key_len);
-	if (object_key->key_name == 0) {
-		goto error_put_object;
+
+	if (found) {
+		free(object_key->value);
 	}
-	memcpy (&val, value, 4);
+	else {
+		object_key = malloc (sizeof (struct object_key));
+		if (object_key == 0) {
+			goto error_put;
+		}
+		object_key->key_name = malloc (key_len);
+		if (object_key->key_name == 0) {
+			goto error_put_object;
+		}
+		memcpy (object_key->key_name, key_name, key_len);
+		list_init (&object_key->list);
+		list_add_tail (&object_key->list, &instance->key_head);
+	}
 	object_key->value = malloc (value_len);
 	if (object_key->value == 0) {
 		goto error_put_key;
 	}
-	memcpy (object_key->key_name, key_name, key_len);
 	memcpy (object_key->value, value, value_len);
 
 	object_key->key_len = key_len;
 	object_key->value_len = value_len;
 
-	list_init (&object_key->list);
-	list_add_tail (&object_key->list, &instance->key_head);
 	object_key_changed_notification(object_handle, key_name, key_len,
-								value, value_len, OBJECT_KEY_CREATED);
-
+					value, value_len, OBJECT_KEY_CREATED);
+	objdb_rdunlock();
 	return (0);
 
 error_put_key:
@@ -506,6 +587,7 @@ error_put:
 	hdb_handle_put (&object_instance_database, object_handle);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -549,21 +631,24 @@ static int _clear_object(struct object_instance *instance)
 }
 
 static int object_destroy (
-	unsigned int object_handle)
+	hdb_handle_t object_handle)
 {
 	struct object_instance *instance;
 	unsigned int res;
 
+	objdb_rdlock();
+
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
+		objdb_rdunlock();
 		return (res);
 	}
 
 	object_pre_deletion_notification(object_handle,
-									 instance->parent_handle,
-									 instance->object_name,
-									 instance->object_name_len);
+		instance->parent_handle,
+		instance->object_name,
+		instance->object_name_len);
 
 	/* Recursively clear sub-objects & keys */
 	res = _clear_object(instance);
@@ -572,17 +657,19 @@ static int object_destroy (
 	free(instance->object_name);
 	free(instance);
 
+	objdb_rdunlock();
 	return (res);
 }
 
 static int object_valid_set (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	struct object_valid *object_valid_list,
-	unsigned int object_valid_list_entries)
+	size_t object_valid_list_entries)
 {
 	struct object_instance *instance;
 	unsigned int res;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -594,20 +681,23 @@ static int object_valid_set (
 
 	hdb_handle_put (&object_instance_database, object_handle);
 
+	objdb_rdunlock();
 	return (0);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
 static int object_key_valid_set (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		struct object_key_valid *object_key_valid_list,
-		unsigned int object_key_valid_list_entries)
+		size_t object_key_valid_list_entries)
 {
 	struct object_instance *instance;
 	unsigned int res;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -619,9 +709,11 @@ static int object_key_valid_set (
 
 	hdb_handle_put (&object_instance_database, object_handle);
 
+	objdb_rdunlock();
 	return (0);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -629,15 +721,16 @@ error_exit:
  * object db reading
  */
 static int object_find_create (
-	unsigned int object_handle,
-	void *object_name,
-	int object_len,
-	unsigned int *object_find_handle)
+	hdb_handle_t object_handle,
+	const void *object_name,
+	size_t object_len,
+	hdb_handle_t *object_find_handle)
 {
 	unsigned int res;
 	struct object_instance *object_instance;
 	struct object_find_instance *object_find_instance;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&object_instance);
 	if (res != 0) {
@@ -657,11 +750,13 @@ static int object_find_create (
 
 	object_find_instance->find_child_list = &object_instance->child_head;
 	object_find_instance->child_head = &object_instance->child_head;
-	object_find_instance->object_name = object_name;
+	object_find_instance->object_name = (char *)object_name;
 	object_find_instance->object_len = object_len;
 
 	hdb_handle_put (&object_instance_database, object_handle);
 	hdb_handle_put (&object_find_instance_database, *object_find_handle);
+
+	objdb_rdunlock();
 	return (0);
 
 error_destroy:
@@ -671,12 +766,13 @@ error_put:
 	hdb_handle_put (&object_instance_database, object_handle);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
 static int object_find_next (
-	unsigned int object_find_handle,
-	unsigned int *object_handle)
+	hdb_handle_t object_find_handle,
+	hdb_handle_t *object_handle)
 {
 	unsigned int res;
 	struct object_find_instance *object_find_instance;
@@ -684,6 +780,7 @@ static int object_find_next (
 	struct list_head *list;
 	unsigned int found = 0;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_find_instance_database,
 		object_find_handle, (void *)&object_find_instance);
 	if (res != 0) {
@@ -714,24 +811,43 @@ static int object_find_next (
 		*object_handle = object_instance->object_handle;
 		res = 0;
 	}
+	objdb_rdunlock();
 	return (res);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
 static int object_find_destroy (
-	unsigned int object_find_handle)
+	hdb_handle_t object_find_handle)
 {
+	struct object_find_instance *object_find_instance;
+	unsigned int res;
+
+	objdb_rdlock();
+	res = hdb_handle_get (&object_find_instance_database,
+		object_find_handle, (void *)&object_find_instance);
+	if (res != 0) {
+		goto error_exit;
+	}
+	hdb_handle_put(&object_find_instance_database, object_find_handle);
+	hdb_handle_destroy(&object_find_instance_database, object_find_handle);
+
+	objdb_rdunlock();
 	return (0);
+
+error_exit:
+	objdb_rdunlock();
+	return (-1);
 }
 
 static int object_key_get (
-	unsigned int object_handle,
-	void *key_name,
-	int key_len,
+	hdb_handle_t object_handle,
+	const void *key_name,
+	size_t key_len,
 	void **value,
-	int *value_len)
+	size_t *value_len)
 {
 	unsigned int res = 0;
 	struct object_instance *instance;
@@ -739,6 +855,7 @@ static int object_key_get (
 	struct list_head *list;
 	int found = 0;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -766,16 +883,18 @@ static int object_key_get (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 	return (res);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
 static int object_key_increment (
-	unsigned int object_handle,
-	void *key_name,
-	int key_len,
+	hdb_handle_t object_handle,
+	const void *key_name,
+	size_t key_len,
 	unsigned int *value)
 {
 	unsigned int res = 0;
@@ -784,6 +903,7 @@ static int object_key_increment (
 	struct list_head *list;
 	int found = 0;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -809,16 +929,18 @@ static int object_key_increment (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 	return (res);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
 static int object_key_decrement (
-	unsigned int object_handle,
-	void *key_name,
-	int key_len,
+	hdb_handle_t object_handle,
+	const void *key_name,
+	size_t key_len,
 	unsigned int *value)
 {
 	unsigned int res = 0;
@@ -827,6 +949,7 @@ static int object_key_decrement (
 	struct list_head *list;
 	int found = 0;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -852,18 +975,18 @@ static int object_key_decrement (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 	return (res);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
 static int object_key_delete (
-	unsigned int object_handle,
-	void *key_name,
-	int key_len,
-	void *value,
-	int value_len)
+	hdb_handle_t object_handle,
+	const void *key_name,
+	size_t key_len)
 {
 	unsigned int res;
 	int ret = 0;
@@ -872,6 +995,7 @@ static int object_key_delete (
 	struct list_head *list;
 	int found = 0;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -883,10 +1007,7 @@ static int object_key_delete (
 		object_key = list_entry (list, struct object_key, list);
 
 		if ((object_key->key_len == key_len) &&
-		    (memcmp (object_key->key_name, key_name, key_len) == 0) &&
-		    (value == NULL ||
-		     (object_key->value_len == value_len &&
-		      (memcmp (object_key->value, value, value_len) == 0)))) {
+		    (memcmp (object_key->key_name, key_name, key_len) == 0)) {
 			found = 1;
 			break;
 		}
@@ -905,21 +1026,21 @@ static int object_key_delete (
 	hdb_handle_put (&object_instance_database, object_handle);
 	if (ret == 0)
 		object_key_changed_notification(object_handle, key_name, key_len,
-										value, value_len, OBJECT_KEY_DELETED);
+										NULL, 0, OBJECT_KEY_DELETED);
+	objdb_rdunlock();
 	return (ret);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
 static int object_key_replace (
-	unsigned int object_handle,
-	void *key_name,
-	int key_len,
-	void *old_value,
-	int old_value_len,
-	void *new_value,
-	int new_value_len)
+	hdb_handle_t object_handle,
+	const void *key_name,
+	size_t key_len,
+	const void *new_value,
+	size_t new_value_len)
 {
 	unsigned int res;
 	int ret = 0;
@@ -927,6 +1048,8 @@ static int object_key_replace (
 	struct object_key *object_key = NULL;
 	struct list_head *list;
 	int found = 0;
+
+	objdb_rdlock();
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
@@ -939,10 +1062,7 @@ static int object_key_replace (
 		object_key = list_entry (list, struct object_key, list);
 
 		if ((object_key->key_len == key_len) &&
-		    (memcmp (object_key->key_name, key_name, key_len) == 0) &&
-		    (old_value == NULL ||
-		     (object_key->value_len == old_value_len &&
-		      (memcmp (object_key->value, old_value, old_value_len) == 0)))) {
+		    (memcmp (object_key->key_name, key_name, key_len) == 0)) {
 			found = 1;
 			break;
 		}
@@ -950,6 +1070,7 @@ static int object_key_replace (
 
 	if (found) {
 		int i;
+		int found_validator = 0;
 
 		/*
 		 * Do validation check if validation is configured for the parent object
@@ -962,7 +1083,7 @@ static int object_key_replace (
 					     instance->object_key_valid_list[i].key_name,
 					     key_len) == 0)) {
 
-					found = 1;
+					found_validator = 1;
 					break;
 				}
 			}
@@ -970,7 +1091,7 @@ static int object_key_replace (
 			/*
 			 * Item not found in validation list
 			 */
-			if (found == 0) {
+			if (found_validator == 0) {
 				goto error_put;
 			} else {
 				if (instance->object_key_valid_list[i].validate_callback) {
@@ -983,7 +1104,7 @@ static int object_key_replace (
 			}
 		}
 
-		if (new_value_len <= object_key->value_len) {
+		if (new_value_len != object_key->value_len) {
 			void *replacement_value;
 			replacement_value = malloc(new_value_len);
 			if (!replacement_value)
@@ -1003,21 +1124,24 @@ static int object_key_replace (
 	if (ret == 0)
 		object_key_changed_notification(object_handle, key_name, key_len,
 										new_value, new_value_len, OBJECT_KEY_REPLACED);
+	objdb_rdunlock();
 	return (ret);
 
 error_put:
 	hdb_handle_put (&object_instance_database, object_handle);
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
 static int object_priv_get (
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	void **priv)
 {
 	int res;
 	struct object_instance *object_instance;
 
+	objdb_rdunlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&object_instance);
 	if (res != 0) {
@@ -1027,9 +1151,11 @@ static int object_priv_get (
 	*priv = object_instance->priv;
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 	return (0);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
@@ -1087,10 +1213,12 @@ static int _dump_object(struct object_instance *instance, FILE *file, int depth)
 	return 0;
 }
 
-static int object_key_iter_reset(unsigned int object_handle)
+static int object_key_iter_reset(hdb_handle_t object_handle)
 {
 	unsigned int res;
 	struct object_instance *instance;
+
+	objdb_rdlock();
 
 	res = hdb_handle_get (&object_instance_database,
 			      object_handle, (void *)&instance);
@@ -1100,24 +1228,28 @@ static int object_key_iter_reset(unsigned int object_handle)
 	instance->iter_key_list = &instance->key_head;
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 	return (0);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
 
-static int object_key_iter(unsigned int parent_object_handle,
+static int object_key_iter(hdb_handle_t parent_object_handle,
 			   void **key_name,
-			   int *key_len,
+			   size_t *key_len,
 			   void **value,
-			   int *value_len)
+			   size_t *value_len)
 {
 	unsigned int res;
 	struct object_instance *instance;
 	struct object_key *find_key = NULL;
 	struct list_head *list;
 	unsigned int found = 0;
+
+	objdb_rdlock();
 
 	res = hdb_handle_get (&object_instance_database,
 		parent_object_handle, (void *)&instance);
@@ -1145,18 +1277,20 @@ static int object_key_iter(unsigned int parent_object_handle,
 	}
 
 	hdb_handle_put (&object_instance_database, parent_object_handle);
+	objdb_rdunlock();
 	return (res);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
-static int object_key_iter_from(unsigned int parent_object_handle,
-				unsigned int start_pos,
+static int object_key_iter_from(hdb_handle_t parent_object_handle,
+				hdb_handle_t start_pos,
 				void **key_name,
-				int *key_len,
+				size_t *key_len,
 				void **value,
-				int *value_len)
+				size_t *value_len)
 {
 	unsigned int pos = 0;
 	unsigned int res;
@@ -1164,6 +1298,8 @@ static int object_key_iter_from(unsigned int parent_object_handle,
 	struct object_key *find_key = NULL;
 	struct list_head *list;
 	unsigned int found = 0;
+
+	objdb_rdlock();
 
 	res = hdb_handle_get (&object_instance_database,
 		parent_object_handle, (void *)&instance);
@@ -1197,22 +1333,27 @@ static int object_key_iter_from(unsigned int parent_object_handle,
 	}
 
 	hdb_handle_put (&object_instance_database, parent_object_handle);
+	objdb_rdunlock();
 	return (res);
 
 error_exit:
+	objdb_rdunlock();
 	return (-1);
 }
 
 
-static int object_parent_get(unsigned int object_handle,
-			     unsigned int *parent_handle)
+static int object_parent_get(hdb_handle_t object_handle,
+			     hdb_handle_t *parent_handle)
 {
 	struct object_instance *instance;
 	unsigned int res;
 
+	objdb_rdlock();
+
 	res = hdb_handle_get (&object_instance_database,
 			      object_handle, (void *)&instance);
 	if (res != 0) {
+		objdb_rdunlock();
 		return (res);
 	}
 
@@ -1222,20 +1363,23 @@ static int object_parent_get(unsigned int object_handle,
 		*parent_handle = instance->parent_handle;
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 
 	return (0);
 }
 
-static int object_name_get(unsigned int object_handle,
+static int object_name_get(hdb_handle_t object_handle,
 			   char *object_name,
-			   int *object_name_len)
+			   size_t *object_name_len)
 {
 	struct object_instance *instance;
 	unsigned int res;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 			      object_handle, (void *)&instance);
 	if (res != 0) {
+		objdb_rdunlock();
 		return (res);
 	}
 
@@ -1243,16 +1387,18 @@ static int object_name_get(unsigned int object_handle,
 	*object_name_len = instance->object_name_len;
 
 	hdb_handle_put (&object_instance_database, object_handle);
+	objdb_rdunlock();
 
 	return (0);
 }
 
 
-static int object_track_start(unsigned int object_handle,
+static int object_track_start(hdb_handle_t object_handle,
 							  object_track_depth_t depth,
 							  object_key_change_notify_fn_t key_change_notify_fn,
 							  object_create_notify_fn_t object_create_notify_fn,
 							  object_destroy_notify_fn_t object_destroy_notify_fn,
+			                                  object_reload_notify_fn_t object_reload_notify_fn,
 							  void * priv_data_pt)
 {
 	struct object_instance *instance;
@@ -1271,6 +1417,7 @@ static int object_track_start(unsigned int object_handle,
 	tracker_pt->key_change_notify_fn = key_change_notify_fn;
 	tracker_pt->object_create_notify_fn = object_create_notify_fn;
 	tracker_pt->object_destroy_notify_fn = object_destroy_notify_fn;
+	tracker_pt->object_reload_notify_fn = object_reload_notify_fn;
 	tracker_pt->data_pt = priv_data_pt;
 
 	list_init(&tracker_pt->object_list);
@@ -1287,6 +1434,7 @@ static int object_track_start(unsigned int object_handle,
 static void object_track_stop(object_key_change_notify_fn_t key_change_notify_fn,
 							  object_create_notify_fn_t object_create_notify_fn,
 							  object_destroy_notify_fn_t object_destroy_notify_fn,
+			                                  object_reload_notify_fn_t object_reload_notify_fn,
 							  void * priv_data_pt)
 {
 	struct object_instance *instance;
@@ -1305,6 +1453,7 @@ static void object_track_stop(object_key_change_notify_fn_t key_change_notify_fn
 		if (tracker_pt && (tracker_pt->data_pt == priv_data_pt) &&
 			(tracker_pt->object_create_notify_fn == object_create_notify_fn) &&
 			(tracker_pt->object_destroy_notify_fn == object_destroy_notify_fn) &&
+		        (tracker_pt->object_reload_notify_fn == object_reload_notify_fn) &&
 			(tracker_pt->key_change_notify_fn == key_change_notify_fn)) {
 
 			/* get the object & take this tracker off of it's list. */
@@ -1331,15 +1480,17 @@ static void object_track_stop(object_key_change_notify_fn_t key_change_notify_fn
 	}
 }
 
-static int object_dump(unsigned int object_handle,
+static int object_dump(hdb_handle_t object_handle,
 		       FILE *file)
 {
 	struct object_instance *instance;
 	unsigned int res;
 
+	objdb_rdlock();
 	res = hdb_handle_get (&object_instance_database,
 			      object_handle, (void *)&instance);
 	if (res != 0) {
+		objdb_rdunlock();
 		return (res);
 	}
 
@@ -1347,10 +1498,11 @@ static int object_dump(unsigned int object_handle,
 
 	hdb_handle_put (&object_instance_database, object_handle);
 
+	objdb_rdunlock();
 	return (res);
 }
 
-static int object_write_config(char **error_string)
+static int object_write_config(const char **error_string)
 {
 	struct config_iface_ver0 **modules;
 	int num_modules;
@@ -1358,17 +1510,23 @@ static int object_write_config(char **error_string)
 	int res;
 
 	main_get_config_modules(&modules, &num_modules);
+
+	objdb_wrlock();
+
 	for (i=0; i<num_modules; i++) {
 		if (modules[i]->config_writeconfig) {
 			res = modules[i]->config_writeconfig(&objdb_iface, error_string);
-			if (res)
+			if (res) {
+				objdb_wrunlock();
 				return res;
+			}
 		}
 	}
+	objdb_wrunlock();
 	return 0;
 }
 
-static int object_reload_config(int flush, char **error_string)
+static int object_reload_config(int flush, const char **error_string)
 {
 	struct config_iface_ver0 **modules;
 	int num_modules;
@@ -1376,14 +1534,22 @@ static int object_reload_config(int flush, char **error_string)
 	int res;
 
 	main_get_config_modules(&modules, &num_modules);
+	object_reload_notification(OBJDB_RELOAD_NOTIFY_START, flush);
+
+	objdb_wrlock();
 
 	for (i=0; i<num_modules; i++) {
 		if (modules[i]->config_reloadconfig) {
 			res = modules[i]->config_reloadconfig(&objdb_iface, flush, error_string);
-			if (res)
+			if (res) {
+				object_reload_notification(OBJDB_RELOAD_NOTIFY_FAILED, flush);
+				objdb_wrunlock();
 				return res;
+			}
 		}
 	}
+	objdb_wrunlock();
+	object_reload_notification(OBJDB_RELOAD_NOTIFY_END, flush);
 	return 0;
 }
 
@@ -1435,9 +1601,13 @@ struct lcr_comp objdb_comp_ver0 = {
 	.ifaces				= objdb_iface_ver0
 };
 
+#ifdef COROSYNC_SOLARIS
+void corosync_lcr_component_register (void);
 
-
-__attribute__ ((constructor)) static void objdb_comp_register (void) {
+void corosync_lcr_component_register (void) {
+#else
+__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
+#endif
         lcr_interfaces_set (&objdb_iface_ver0[0], &objdb_iface);
 
 	lcr_component_register (&objdb_comp_ver0);

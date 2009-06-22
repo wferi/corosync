@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -40,22 +40,29 @@
  */
 extern unsigned int corosync_service_link_and_init (
 	struct corosync_api_v1 *objdb,
-	char *service_name,
+	const char *service_name,
 	unsigned int service_ver);
+
+/*
+ * Unlink and exit a service based on service priority
+ */
+extern unsigned int corosync_service_unlink_priority (
+	struct corosync_api_v1 *corosync_api,
+	int priority);
 
 /*
  * Unlink and exit a service
  */
 extern unsigned int corosync_service_unlink_and_exit (
-    struct corosync_api_v1 *objdb,
-    char *service_name,
-    unsigned int service_ver);
+	struct corosync_api_v1 *objdb,
+	const char *service_name,
+	unsigned int service_ver);
 
 /*
  * Unlink and exit all corosync services
  */
 extern unsigned int corosync_service_unlink_all (
-    struct corosync_api_v1 *objdb);
+	struct corosync_api_v1 *objdb);
 
 /*
  * Load all of the default services

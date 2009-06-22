@@ -1,14 +1,14 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
  * Copyright (c) 2004 Open Source Development Lab
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com), Mark Haverkamp (markh@osdl.org)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -33,45 +33,50 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <assert.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/list.h>
 #include <corosync/engine/logsys.h>
+#include <corosync/coroipc_types.h>
 #include "util.h"
 
-LOGSYS_DECLARE_SUBSYS ("MAIN", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("MAIN");
 
 /*
  * Compare two names.  returns non-zero on match.
  */
-int name_match(SaNameT *name1, SaNameT *name2) 
+int name_match(cs_name_t *name1, cs_name_t *name2)
 {
 	if (name1->length == name2->length) {
 		return ((strncmp ((char *)name1->value, (char *)name2->value,
 			name1->length)) == 0);
-	} 
+	}
 	return 0;
 }
 
 /*
  * Get the time of day and convert to nanoseconds
  */
-SaTimeT clust_time_now(void)
+cs_time_t clust_time_now(void)
 {
 	struct timeval tv;
-	SaTimeT time_now;
+	cs_time_t time_now;
 
 	if (gettimeofday(&tv, 0)) {
 		return 0ULL;
 	}
 
-	time_now = (SaTimeT)(tv.tv_sec) * 1000000000ULL;
-	time_now += (SaTimeT)(tv.tv_usec) * 1000ULL;
+	time_now = (cs_time_t)(tv.tv_sec) * 1000000000ULL;
+	time_now += (cs_time_t)(tv.tv_usec) * 1000ULL;
 
 	return time_now;
 }
@@ -85,65 +90,49 @@ void _corosync_out_of_memory_error (void)
 void _corosync_exit_error (
 	enum e_ais_done err, const char *file, unsigned int line)
 {
-	log_printf (LOG_LEVEL_ERROR, "AIS Executive exiting "
+	log_printf (LOGSYS_LEVEL_ERROR, "AIS Executive exiting "
 		"with status %d at %s:%u.\n", err, file, line);
-	logsys_flush();
-	exit (EXIT_FAILURE);
+	logsys_fork_completed ();
+	logsys_flush ();
+	exit (err);
 }
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
-char *getSaNameT (SaNameT *name)
+char *getcs_name_t (cs_name_t *name)
 {
-	static char ret_name[SA_MAX_NAME_LENGTH];
+	static char ret_name[CS_MAX_NAME_LENGTH];
 
 	/* if string is corrupt (non-terminated), ensure it's displayed safely */
-	if (name->length >= SA_MAX_NAME_LENGTH || name->value[name->length] != '\0') {
+	if (name->length >= CS_MAX_NAME_LENGTH || name->value[name->length] != '\0') {
 		memset (ret_name, 0, sizeof (ret_name));
-		memcpy (ret_name, name->value, min(name->length, SA_MAX_NAME_LENGTH -1));
+		memcpy (ret_name, name->value, min(name->length, CS_MAX_NAME_LENGTH -1));
 		return (ret_name);
 	}
 	return ((char *)name->value);
 }
 
-char *strstr_rs (const char *haystack, const char *needle)
+char *strchr_rs (const char *haystack, int byte)
 {
-	char *end_address;
-	char *new_needle;
-
-	new_needle = (char *)strdup (needle);
-	new_needle[strlen (new_needle) - 1] = '\0';
-
-	end_address = strstr (haystack, new_needle);
-	if (end_address) {
-		end_address += strlen (new_needle);
-		end_address = strstr (end_address, needle + strlen (new_needle));
-	}
+	const char *end_address = strchr (haystack, byte);
 	if (end_address) {
 		end_address += 1; /* skip past { or = */
-		do {
-			if (*end_address == '\t' || *end_address == ' ') {
-				end_address++;
-			} else {
-				break;
-			}
-		} while (*end_address != '\0');
+		end_address += strspn (end_address, " \t");
 	}
 
-	free (new_needle);
-	return (end_address);
+	return ((char *) end_address);
 }
 
-void setSaNameT (SaNameT *name, char *str) {
-	strncpy ((char *)name->value, str, SA_MAX_NAME_LENGTH);
-	if (strlen ((char *)name->value) > SA_MAX_NAME_LENGTH) {
-		name->length = SA_MAX_NAME_LENGTH;
+void setcs_name_t (cs_name_t *name, char *str) {
+	strncpy ((char *)name->value, str, CS_MAX_NAME_LENGTH);
+	if (strlen ((char *)name->value) > CS_MAX_NAME_LENGTH) {
+		name->length = CS_MAX_NAME_LENGTH;
 	} else {
 		name->length = strlen (str);
 	}
 }
 
-int SaNameTisEqual (SaNameT *str1, char *str2) {
+int cs_name_tisEqual (cs_name_t *str1, char *str2) {
 	if (str1->length == strlen (str2)) {
 		return ((strncmp ((char *)str1->value, (char *)str2,
 			str1->length)) == 0);
@@ -151,4 +140,3 @@ int SaNameTisEqual (SaNameT *str1, char *str2) {
 		return 0;
 	}
 }
-

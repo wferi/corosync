@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2008 Red Hat Inc
+ * Copyright (c) 2006-2009 Red Hat Inc
  *
  * All rights reserved.
  *
@@ -32,10 +32,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <signal.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/types.h>
@@ -45,13 +46,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
 static int quit = 0;
 static int show_ip = 0;
 
-void print_cpgname (struct cpg_name *name)
+static void print_cpgname (const struct cpg_name *name)
 {
 	int i;
 
@@ -60,31 +61,34 @@ void print_cpgname (struct cpg_name *name)
 	}
 }
 
-void DeliverCallback (
+static void DeliverCallback (
 	cpg_handle_t handle,
-	struct cpg_name *groupName,
+	const struct cpg_name *groupName,
 	uint32_t nodeid,
 	uint32_t pid,
 	void *msg,
-	int msg_len)
+	size_t msg_len)
 {
 	if (show_ip) {
 		struct in_addr saddr;
 		saddr.s_addr = nodeid;
-		printf("DeliverCallback: message (len=%d)from node/pid %s/%d: '%s'\n",
-		       msg_len, inet_ntoa(saddr), pid, (char *)msg);
+		printf("DeliverCallback: message (len=%lu)from node/pid %s/%d: '%s'\n",
+		       (unsigned long int) msg_len,
+		       inet_ntoa(saddr), pid, (const char *)msg);
 	}
 	else {
-		printf("DeliverCallback: message (len=%d)from node/pid %d/%d: '%s'\n", msg_len, nodeid, pid, (char *)msg);
+		printf("DeliverCallback: message (len=%lu)from node/pid %d/%d: '%s'\n",
+		       (unsigned long int) msg_len, nodeid, pid,
+		       (const char *)msg);
 	}
 }
 
-void ConfchgCallback (
+static void ConfchgCallback (
 	cpg_handle_t handle,
-	struct cpg_name *groupName,
-	struct cpg_address *member_list, int member_list_entries,
-	struct cpg_address *left_list, int left_list_entries,
-	struct cpg_address *joined_list, int joined_list_entries)
+	const struct cpg_name *groupName,
+	const struct cpg_address *member_list, size_t member_list_entries,
+	const struct cpg_address *left_list, size_t left_list_entries,
+	const struct cpg_address *joined_list, size_t joined_list_entries)
 {
 	int i;
 	struct in_addr saddr;
@@ -120,7 +124,8 @@ void ConfchgCallback (
 		}
 	}
 
-	printf("nodes in group now %d\n", member_list_entries);
+	printf("nodes in group now %lu\n",
+	       (unsigned long int) member_list_entries);
 	for (i=0; i<member_list_entries; i++) {
 		if (show_ip) {
 			saddr.s_addr = member_list[i].nodeid;
@@ -141,39 +146,13 @@ void ConfchgCallback (
 	}
 }
 
-void GroupsGetCallback(cpg_handle_t handle,
-		       uint32_t groupnum,
-		       uint32_t groupmax,
-		       struct cpg_name *group_name,
-		       struct cpg_address *member_list, int member_list_entries)
-{
-	int i;
-	struct in_addr saddr;
-
-	printf("Groups List Callback %d/%d: ", groupnum, groupmax);
-	print_cpgname(group_name);
-	printf("\n");
-	for (i=0; i<member_list_entries; i++) {
-		if (show_ip) {
-			saddr.s_addr = member_list[i].nodeid;
-			printf("node/pid: %s/%d\n",
-			       inet_ntoa (saddr), member_list[i].pid);
-		}
-		else {
-			printf("node/pid: %d/%d\n",
-			       member_list[i].nodeid, member_list[i].pid);
-		}
-	}
-}
-
-
-cpg_callbacks_t callbacks = {
+static cpg_callbacks_t callbacks = {
 	.cpg_deliver_fn =            DeliverCallback,
 	.cpg_confchg_fn =            ConfchgCallback,
-	.cpg_groups_get_fn =         GroupsGetCallback
 };
 
-void sigintr_handler (int signum) {
+static void sigintr_handler (int signum) __attribute__((__noreturn__));
+static void sigintr_handler (int signum) {
 	exit (0);
 }
 static struct cpg_name group_name;
@@ -186,7 +165,7 @@ int main (int argc, char *argv[]) {
 	const char *options = "i";
 	int opt;
 	unsigned int nodeid;
-	unsigned int num_groups;
+	char *fgets_res;
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
@@ -206,29 +185,22 @@ int main (int argc, char *argv[]) {
 	}
 
 	result = cpg_initialize (&handle, &callbacks);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not initialize Cluster Process Group API instance error %d\n", result);
 		exit (1);
 	}
 	result = cpg_local_get (handle, &nodeid);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not get local node id\n");
 		exit (1);
 	}
 
 	printf ("Local node id is %x\n", nodeid);
 	result = cpg_join(handle, &group_name);
-	if (result != SA_AIS_OK) {
+	if (result != CS_OK) {
 		printf ("Could not join process group, error %d\n", result);
 		exit (1);
 	}
-
-	cpg_groups_get(handle, &num_groups);
-	if (result != SA_AIS_OK) {
-		printf ("Could not get list of groups, error %d\n", result);
-		exit (1);
-	}
-	printf("%d groups known to this node\n", num_groups);
 
 	FD_ZERO (&read_fds);
 	cpg_fd_get(handle, &select_fd);
@@ -244,7 +216,10 @@ int main (int argc, char *argv[]) {
 			char inbuf[132];
 			struct iovec iov;
 
-			fgets(inbuf, sizeof(inbuf), stdin);
+			fgets_res = fgets(inbuf, sizeof(inbuf), stdin);
+			if (fgets_res == NULL) {
+				cpg_leave(handle, &group_name);
+			}
 			if (strncmp(inbuf, "EXIT", 4) == 0) {
 				cpg_leave(handle, &group_name);
 			}
@@ -255,7 +230,7 @@ int main (int argc, char *argv[]) {
 			}
 		}
 		if (FD_ISSET (select_fd, &read_fds)) {
-			if (cpg_dispatch (handle, CPG_DISPATCH_ALL) != SA_AIS_OK)
+			if (cpg_dispatch (handle, CS_DISPATCH_ALL) != CS_OK)
 				exit(1);
 		}
 	} while (result && !quit);

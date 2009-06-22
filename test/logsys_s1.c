@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -31,13 +31,19 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <stdio.h>
 #include <syslog.h>
-#include "../exec/logsys.h"
 
-LOGSYS_DECLARE_SUBSYS ("SYS1", LOG_ALERT)
+#include <corosync/engine/logsys.h>
+
+void logsys_s1_print (void);
+
+LOGSYS_DECLARE_SUBSYS ("SYS1");
 
 void logsys_s1_print (void) {
-	log_printf (LOG_ALERT, "This is an alert log message\n");
-	log_printf (LOG_WARNING, "This is a warning log message\n");
+	log_printf (LOGSYS_LEVEL_ALERT, "This is an alert log message\n");
+	log_printf (LOGSYS_LEVEL_WARNING, "This is a warning log message\n");
 }
