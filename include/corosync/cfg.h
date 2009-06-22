@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -32,37 +32,37 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef AIS_COROSYNCCFG_H_DEFINED
-#define AIS_COROSYNCCFG_H_DEFINED
+#ifndef COROSYNC_CFG_H_DEFINED
+#define COROSYNC_CFG_H_DEFINED
 
 #include <netinet/in.h>
-#include "saAis.h"
+#include <corosync/corotypes.h>
 
-typedef SaUint64T corosync_cfg_handle_t;
+typedef uint64_t corosync_cfg_handle_t;
 
 typedef enum {
 	COROSYNC_CFG_ADMINISTRATIVETARGET_SERVICEUNIT = 0,
 	COROSYNC_CFG_ADMINISTRATIVETARGET_SERVICEGROUP = 1,
 	COROSYNC_CFG_ADMINISTRATIVETARGET_COMPONENTSERVICEINSTANCE = 2,
 	COROSYNC_CFG_ADMINISTRATIVETARGET_NODE = 3
-} CorosyncCfgAdministrativeTargetT;
+} corosync_cfg_administrative_target_t;
 
 typedef enum {
 	COROSYNC_CFG_ADMINISTRATIVESTATE_UNLOCKED = 0,
 	COROSYNC_CFG_ADMINISTRATIVESTATE_LOCKED = 1,
 	COROSYNC_CFG_ADMINISTRATIVESTATE_STOPPING = 2
-} CorosyncCfgAdministrativeStateT;
+} corosync_cfg_administrative_state_t;
 
 typedef enum {
 	COROSYNC_CFG_OPERATIONALSTATE_ENABLED = 1,
 	COROSYNC_CFG_OPERATIONALSTATE_DISABLED = 2
-} CorosyncCfgOperationalStateT;
+} corosync_cfg_operational_state_t;
 
 typedef enum {
 	COROSYNC_CFG_READINESSSTATE_OUTOFSERVICE = 1,
 	COROSYNC_CFG_READINESSSTATE_INSERVICE = 2,
 	COROSYNC_CFG_READINESSSTATE_STOPPING = 3
-} CorosyncCfgReadinessStateT;
+} corosync_cfg_readiness_state_t;
 
 typedef enum {
 	COROSYNC_CFG_PRESENCESTATE_UNINSTANTIATED = 1,
@@ -72,7 +72,7 @@ typedef enum {
 	COROSYNC_CFG_PRESENCESTATE_RESTARTING = 5,
 	COROSYNC_CFG_PRESENCESTATE_INSTANTIATION_FAILED = 6,
 	COROSYNC_CFG_PRESENCESTATE_TERMINATION_FAILED = 7
-} CorosyncCfgPresenceStateT;
+} corosync_cfg_presence_state_t;
 
 typedef enum {
 	COROSYNC_CFG_STATETYPE_OPERATIONAL = 0,
@@ -80,27 +80,63 @@ typedef enum {
 	COROSYNC_CFG_STATETYPE_READINESS = 2,
 	COROSYNC_CFG_STATETYPE_HA = 3,
 	COROSYNC_CFG_STATETYPE_PRESENCE = 4
-} CorosyncCfgStateTypeT;
+} corosync_cfg_state_type_t;
+
+/* Shutdown types.
+   REQUEST is the normal shutdown. other daemons will be consulted
+   REGARDLESS will tell other daemons but ignore their opinions
+   IMMEDIATE will shut down straight away (but still tell other nodes)
+*/
+typedef enum {
+	COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST = 0,
+	COROSYNC_CFG_SHUTDOWN_FLAG_REGARDLESS = 1,
+	COROSYNC_CFG_SHUTDOWN_FLAG_IMMEDIATE = 2,
+} corosync_cfg_shutdown_flags_t;
+
+typedef enum {
+	COROSYNC_CFG_SHUTDOWN_FLAG_NO = 0,
+	COROSYNC_CFG_SHUTDOWN_FLAG_YES = 1,
+} corosync_cfg_shutdown_reply_flags_t;
 
 typedef struct {
-	SaNameT name;
-	CorosyncCfgStateTypeT stateType;
-	CorosyncCfgAdministrativeStateT administrativeState;
-} CorosyncCfgStateNotificationT;
+	cs_name_t name;
+	corosync_cfg_state_type_t state_type;
+	corosync_cfg_administrative_state_t administrative_state;
+} corosync_cfg_state_notification_t;
 
 typedef struct {
-        SaUint32T numberOfItems;
-        CorosyncCfgStateNotificationT *notification;
-} CorosyncCfgStateNotificationBufferT;
+        uint32_t number_of_items;
+        corosync_cfg_state_notification_t *notification;
+} corosync_cfg_state_notification_buffer_t;
 
-typedef void (*CorosyncCfgStateTrackCallbackT) (
-	CorosyncCfgStateNotificationBufferT *notificationBuffer,
-	SaAisErrorT error);
+typedef void (*corosync_cfg_state_track_callback_t) (
+	corosync_cfg_state_notification_buffer_t *notification_buffer,
+	cs_error_t error);
+
+typedef void (*corosync_cfg_shutdown_callback_t) (
+	corosync_cfg_handle_t cfg_handle,
+	corosync_cfg_shutdown_flags_t flags);
 
 typedef struct {
-	CorosyncCfgStateTrackCallbackT
-		corosyncCfgStateTrackCallback;
-} CorosyncCfgCallbacksT;
+	corosync_cfg_state_track_callback_t corosync_cfg_state_track_callback;
+	corosync_cfg_shutdown_callback_t corosync_cfg_shutdown_callback;
+} corosync_cfg_callbacks_t;
+
+/*
+ * A node address. This is a complete sockaddr_in[6]
+ * To explain:
+ *  If you cast cna_address to a 'struct sockaddr', the sa_family field
+ *  will be AF_INET or AF_INET6. Armed with that knowledge you can then
+ *  cast it to a sockaddr_in or sockaddr_in6 and pull out the address.
+ *  No other sockaddr fields are valid.
+ *  Also, you must ignore any part of the sockaddr beyond the length supplied
+ */
+typedef struct
+{
+	int address_length; /* FIXME: set but never used */
+	char address[sizeof(struct sockaddr_in6)];
+} corosync_cfg_node_address_t;
+
 
 /*
  * Interfaces
@@ -109,72 +145,96 @@ typedef struct {
 extern "C" {
 #endif
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_initialize (
 	corosync_cfg_handle_t *cfg_handle,
-	const CorosyncCfgCallbacksT *cfgCallbacks);
+	const corosync_cfg_callbacks_t *cfg_callbacks);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_fd_get (
 	corosync_cfg_handle_t cfg_handle,
-	SaSelectionObjectT *selectionObject);
+	int32_t *selection_fd);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_dispatch (
 	corosync_cfg_handle_t cfg_handle,
-	SaDispatchFlagsT dispatchFlags);
+	cs_dispatch_flags_t dispatch_flags);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_finalize (
 	corosync_cfg_handle_t cfg_handle);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_ring_status_get (
 	corosync_cfg_handle_t cfg_handle,
 	char ***interface_names,
 	char ***status,
 	unsigned int *interface_count);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_ring_reenable (
 	corosync_cfg_handle_t cfg_handle);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_service_load (
 	corosync_cfg_handle_t cfg_handle,
-	char *service_name,
+	const char *service_name,
 	unsigned int service_ver);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_service_unload (
 	corosync_cfg_handle_t cfg_handle,
-	char *service_name,
+	const char *service_name,
 	unsigned int service_ver);
 
-SaAisErrorT
-corosync_cfg_administrative_state_get (
+cs_error_t
+corosync_cfg_kill_node (
 	corosync_cfg_handle_t cfg_handle,
-	CorosyncCfgAdministrativeTargetT administrativeTarget,
-	CorosyncCfgAdministrativeStateT *administrativeState);
+	unsigned int nodeid,
+	const char *reason);
 
-SaAisErrorT
-corosync_cfg_administrative_state_set (
+cs_error_t
+corosync_cfg_try_shutdown (
 	corosync_cfg_handle_t cfg_handle,
-	CorosyncCfgAdministrativeTargetT administrativeTarget,
-	CorosyncCfgAdministrativeStateT administrativeState);
+	corosync_cfg_shutdown_flags_t flags);
 
-SaAisErrorT
+
+cs_error_t
+corosync_cfg_replyto_shutdown (
+	corosync_cfg_handle_t cfg_handle,
+	corosync_cfg_shutdown_reply_flags_t flags);
+
+cs_error_t
 corosync_cfg_state_track (
         corosync_cfg_handle_t cfg_handle,
-        SaUint8T trackFlags,
-        const CorosyncCfgStateNotificationT *notificationBuffer);
+        uint8_t track_flags,
+        const corosync_cfg_state_notification_t *notification_buffer);
 
-SaAisErrorT
+cs_error_t
 corosync_cfg_state_track_stop (
         corosync_cfg_handle_t cfg_handle);
+
+
+cs_error_t
+corosync_cfg_get_node_addrs (
+	corosync_cfg_handle_t cfg_handle,
+	int nodeid,
+	size_t max_addrs,
+	int *num_addrs,
+	corosync_cfg_node_address_t *addrs);
+
+cs_error_t
+corosync_cfg_local_get (
+	corosync_cfg_handle_t handle,
+	unsigned int *local_nodeid);
+
+cs_error_t
+corosync_cfg_crypto_set (
+	corosync_cfg_handle_t handle,
+	unsigned int type);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* AIS_COROSYNCCFG_H_DEFINED */
+#endif /* COROSYNC_CFG_H_DEFINED */

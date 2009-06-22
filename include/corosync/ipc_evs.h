@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -34,10 +34,9 @@
 #ifndef IPC_EVS_H_DEFINED
 #define IPC_EVS_H_DEFINED
 
-//#include <netinet/in6.h>
-#include "saAis.h"
-#include "evs.h"
-#include "ipc_gen.h"
+#include <inttypes.h>
+#include <corosync/corotypes.h>
+#include <corosync/mar_gen.h>
 
 enum req_lib_evs_types {
 	MESSAGE_REQ_EVS_JOIN = 0,
@@ -58,82 +57,82 @@ enum res_lib_evs_types {
 };
 
 struct res_evs_deliver_callback {
-	mar_res_header_t header;
+	coroipc_response_header_t header;
 	unsigned int local_nodeid;
-	int msglen;
+	size_t msglen;
 	char msg[0];
 };
 
 struct res_evs_confchg_callback {
-	mar_res_header_t header;
-	int member_list_entries;
-	int left_list_entries;
-	int joined_list_entries;
+	coroipc_response_header_t header;
+	size_t member_list_entries;
+	size_t left_list_entries;
+	size_t joined_list_entries;
 	unsigned int member_list[PROCESSOR_COUNT_MAX];
 	unsigned int left_list[PROCESSOR_COUNT_MAX];
 	unsigned int joined_list[PROCESSOR_COUNT_MAX];
 };
 
 struct req_lib_evs_join {
-	mar_res_header_t header;
-	int group_entries;
+	coroipc_response_header_t header;
+	size_t group_entries;
 	struct evs_group groups[0];
 };
 
 struct res_lib_evs_join {
-	mar_res_header_t header;
+	coroipc_response_header_t header;
 };
 
 struct req_lib_evs_leave {
-	mar_res_header_t header;
-	int group_entries;
+	coroipc_response_header_t header;
+	size_t group_entries;
 	struct evs_group groups[0];
 };
 
 struct res_lib_evs_leave {
-	mar_res_header_t header;
+	coroipc_response_header_t header;
 };
 
 struct req_lib_evs_mcast_joined {
-	mar_res_header_t header;
+	coroipc_response_header_t header;
 	evs_guarantee_t guarantee;
-	int msg_len;
+	size_t msg_len;
 	char msg[0];
 };
 
 struct res_lib_evs_mcast_joined {
-	mar_res_header_t header;
+	coroipc_response_header_t header;
 };
 
 struct req_lib_evs_mcast_groups {
-	mar_res_header_t header;
+	coroipc_response_header_t header;
 	evs_guarantee_t guarantee;
-	int msg_len;
-	int group_entries;
+	size_t msg_len;
+	size_t group_entries;
 	struct evs_group groups[0];
 };
 
 struct res_lib_evs_mcast_groups {
-	mar_res_header_t header;
+	coroipc_response_header_t header;
 };
 
 
 struct req_exec_evs_mcast {
-	mar_req_header_t header;
-	int group_entries;
-	int msg_len;
+	coroipc_request_header_t header;
+	size_t group_entries;
+	size_t msg_len;
 	struct evs_group groups[0];
 	/* data goes here */
 };
 
 struct req_lib_evs_membership_get {
-	mar_req_header_t header;
+	coroipc_request_header_t header;
 };
 
 struct res_lib_evs_membership_get {
-	mar_res_header_t header;
+	coroipc_response_header_t header;
 	unsigned int local_nodeid;
 	unsigned int member_list[PROCESSOR_COUNT_MAX];
-	int member_list_entries;
+	size_t member_list_entries;
 };
 #endif /* IPC_EVS_H_DEFINED */

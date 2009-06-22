@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2006 MontaVista Software, Inc.
- * Copyright (c) 2007-2008 Red Hat, Inc.
+ * Copyright (c) 2007-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -36,9 +36,10 @@
 #ifndef OBJDB_H_DEFINED
 #define OBJDB_H_DEFINED
 
-#define OBJECT_PARENT_HANDLE 0
+#define OBJECT_PARENT_HANDLE 0xFFFFFFFF00000000ULL
 
 #include <stdio.h>
+#include <corosync/hdb.h>
 
 typedef enum {
 	OBJECT_TRACK_DEPTH_ONE,
@@ -51,177 +52,188 @@ typedef enum {
 	OBJECT_KEY_DELETED
 } object_change_type_t;
 
-typedef void (*object_key_change_notify_fn_t)(object_change_type_t change_type,
-											  unsigned int parent_object_handle,
-											  unsigned int object_handle,
-											  void *object_name_pt, int object_name_len,
-											  void *key_name_pt, int key_len,
-											  void *key_value_pt, int key_value_len,
-											  void *priv_data_pt);
+typedef enum {
+        OBJDB_RELOAD_NOTIFY_START,
+        OBJDB_RELOAD_NOTIFY_END,
+	OBJDB_RELOAD_NOTIFY_FAILED
+} objdb_reload_notify_type_t;
+
+
+typedef void (*object_key_change_notify_fn_t)(
+	object_change_type_t change_type,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	const void *object_name_pt, size_t object_name_len,
+	const void *key_name_pt, size_t key_len,
+	const void *key_value_pt, size_t key_value_len,
+	void *priv_data_pt);
 
 typedef void (*object_create_notify_fn_t) (unsigned int parent_object_handle,
-										   unsigned int object_handle,
-										   void *name_pt, int name_len,
-										   void *priv_data_pt);
+hdb_handle_t object_handle,
+const void *name_pt, size_t name_len,
+void *priv_data_pt);
 
 typedef void (*object_destroy_notify_fn_t) (unsigned int parent_object_handle,
-											void *name_pt, int name_len,
+					    const void *name_pt,
+					    size_t name_len,
+											void *priv_data_pt);
+
+typedef void (*object_reload_notify_fn_t) (objdb_reload_notify_type_t, int flush,
 											void *priv_data_pt);
 
 struct object_valid {
 	char *object_name;
-	int object_len;
+	size_t object_len;
 };
 
 struct object_key_valid {
 	char *key_name;
-	int key_len;
-	int (*validate_callback) (void *key, int key_len, void *value, int value_len);
+	size_t key_len;
+	int (*validate_callback) (const void *key, size_t key_len,
+				  const void *value, size_t value_len);
 };
 
 struct objdb_iface_ver0 {
 	int (*objdb_init) (void);
 
 	int (*object_create) (
-		unsigned int parent_object_handle,
-		unsigned int *object_handle,
-		void *object_name,
-		unsigned int object_name_len);
+		hdb_handle_t parent_object_handle,
+		hdb_handle_t *object_handle,
+		const void *object_name,
+		size_t object_name_len);
 
 	int (*object_priv_set) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		void *priv);
 
 	int (*object_key_create) (
-		unsigned int object_handle,
-		void *key_name,
-		int key_len,
-		void *value,
-		int value_len);
+		hdb_handle_t object_handle,
+		const void *key_name,
+		size_t key_len,
+		const void *value,
+		size_t value_len);
 
 	int (*object_destroy) (
-		unsigned int object_handle);
+		hdb_handle_t object_handle);
 
 	int (*object_valid_set) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		struct object_valid *object_valid_list,
-		unsigned int object_valid_list_entries);
+		size_t object_valid_list_entries);
 
 	int (*object_key_valid_set) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		struct object_key_valid *object_key_valid_list,
-		unsigned int object_key_valid_list_entries);
+		size_t object_key_valid_list_entries);
 
 	int (*object_find_create) (
-		unsigned int parent_object_handle,
-		void *object_name,
-		int object_name_len,
-		unsigned int *object_find_handle);
+		hdb_handle_t parent_object_handle,
+		const void *object_name,
+		size_t object_name_len,
+		hdb_handle_t *object_find_handle);
 
 	int (*object_find_next) (
-		unsigned int object_find_handle,
-		unsigned int *object_handle);
+		hdb_handle_t object_find_handle,
+		hdb_handle_t *object_handle);
 
 	int (*object_find_destroy) (
-		unsigned int object_find_handle);
+		hdb_handle_t object_find_handle);
 
 	int (*object_key_get) (
-		unsigned int object_handle,
-		void *key_name,
-		int key_len,
+		hdb_handle_t object_handle,
+		const void *key_name,
+		size_t key_len,
 		void **value,
-		int *value_len);
+		size_t *value_len);
 
 	int (*object_priv_get) (
-		unsigned int jobject_handle,
+		hdb_handle_t jobject_handle,
 		void **priv);
 
 	int (*object_key_replace) (
-		unsigned int object_handle,
-		void *key_name,
-		int key_len,
-		void *old_value,
-		int old_value_len,
-		void *new_value,
-		int new_value_len);
+		hdb_handle_t object_handle,
+		const void *key_name,
+		size_t key_len,
+		const void *new_value,
+		size_t new_value_len);
 
 	int (*object_key_delete) (
-		unsigned int object_handle,
-		void *key_name,
-		int key_len,
-		void *value,
-		int value_len);
+		hdb_handle_t object_handle,
+		const void *key_name,
+		size_t key_len);
 
 	int (*object_iter_reset) (
-		unsigned int parent_object_handle);
+		hdb_handle_t parent_object_handle);
 
 	int (*object_iter) (
-		unsigned int parent_object_handle,
+		hdb_handle_t parent_object_handle,
 		void **object_name,
-		int *name_len,
-		unsigned int *object_handle);
+		size_t *name_len,
+		hdb_handle_t *object_handle);
 
 	int (*object_key_iter_reset) (
-		unsigned int object_handle);
+		hdb_handle_t object_handle);
 
 	int (*object_key_iter) (
-		unsigned int parent_object_handle,
+		hdb_handle_t parent_object_handle,
 		void **key_name,
-		int *key_len,
+		size_t *key_len,
 		void **value,
-		int *value_len);
+		size_t *value_len);
 
 	int (*object_parent_get) (
-		unsigned int object_handle,
-		unsigned int *parent_handle);
+		hdb_handle_t object_handle,
+		hdb_handle_t *parent_handle);
 
 	int (*object_name_get) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		char *object_name,
-		int *object_name_len);
+		size_t *object_name_len);
 
 	int (*object_dump) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		FILE *file);
 
 	int (*object_key_iter_from) (
-		unsigned int parent_object_handle,
-		unsigned int start_pos,
+		hdb_handle_t parent_object_handle,
+		hdb_handle_t start_pos,
 		void **key_name,
-		int *key_len,
+		size_t *key_len,
 		void **value,
-		int *value_len);
+		size_t *value_len);
 
 	int (*object_track_start) (
-		unsigned int object_handle,
+		hdb_handle_t object_handle,
 		object_track_depth_t depth,
 		object_key_change_notify_fn_t key_change_notify_fn,
 		object_create_notify_fn_t object_create_notify_fn,
 		object_destroy_notify_fn_t object_destroy_notify_fn,
+		object_reload_notify_fn_t object_reload_notify_fn,
 		void * priv_data_pt);
 
 	void (*object_track_stop) (
 		object_key_change_notify_fn_t key_change_notify_fn,
 		object_create_notify_fn_t object_create_notify_fn,
 		object_destroy_notify_fn_t object_destroy_notify_fn,
+		object_reload_notify_fn_t object_reload_notify_fn,
 		void * priv_data_pt);
 
-	int (*object_write_config) (char **error_string);
+	int (*object_write_config) (const char **error_string);
 
 	int (*object_reload_config) (
 		int flush,
-		char **error_string);
+		const char **error_string);
 
 	int (*object_key_increment) (
-		unsigned int object_handle,
-		void *key_name,
-		int key_len,
+		hdb_handle_t object_handle,
+		const void *key_name,
+		size_t key_len,
 		unsigned int *value);
 
 	int (*object_key_decrement) (
-		unsigned int object_handle,
-		void *key_name,
-		int key_len,
+		hdb_handle_t object_handle,
+		const void *key_name,
+		size_t key_len,
 		unsigned int *value);
 };
 

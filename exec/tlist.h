@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2003-2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -119,7 +119,7 @@ static inline int timerlist_add_absolute (struct timerlist *timerlist,
 		errno = ENOMEM;
 		return (-1);
 	}
-	
+
 	timer->nano_from_epoch = nano_from_epoch;
 	timer->data = data;
 	timer->timer_fn = timer_fn;
@@ -143,7 +143,7 @@ static inline int timerlist_add_duration (struct timerlist *timerlist,
 		errno = ENOMEM;
 		return (-1);
 	}
-	
+
 	timer->nano_from_epoch = timerlist_nano_from_epoch() + nano_duration;
 	timer->data = data;
 	timer->timer_fn = timer_fn;
@@ -154,9 +154,10 @@ static inline int timerlist_add_duration (struct timerlist *timerlist,
 	return (0);
 }
 
-static inline void timerlist_del (struct timerlist *timerlist, timer_handle timer_handle)
+static inline void timerlist_del (struct timerlist *timerlist,
+				  timer_handle _timer_handle)
 {
-	struct timerlist_timer *timer = (struct timerlist_timer *)timer_handle;
+	struct timerlist_timer *timer = (struct timerlist_timer *)_timer_handle;
 
 	memset (timer->handle_addr, 0, sizeof (struct timerlist_timer *));
 	/*
@@ -172,18 +173,25 @@ static inline void timerlist_del (struct timerlist *timerlist, timer_handle time
 	free (timer);
 }
 
-static inline void timerlist_pre_dispatch (struct timerlist *timerlist, timer_handle timer_handle)
+static inline unsigned long long timerlist_expire_time (struct timerlist *timerlist, timer_handle _timer_handle)
 {
-	struct timerlist_timer *timer = (struct timerlist_timer *)timer_handle;
+	struct timerlist_timer *timer = (struct timerlist_timer *)_timer_handle;
+
+	return (timer->nano_from_epoch);
+}
+
+static inline void timerlist_pre_dispatch (struct timerlist *timerlist, timer_handle _timer_handle)
+{
+	struct timerlist_timer *timer = (struct timerlist_timer *)_timer_handle;
 
 	memset (timer->handle_addr, 0, sizeof (struct timerlist_timer *));
 	list_del (&timer->list);
 	list_init (&timer->list);
 }
 
-static inline void timerlist_post_dispatch (struct timerlist *timerlist, timer_handle timer_handle)
+static inline void timerlist_post_dispatch (struct timerlist *timerlist, timer_handle _timer_handle)
 {
-	struct timerlist_timer *timer = (struct timerlist_timer *)timer_handle;
+	struct timerlist_timer *timer = (struct timerlist_timer *)_timer_handle;
 
 	free (timer);
 }
@@ -203,7 +211,7 @@ static inline unsigned long long timerlist_msec_duration_to_expire (struct timer
 	if (timerlist->timer_head.next == &timerlist->timer_head) {
 		return (-1);
 	}
-	
+
 	timer_from_list = list_entry (timerlist->timer_head.next,
 		struct timerlist_timer, list);
 
@@ -216,7 +224,6 @@ static inline unsigned long long timerlist_msec_duration_to_expire (struct timer
 		return (0);
 	}
 
-	
 	msec_duration_to_expire = ((timer_from_list->nano_from_epoch - nano_from_epoch) / 1000000ULL) +
 		(1000 / HZ);
 	return (msec_duration_to_expire);

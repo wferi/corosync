@@ -1,13 +1,12 @@
-#define _BSD_SOURCE
 /*
- * Copyright (c) 2006 Red Hat, Inc.
+ * Copyright (c) 2006, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -33,6 +32,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -50,7 +51,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
 #ifdef COROSYNC_SOLARIS
@@ -65,38 +66,38 @@
     } while (0)
 #endif
 
-int alarm_notice;
+static int alarm_notice;
 
-void cpg_bm_confchg_fn (
+static void cpg_bm_confchg_fn (
 	cpg_handle_t handle,
-	struct cpg_name *group_name,
-	struct cpg_address *member_list, int member_list_entries,
-	struct cpg_address *left_list, int left_list_entries,
-	struct cpg_address *joined_list, int joined_list_entries)
+	const struct cpg_name *group_name,
+	const struct cpg_address *member_list, size_t member_list_entries,
+	const struct cpg_address *left_list, size_t left_list_entries,
+	const struct cpg_address *joined_list, size_t joined_list_entries)
 {
 }
 
-unsigned int write_count;
+static unsigned int write_count;
 
-void cpg_bm_deliver_fn (
+static void cpg_bm_deliver_fn (
         cpg_handle_t handle,
-        struct cpg_name *group_name,
+        const struct cpg_name *group_name,
         uint32_t nodeid,
         uint32_t pid,
         void *msg,
-        int msg_len)
+        size_t msg_len)
 {
 	write_count++;
 }
 
-cpg_callbacks_t callbacks = {
+static cpg_callbacks_t callbacks = {
 	.cpg_deliver_fn 	= cpg_bm_deliver_fn,
 	.cpg_confchg_fn		= cpg_bm_confchg_fn
 };
 
-char data[500000];
+static char data[500000];
 
-void cpg_benchmark (
+static void cpg_benchmark (
 	cpg_handle_t handle,
 	int write_size)
 {
@@ -121,12 +122,12 @@ void cpg_benchmark (
 		if (flow_control_state == CPG_FLOW_CONTROL_DISABLED) {
 retry:
 			res = cpg_mcast_joined (handle, CPG_TYPE_AGREED, &iov, 1);
-			if (res == CPG_ERR_TRY_AGAIN) {
+			if (res == CS_ERR_TRY_AGAIN) {
 				goto retry;
 			}
 		}
-		res = cpg_dispatch (handle, CPG_DISPATCH_ALL);
-		if (res != CPG_OK) {
+		res = cpg_dispatch (handle, CS_DISPATCH_ALL);
+		if (res != CS_OK) {
 			printf ("cpg dispatch returned error %d\n", res);
 			exit (1);
 		}
@@ -136,15 +137,15 @@ retry:
 
 	printf ("%5d messages received ", write_count);
 	printf ("%5d bytes per write ", write_size);
-	printf ("%7.3f Seconds runtime ", 
+	printf ("%7.3f Seconds runtime ",
 		(tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
 	printf ("%9.3f TP/s ",
 		((float)write_count) /  (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
-	printf ("%7.3f MB/s.\n", 
+	printf ("%7.3f MB/s.\n",
 		((float)write_count) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
 }
 
-void sigalrm_handler (int num)
+static void sigalrm_handler (int num)
 {
 	alarm_notice = 1;
 }
@@ -156,30 +157,32 @@ static struct cpg_name group_name = {
 
 int main (void) {
 	cpg_handle_t handle;
-	unsigned int size = 1;
+	unsigned int size;
 	int i;
 	unsigned int res;
-	
+
+	size = 1000;
 	signal (SIGALRM, sigalrm_handler);
 	res = cpg_initialize (&handle, &callbacks);
-	if (res != CPG_OK) {
+	if (res != CS_OK) {
 		printf ("cpg_initialize failed with result %d\n", res);
 		exit (1);
 	}
-	
+
 	res = cpg_join (handle, &group_name);
-	if (res != CPG_OK) {
+	if (res != CS_OK) {
 		printf ("cpg_join failed with result %d\n", res);
 		exit (1);
 	}
 
 	for (i = 0; i < 50; i++) { /* number of repetitions - up to 50k */
 		cpg_benchmark (handle, size);
+		signal (SIGALRM, sigalrm_handler);
 		size += 1000;
 	}
 
 	res = cpg_finalize (handle);
-	if (res != CPG_OK) {
+	if (res != CS_OK) {
 		printf ("cpg_join failed with result %d\n", res);
 		exit (1);
 	}

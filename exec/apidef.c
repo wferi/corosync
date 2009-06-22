@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,75 +32,115 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
-#include <corosync/swab.h>
-#include <corosync/totem/totem.h>
-#include "util.h"
-#include <corosync/engine/logsys.h>
-#include "timer.h"
+#include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
+#include <corosync/lcr/lcr_ifact.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totemip.h>
-#include "main.h"
-#include "ipc.h"
+#include <corosync/totem/totem.h>
+#include <corosync/engine/logsys.h>
+#include <corosync/coroipcs.h>
+#include "util.h"
+#include "timer.h"
 #include "sync.h"
-#include <corosync/engine/coroapi.h>
+#include "quorum.h"
 #include "service.h"
-#include <corosync/lcr/lcr_ifact.h>
+#include "schedwrk.h"
+#include "main.h"
+#include <corosync/engine/coroapi.h>
+#include "apidef.h"
 
-LOGSYS_DECLARE_SUBSYS ("APIDEF", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("APIDEF");
 
 /*
- * Remove compile warnings about type name changes
+ * Remove compile warnings about type name changes in corosync_tpg_group
  */
-typedef int (*typedef_tpg_join) (corosync_tpg_handle, struct corosync_tpg_group *, int);
-typedef int (*typedef_tpg_leave) (corosync_tpg_handle, struct corosync_tpg_group *, int);
-typedef int (*typedef_tpg_groups_mcast) (corosync_tpg_handle, int, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
-typedef int (*typedef_tpg_groups_send_ok) (corosync_tpg_handle, struct corosync_tpg_group *, int groups_cnt, struct iovec *, int);
+typedef int (*typedef_tpg_join) (
+	hdb_handle_t,
+	const struct corosync_tpg_group *,
+	size_t);
 
+typedef int (*typedef_tpg_leave) (hdb_handle_t,
+	const struct corosync_tpg_group *,
+	size_t);
+
+typedef int (*typedef_tpg_groups_mcast_groups) (
+	hdb_handle_t, int,
+	const struct corosync_tpg_group *,
+	size_t groups_cnt,
+	const struct iovec *,
+	unsigned int);
+
+typedef int (*typedef_tpg_groups_send_ok) (
+	hdb_handle_t,
+	const struct corosync_tpg_group *,
+	size_t groups_cnt,
+	struct iovec *,
+	int);
+
+static inline void _corosync_public_exit_error (cs_fatal_error_t err,
+						const char *file,
+						unsigned int line)
+  __attribute__((__noreturn__));
+static inline void _corosync_public_exit_error (
+	cs_fatal_error_t err, const char *file, unsigned int line)
+{
+	_corosync_exit_error (err, file, line);
+}
 
 static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.timer_add_duration = corosync_timer_add_duration,
 	.timer_add_absolute = corosync_timer_add_absolute,
 	.timer_delete = corosync_timer_delete,
-	.timer_time_get = NULL,
+	.timer_time_get = corosync_timer_time_get,
+	.timer_expire_time_get = corosync_timer_expire_time_get,
 	.ipc_source_set = message_source_set,
 	.ipc_source_is_local = message_source_is_local,
-	.ipc_private_data_get = corosync_conn_private_data_get,
-	.ipc_response_send = NULL,
-	.ipc_response_no_fcc = corosync_conn_send_response_no_fcc,
-	.ipc_dispatch_send = NULL,
-	.ipc_conn_send_response = corosync_conn_send_response,
-	.ipc_conn_partner_get = corosync_conn_partner_get,
-	.ipc_refcnt_inc =  corosync_ipc_flow_control_local_increment,
-	.ipc_refcnt_dec = corosync_ipc_flow_control_local_decrement,
-	.ipc_fc_create = corosync_ipc_flow_control_create,
-	.ipc_fc_destroy = corosync_ipc_flow_control_destroy,
+	.ipc_private_data_get = coroipcs_private_data_get,
+	.ipc_response_iov_send = coroipcs_response_iov_send,
+	.ipc_response_send = coroipcs_response_send,
+	.ipc_dispatch_send = coroipcs_dispatch_send,
+	.ipc_dispatch_iov_send = coroipcs_dispatch_iov_send,
+	.ipc_refcnt_inc =  coroipcs_refcount_inc,
+	.ipc_refcnt_dec = coroipcs_refcount_dec,
 	.totem_nodeid_get = totempg_my_nodeid_get,
 	.totem_family_get = totempg_my_family_get,
 	.totem_ring_reenable = totempg_ring_reenable,
 	.totem_mcast = main_mcast,
-	.totem_send_ok = main_send_ok,
 	.totem_ifaces_get = totempg_ifaces_get,
 	.totem_ifaces_print = totempg_ifaces_print,
 	.totem_ip_print = totemip_print,
+	.totem_crypto_set = totempg_crypto_set,
+	.totem_callback_token_create = totempg_callback_token_create,
 	.tpg_init = totempg_groups_initialize,
 	.tpg_exit = NULL, /* missing from totempg api */
 	.tpg_join = (typedef_tpg_join)totempg_groups_join,
 	.tpg_leave = (typedef_tpg_leave)totempg_groups_leave,
 	.tpg_joined_mcast = totempg_groups_mcast_joined,
-	.tpg_joined_send_ok = totempg_groups_send_ok_joined,
-	.tpg_groups_mcast = (typedef_tpg_groups_mcast)totempg_groups_mcast_groups,
-	.tpg_groups_send_ok = (typedef_tpg_groups_send_ok)totempg_groups_send_ok_groups,
-	.sync_request = sync_request,
+	.tpg_joined_reserve = totempg_groups_joined_reserve,
+	.tpg_joined_release = totempg_groups_joined_release,
+	.tpg_groups_mcast = (typedef_tpg_groups_mcast_groups)totempg_groups_mcast_groups,
+	.tpg_groups_reserve = NULL,
+	.tpg_groups_release = NULL,
+	.schedwrk_create = schedwrk_create,
+	.schedwrk_destroy = schedwrk_destroy,
+	.sync_request = NULL, //sync_request,
+	.quorum_is_quorate = corosync_quorum_is_quorate,
+	.quorum_register_callback = corosync_quorum_register_callback,
+	.quorum_unregister_callback = corosync_quorum_unregister_callback,
+	.quorum_initialize = corosync_quorum_initialize,
 	.service_link_and_init = corosync_service_link_and_init,
 	.service_unlink_and_exit = corosync_service_unlink_and_exit,
 	.plugin_interface_reference = lcr_ifact_reference,
 	.plugin_interface_release = lcr_ifact_release,
 	.error_memory_failure = _corosync_out_of_memory_error,
-	.fatal_error = _corosync_exit_error
+	.fatal_error = _corosync_public_exit_error,
+	.request_shutdown = corosync_request_shutdown
 };
 
 void apidef_init (struct objdb_iface_ver0 *objdb) {

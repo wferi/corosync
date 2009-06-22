@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -34,6 +34,13 @@
 #ifndef COROSYNC_CONFDB_H_DEFINED
 #define COROSYNC_CONFDB_H_DEFINED
 
+#include <corosync/corotypes.h>
+#include <corosync/hdb.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @addtogroup confdb_corosync
  *
@@ -41,34 +48,12 @@
  */
 typedef uint64_t confdb_handle_t;
 
-#define OBJECT_PARENT_HANDLE 0
-
-typedef enum {
-	CONFDB_DISPATCH_ONE,
-	CONFDB_DISPATCH_ALL,
-	CONFDB_DISPATCH_BLOCKING
-} confdb_dispatch_t;
+#define OBJECT_PARENT_HANDLE 0xFFFFFFFF00000000ULL
 
 typedef enum {
 	CONFDB_TRACK_DEPTH_ONE,
 	CONFDB_TRACK_DEPTH_RECURSIVE
 } confdb_track_depth_t;
-
-typedef enum {
-	CONFDB_OK = 1,
-	CONFDB_ERR_LIBRARY = 2,
-	CONFDB_ERR_TIMEOUT = 5,
-	CONFDB_ERR_TRY_AGAIN = 6,
-	CONFDB_ERR_INVALID_PARAM = 7,
-	CONFDB_ERR_NO_MEMORY = 8,
-	CONFDB_ERR_BAD_HANDLE = 9,
-	CONFDB_ERR_ACCESS = 11,
-	CONFDB_ERR_NOT_EXIST = 12,
-	CONFDB_ERR_EXIST = 14,
-	CONFDB_ERR_CONTEXT_NOT_FOUND = 17,
-	CONFDB_ERR_NOT_SUPPORTED = 20,
-	CONFDB_ERR_SECURITY = 29,
-} confdb_error_t;
 
 typedef enum {
 	OBJECT_KEY_CREATED,
@@ -79,27 +64,27 @@ typedef enum {
 typedef void (*confdb_key_change_notify_fn_t) (
 	confdb_handle_t handle,
 	confdb_change_type_t change_type,
-	unsigned int parent_object_handle,
-	unsigned int object_handle,
-	void *object_name,
-	int  object_name_len,
-	void *key_name,
-	int key_name_len,
-	void *key_value,
-	int key_value_len);
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	const void *object_name,
+	size_t  object_name_len,
+	const void *key_name,
+	size_t key_name_len,
+	const void *key_value,
+	size_t key_value_len);
 
 typedef void (*confdb_object_create_notify_fn_t) (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
-	unsigned int object_handle,
-	uint8_t *name_pt,
-	int  name_len);
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	const void *name_pt,
+	size_t name_len);
 
 typedef void (*confdb_object_delete_notify_fn_t) (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
-	uint8_t *name_pt,
-	int  name_len);
+	hdb_handle_t parent_object_handle,
+	const void *name_pt,
+	size_t name_len);
 
 typedef struct {
 	confdb_object_create_notify_fn_t confdb_object_create_change_notify_fn;
@@ -112,129 +97,131 @@ typedef struct {
 /*
  * Create a new confdb connection
  */
-confdb_error_t confdb_initialize (
+cs_error_t confdb_initialize (
 	confdb_handle_t *handle,
 	confdb_callbacks_t *callbacks);
 
 /*
  * Close the confdb handle
  */
-confdb_error_t confdb_finalize (
+cs_error_t confdb_finalize (
 	confdb_handle_t handle);
 
 
 /*
  * Write back the configuration
  */
-confdb_error_t confdb_write (
+cs_error_t confdb_write (
 	confdb_handle_t handle,
-	char *error_text);
+	char *error_text,
+	size_t errbuf_len);
 
 /*
  * Reload the configuration
  */
-confdb_error_t confdb_reload (
+cs_error_t confdb_reload (
 	confdb_handle_t handle,
 	int flush,
-	char *error_text);
+	char *error_text,
+	size_t errbuf_len);
 
 /*
  * Get a file descriptor on which to poll.  confdb_handle_t is NOT a
  * file descriptor and may not be used directly.
  */
-confdb_error_t confdb_fd_get (
+cs_error_t confdb_fd_get (
 	confdb_handle_t handle,
 	int *fd);
 
 /*
  * Dispatch configuration changes
  */
-confdb_error_t confdb_dispatch (
+cs_error_t confdb_dispatch (
 	confdb_handle_t handle,
-	confdb_dispatch_t dispatch_types);
+	cs_dispatch_flags_t dispatch_types);
 
 /*
  * Change notification
  */
-confdb_error_t confdb_track_changes (
+cs_error_t confdb_track_changes (
 	confdb_handle_t handle,
-	unsigned int object_handle,
+	hdb_handle_t object_handle,
 	unsigned int flags);
 
-confdb_error_t confdb_stop_track_changes (
+cs_error_t confdb_stop_track_changes (
 	confdb_handle_t handle);
 
 /*
  * Manipulate objects
  */
-confdb_error_t confdb_object_create (
+cs_error_t confdb_object_create (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
-	void *object_name,
-	int object_name_len,
-	unsigned int *object_handle);
+	hdb_handle_t parent_object_handle,
+	const void *object_name,
+	size_t object_name_len,
+	hdb_handle_t *object_handle);
 
-confdb_error_t confdb_object_destroy (
+cs_error_t confdb_object_destroy (
 	confdb_handle_t handle,
-	unsigned int object_handle);
+	hdb_handle_t object_handle);
 
-confdb_error_t confdb_object_parent_get (
+cs_error_t confdb_object_parent_get (
 	confdb_handle_t handle,
-	unsigned int object_handle,
-	unsigned int *parent_object_handle);
+	hdb_handle_t object_handle,
+	hdb_handle_t *parent_object_handle);
 
 /*
  * Manipulate keys
  */
-confdb_error_t confdb_key_create (
+cs_error_t confdb_key_create (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
-	void *key_name,
-	int key_name_len,
-	void *value,
-	int value_len);
+	hdb_handle_t parent_object_handle,
+	const void *key_name,
+	size_t key_name_len,
+	const void *value,
+	size_t value_len);
 
-confdb_error_t confdb_key_delete (
+cs_error_t confdb_key_delete (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
-	void *key_name,
-	int key_name_len,
-	void *value,
-	int value_len);
+	hdb_handle_t parent_object_handle,
+	const void *key_name,
+	size_t key_name_len,
+	const void *value,
+	size_t value_len);
 
 /*
  * Key queries
  */
-confdb_error_t confdb_key_get (
+cs_error_t confdb_key_get (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
-	void *key_name,
-	int key_name_len,
+	hdb_handle_t parent_object_handle,
+	const void *key_name,
+	size_t key_name_len,
 	void *value,
-	int *value_len);
+	size_t *value_len);
 
-confdb_error_t confdb_key_replace (
+cs_error_t confdb_key_replace (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
-	void *key_name,
-	int key_name_len,
-	void *old_value,
-	int old_value_len,
-	void *new_value,
-	int new_value_len);
+	hdb_handle_t parent_object_handle,
+	const void *key_name,
+	size_t key_name_len,
+	const void *old_value,
+	size_t old_value_len,
+	const void *new_value,
+	size_t new_value_len);
 
-confdb_error_t confdb_key_increment (
+cs_error_t confdb_key_increment (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
-	void *key_name,
-	int key_name_len,
+	hdb_handle_t parent_object_handle,
+	const void *key_name,
+	size_t key_name_len,
 	unsigned int *value);
 
-confdb_error_t confdb_key_decrement (
+cs_error_t confdb_key_decrement (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
-	void *key_name,
-	int key_name_len,
+	hdb_handle_t parent_object_handle,
+	const void *key_name,
+	size_t key_name_len,
 	unsigned int *value);
 
 /*
@@ -243,50 +230,65 @@ confdb_error_t confdb_key_decrement (
  * a quick way of finding a specific object,
  * "iter" returns each object in sequence.
  */
-confdb_error_t confdb_object_find_start (
+cs_error_t confdb_object_find_start (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle);
+	hdb_handle_t parent_object_handle);
 
-confdb_error_t confdb_object_find (
+cs_error_t confdb_object_find (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
+	const void *object_name,
+	size_t object_name_len,
+	hdb_handle_t *object_handle);
+
+cs_error_t confdb_object_find_destroy(
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle);
+
+cs_error_t confdb_object_iter_start (
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle);
+
+cs_error_t confdb_object_iter (
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t *object_handle,
 	void *object_name,
-	int object_name_len,
-	unsigned int *object_handle);
+	size_t *object_name_len);
 
-confdb_error_t confdb_object_find_destroy(
+cs_error_t confdb_object_iter_destroy(
 	confdb_handle_t handle,
-	unsigned int parent_object_handle);
-
-confdb_error_t confdb_object_iter_start (
-	confdb_handle_t handle,
-	unsigned int parent_object_handle);
-
-confdb_error_t confdb_object_iter (
-	confdb_handle_t handle,
-	unsigned int parent_object_handle,
-	unsigned int *object_handle,
-	void *object_name,
-	int *object_name_len);
-
-confdb_error_t confdb_object_iter_destroy(
-	confdb_handle_t handle,
-	unsigned int parent_object_handle);
+	hdb_handle_t parent_object_handle);
 
 /*
  * Key iterator
  */
-confdb_error_t confdb_key_iter_start (
+cs_error_t confdb_key_iter_start (
 	confdb_handle_t handle,
-	unsigned int object_handle);
+	hdb_handle_t object_handle);
 
-confdb_error_t confdb_key_iter (
+cs_error_t confdb_key_iter (
 	confdb_handle_t handle,
-	unsigned int parent_object_handle,
+	hdb_handle_t parent_object_handle,
 	void *key_name,
-	int *key_name_len,
+	size_t *key_name_len,
 	void *value,
-	int *value_len);
+	size_t *value_len);
 
+/*
+ * Get/set context variable
+ */
+
+cs_error_t confdb_context_get (
+	confdb_handle_t handle,
+	const void **context);
+
+cs_error_t confdb_context_set (
+	confdb_handle_t handle,
+	const void *context);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* COROSYNC_CONFDB_H_DEFINED */

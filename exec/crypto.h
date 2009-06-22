@@ -1,6 +1,8 @@
 #ifndef CRYPTO_H_DEFINED
 #define CRYPTO_H_DEFINED
 
+#include <stdint.h>
+
 #define DIGEST_SHA1     0
 #define PRNG_SOBER      0
 
@@ -50,7 +52,7 @@ typedef union Hash_state {
 } hash_state;
 
 struct _hash_descriptor {
-    char *name;
+    const char *name;
     unsigned char ID;
     unsigned long hashsize;       /* digest output size in bytes  */
     unsigned long blocksize;      /* the block size the hash uses */
@@ -84,19 +86,19 @@ int hmac_process(hmac_state *hmac, const unsigned char *buf, unsigned long len);
 int hmac_done(hmac_state *hmac, unsigned char *hashOut, unsigned long *outlen);
 int hmac_test(void);
 int hmac_memory(int hash, const unsigned char *key, unsigned long keylen,
-                       const unsigned char *data, unsigned long len, 
+                       const unsigned char *data, unsigned long len,
                        unsigned char *dst, unsigned long *dstlen);
 
 struct sober128_prng {
-    unsigned long      R[17],          /* Working storage for the shift register */
-                 initR[17],      /* saved register contents */ 
+    uint32_t      R[17],          /* Working storage for the shift register */
+                 initR[17],      /* saved register contents */
                  konst,          /* key dependent constant */
                  sbuf;           /* partial word encryption buffer */
 
     int          nbuf,           /* number of part-word stream bits buffered */
                  flag,           /* first add_entropy call or not? */
                  set;            /* did we call add_entropy to set key? */
-    
+
 };
 
 typedef union Prng_state {
@@ -104,7 +106,7 @@ typedef union Prng_state {
 } prng_state;
 
 struct _prng_descriptor {
-    char *name;
+    const char *name;
     int  export_size;    /* size in bytes of exported state */
     int (*start)(prng_state *);
     int (*add_entropy)(const unsigned char *, unsigned long, prng_state *);
@@ -123,8 +125,8 @@ int sober128_export(unsigned char *out, unsigned long *outlen, prng_state *prng)
 int sober128_import(const unsigned char *in, unsigned long inlen, prng_state *prng);
 int sober128_test(void);
 
-unsigned long rng_get_bytes(unsigned char *buf, 
-                                   unsigned long len, 
+unsigned long rng_get_bytes(unsigned char *buf,
+                                   unsigned long len,
                                    void (*callback)(void));
 
 int rng_make_prng(int bits, int wprng, prng_state *prng, void (*callback)(void));

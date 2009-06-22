@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
 
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -33,6 +33,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <assert.h>
 #include <pthread.h>
 #include <sys/mman.h>
@@ -50,26 +52,37 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <signal.h>
 #include <sched.h>
 #include <time.h>
 #include <sys/time.h>
 #include <sys/poll.h>
+#include <limits.h>
 
-#include <corosync/queue.h>
 #include <corosync/sq.h>
 #include <corosync/list.h>
 #include <corosync/hdb.h>
 #include <corosync/swab.h>
 #include <corosync/totem/coropoll.h>
+#define LOGSYS_UTILS_ONLY 1
+#include <corosync/engine/logsys.h>
 #include "totemnet.h"
 #include "wthread.h"
 
 #include "crypto.h"
 
-#define MCAST_SOCKET_BUFFER_SIZE (TRANSMITS_ALLOWED * FRAME_SIZE_MAX) 
+#ifdef HAVE_LIBNSS
+#include <nss.h>
+#include <pk11pub.h>
+#include <pkcs11.h>
+#include <prerror.h>
+#endif
 
-#define NETIF_STATE_REPORT_UP		1	
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
+#define MCAST_SOCKET_BUFFER_SIZE (TRANSMITS_ALLOWED * FRAME_SIZE_MAX)
+#define NETIF_STATE_REPORT_UP		1
 #define NETIF_STATE_REPORT_DOWN		2
 
 #define BIND_STATE_UNBOUND	0
@@ -99,11 +112,16 @@ struct totemnet_instance {
 
 	prng_state totemnet_prng_state;
 
+#ifdef HAVE_LIBNSS
+	PK11SymKey   *nss_sym_key;
+	PK11SymKey   *nss_sym_key_sign;
+#endif
+
 	unsigned char totemnet_private_key[1024];
 
 	unsigned int totemnet_private_key_len;
 
-	poll_handle totemnet_poll_handle;
+	hdb_handle_t totemnet_poll_handle;
 
 	struct totem_interface *totem_interface;
 
@@ -117,12 +135,12 @@ struct totemnet_instance {
 
 	void (*totemnet_deliver_fn) (
 		void *context,
-		void *msg,
-		int msg_len);
+		const void *msg,
+		unsigned int msg_len);
 
 	void (*totemnet_iface_change_fn) (
 		void *context,
-		struct totem_ip_address *iface_address);
+		const struct totem_ip_address *iface_address);
 
 	/*
 	 * Function and data used to log messages
@@ -137,9 +155,17 @@ struct totemnet_instance {
 
 	int totemnet_log_level_debug;
 
-	void (*totemnet_log_printf) (char *file, int line, int level, char *format, ...) __attribute__((format(printf, 4, 5)));
+	int totemnet_subsys_id;
 
-	totemnet_handle handle;
+	void (*totemnet_log_printf) (
+		unsigned int rec_ident,
+		const char *function,
+		const char *file,
+		int line,
+		const char *format,
+		...)__attribute__((format(printf, 5, 6)));
+
+	hdb_handle_t handle;
 
 	char iov_buffer[FRAME_SIZE_MAX];
 
@@ -181,8 +207,8 @@ struct totemnet_instance {
 };
 
 struct work_item {
-	struct iovec iovec[20];
-	int iov_len;
+	const void *msg;
+	unsigned int msg_len;
 	struct totemnet_instance *instance;
 };
 
@@ -197,15 +223,7 @@ static int totemnet_build_sockets (
 
 static struct totem_ip_address localhost;
 
-/*
- * All instances in one database
- */
-static struct hdb_handle_database totemnet_instance_database = {
-	.handle_count	= 0,
-	.handles	= 0,
-	.iterator	= 0,
-	.mutex		= PTHREAD_MUTEX_INITIALIZER
-};
+DECLARE_HDB_DATABASE (totemnet_instance_database,NULL);
 
 static void totemnet_instance_initialize (struct totemnet_instance *instance)
 {
@@ -226,12 +244,21 @@ static void totemnet_instance_initialize (struct totemnet_instance *instance)
 	instance->my_memb_entries = 1;
 }
 
-#define log_printf(level, format, args...) \
-    instance->totemnet_log_printf (__FILE__, __LINE__, level, format, ##args)
+#define log_printf(level, format, args...)				\
+do {									\
+        instance->totemnet_log_printf (					\
+		LOGSYS_ENCODE_RECID(level,				\
+				    instance->totemnet_subsys_id,	\
+				    LOGSYS_RECID_LOG),			\
+                __FUNCTION__, __FILE__, __LINE__,			\
+		(const char *)format, ##args);				\
+} while (0);
 
-static int authenticate_and_decrypt (
+
+static int authenticate_and_decrypt_sober (
 	struct totemnet_instance *instance,
-	struct iovec *iov)
+	struct iovec *iov,
+	unsigned int iov_len)
 {
 	unsigned char keys[48];
 	struct security_header *header = iov[0].iov_base;
@@ -249,7 +276,7 @@ static int authenticate_and_decrypt (
 	memset (keys, 0, sizeof (keys));
 	sober128_start (&keygen_prng_state);
 	sober128_add_entropy (instance->totemnet_private_key,
-		instance->totemnet_private_key_len, &keygen_prng_state);	
+		instance->totemnet_private_key_len, &keygen_prng_state);
 	sober128_add_entropy (header->salt, sizeof (header->salt), &keygen_prng_state);
 
 	sober128_read (keys, sizeof (keys), &keygen_prng_state);
@@ -258,16 +285,16 @@ static int authenticate_and_decrypt (
 	 * Setup stream cipher
 	 */
 	sober128_start (&stream_prng_state);
-	sober128_add_entropy (cipher_key, 16, &stream_prng_state);	
-	sober128_add_entropy (initial_vector, 16, &stream_prng_state);	
+	sober128_add_entropy (cipher_key, 16, &stream_prng_state);
+	sober128_add_entropy (initial_vector, 16, &stream_prng_state);
 
 	/*
 	 * Authenticate contents of message
 	 */
 	hmac_init (&instance->totemnet_hmac_state, DIGEST_SHA1, hmac_key, 16);
 
-	hmac_process (&instance->totemnet_hmac_state, 
-		iov->iov_base + HMAC_HASH_SIZE,
+	hmac_process (&instance->totemnet_hmac_state,
+		(unsigned char *)iov->iov_base + HMAC_HASH_SIZE,
 		iov->iov_len - HMAC_HASH_SIZE);
 
 	len = hash_descriptor[DIGEST_SHA1]->hashsize;
@@ -275,26 +302,398 @@ static int authenticate_and_decrypt (
 	hmac_done (&instance->totemnet_hmac_state, digest_comparison, &len);
 
 	if (memcmp (digest_comparison, header->hash_digest, len) != 0) {
-		log_printf (instance->totemnet_log_level_security, "Received message has invalid digest... ignoring.\n");
 		return (-1);
 	}
-	
+
 	/*
 	 * Decrypt the contents of the message with the cipher key
 	 */
-	sober128_read (iov->iov_base + sizeof (struct security_header),
+	sober128_read ((unsigned char*)iov->iov_base +
+			sizeof (struct security_header),
 		iov->iov_len - sizeof (struct security_header),
 		&stream_prng_state);
 
 	return (0);
 }
-static void encrypt_and_sign_worker (
+
+static void init_sober_crypto(
+	struct totemnet_instance *instance)
+{
+	log_printf(instance->totemnet_log_level_notice,
+		"Initializing transmit/receive security: libtomcrypt SOBER128/SHA1HMAC (mode 0).\n");
+	rng_make_prng (128, PRNG_SOBER, &instance->totemnet_prng_state, NULL);
+}
+
+#ifdef HAVE_LIBNSS
+
+static unsigned char *copy_from_iovec(
+	const struct iovec *iov,
+	unsigned int iov_len,
+	size_t *buf_size)
+{
+	int i;
+	size_t bufptr;
+	size_t buflen = 0;
+	unsigned char *newbuf;
+
+	for (i=0; i<iov_len; i++)
+		buflen += iov[i].iov_len;
+
+	newbuf = malloc(buflen);
+	if (!newbuf)
+		return NULL;
+
+	bufptr=0;
+	for (i=0; i<iov_len; i++) {
+		memcpy(newbuf+bufptr, iov[i].iov_base, iov[i].iov_len);
+		bufptr += iov[i].iov_len;
+	}
+	*buf_size = buflen;
+	return newbuf;
+}
+
+static void copy_to_iovec(
+	struct iovec *iov,
+	unsigned int iov_len,
+	const unsigned char *buf,
+	size_t buf_size)
+{
+	int i;
+	size_t copylen;
+	size_t bufptr = 0;
+
+	bufptr=0;
+	for (i=0; i<iov_len; i++) {
+		copylen = iov[i].iov_len;
+		if (bufptr + copylen > buf_size) {
+			copylen = buf_size - bufptr;
+		}
+		memcpy(iov[i].iov_base, buf+bufptr, copylen);
+		bufptr += copylen;
+		if (iov[i].iov_len != copylen) {
+			iov[i].iov_len = copylen;
+			return;
+		}
+	}
+}
+
+static void init_nss_crypto(
+	struct totemnet_instance *instance)
+{
+	PK11SlotInfo*      aes_slot = NULL;
+	PK11SlotInfo*      sha1_slot = NULL;
+	SECItem            key_item;
+	SECStatus          rv;
+
+	log_printf(instance->totemnet_log_level_notice,
+		"Initializing transmit/receive security: NSS AES128CBC/SHA1HMAC (mode 1).\n");
+	rv = NSS_NoDB_Init(".");
+	if (rv != SECSuccess)
+	{
+		log_printf(instance->totemnet_log_level_security, "NSS initialization failed (err %d)\n",
+			PR_GetError());
+		goto out;
+	}
+
+	aes_slot = PK11_GetBestSlot(instance->totem_config->crypto_crypt_type, NULL);
+	if (aes_slot == NULL)
+	{
+		log_printf(instance->totemnet_log_level_security, "Unable to find security slot (err %d)\n",
+			PR_GetError());
+		goto out;
+	}
+
+	sha1_slot = PK11_GetBestSlot(CKM_SHA_1_HMAC, NULL);
+	if (sha1_slot == NULL)
+	{
+		log_printf(instance->totemnet_log_level_security, "Unable to find security slot (err %d)\n",
+			PR_GetError());
+		goto out;
+	}
+	/*
+	 * Make the private key into a SymKey that we can use
+	 */
+	key_item.type = siBuffer;
+	key_item.data = instance->totem_config->private_key;
+	key_item.len = 32; /* Use 128 bits */
+
+	instance->nss_sym_key = PK11_ImportSymKey(aes_slot,
+		instance->totem_config->crypto_crypt_type,
+		PK11_OriginUnwrap, CKA_ENCRYPT|CKA_DECRYPT,
+		&key_item, NULL);
+	if (instance->nss_sym_key == NULL)
+	{
+		log_printf(instance->totemnet_log_level_security, "Failure to import key into NSS (err %d)\n",
+			PR_GetError());
+		goto out;
+	}
+
+	instance->nss_sym_key_sign = PK11_ImportSymKey(sha1_slot,
+		CKM_SHA_1_HMAC,
+		PK11_OriginUnwrap, CKA_SIGN,
+		&key_item, NULL);
+	if (instance->nss_sym_key_sign == NULL) {
+		log_printf(instance->totemnet_log_level_security, "Failure to import key into NSS (err %d)\n",
+			PR_GetError());
+		goto out;
+	}
+out:
+	return;
+}
+
+static int encrypt_and_sign_nss (
 	struct totemnet_instance *instance,
 	unsigned char *buf,
-	int *buf_len,
-	struct iovec *iovec,
-	int iov_len,
-	prng_state *prng_state_in)
+	size_t *buf_len,
+	const struct iovec *iovec,
+	unsigned int iov_len)
+{
+	PK11Context*       enc_context = NULL;
+	SECStatus          rv1, rv2;
+	int                tmp1_outlen;
+	unsigned int       tmp2_outlen;
+	unsigned char      *inbuf;
+	unsigned char      *data;
+	unsigned char      *outdata;
+	size_t             datalen;
+	SECItem            no_params;
+	SECItem            iv_item;
+	struct security_header *header;
+	SECItem      *nss_sec_param;
+	unsigned char nss_iv_data[16];
+	SECStatus          rv;
+
+	no_params.type = siBuffer;
+	no_params.data = 0;
+	no_params.len = 0;
+
+	tmp1_outlen = tmp2_outlen = 0;
+	inbuf = copy_from_iovec(iovec, iov_len, &datalen);
+	if (!inbuf) {
+		log_printf(instance->totemnet_log_level_security, "malloc error copying buffer from iovec\n");
+		return -1;
+	}
+
+	data = inbuf + sizeof (struct security_header);
+	datalen -= sizeof (struct security_header);
+
+	outdata = buf + sizeof (struct security_header);
+	header = (struct security_header *)buf;
+
+	rv = PK11_GenerateRandom (
+		nss_iv_data,
+		sizeof (nss_iv_data));
+	if (rv != SECSuccess) {
+		log_printf(instance->totemnet_log_level_security,
+			"Failure to generate a random number %d\n",
+			PR_GetError());
+	}
+
+	memcpy(header->salt, nss_iv_data, sizeof(nss_iv_data));
+	iv_item.type = siBuffer;
+	iv_item.data = nss_iv_data;
+	iv_item.len = sizeof (nss_iv_data);
+
+	nss_sec_param = PK11_ParamFromIV (
+		instance->totem_config->crypto_crypt_type,
+		&iv_item);
+	if (nss_sec_param == NULL) {
+		log_printf(instance->totemnet_log_level_security,
+			"Failure to set up PKCS11 param (err %d)\n",
+			PR_GetError());
+		goto out;
+	}
+
+	/*
+	 * Create cipher context for encryption
+	 */
+	enc_context = PK11_CreateContextBySymKey (
+		instance->totem_config->crypto_crypt_type,
+		CKA_ENCRYPT,
+		instance->nss_sym_key,
+		nss_sec_param);
+	if (!enc_context) {
+		char err[1024];
+		PR_GetErrorText(err);
+		err[PR_GetErrorTextLength()] = 0;
+		log_printf(instance->totemnet_log_level_security,
+			"PK11_CreateContext failed (encrypt) crypt_type=%d (err %d): %s\n",
+			instance->totem_config->crypto_crypt_type,
+			PR_GetError(), err);
+		return -1;
+	}
+	rv1 = PK11_CipherOp(enc_context, outdata,
+			    &tmp1_outlen, FRAME_SIZE_MAX - sizeof(struct security_header),
+			    data, datalen);
+	rv2 = PK11_DigestFinal(enc_context, outdata + tmp1_outlen, &tmp2_outlen,
+			       FRAME_SIZE_MAX - tmp1_outlen);
+	PK11_DestroyContext(enc_context, PR_TRUE);
+
+	*buf_len = tmp1_outlen + tmp2_outlen;
+	free(inbuf);
+//	memcpy(&outdata[*buf_len], nss_iv_data, sizeof(nss_iv_data));
+
+	if (rv1 != SECSuccess || rv2 != SECSuccess)
+		goto out;
+
+	/* Now do the digest */
+	enc_context = PK11_CreateContextBySymKey(CKM_SHA_1_HMAC,
+		CKA_SIGN, instance->nss_sym_key_sign, &no_params);
+	if (!enc_context) {
+		char err[1024];
+		PR_GetErrorText(err);
+		err[PR_GetErrorTextLength()] = 0;
+		log_printf(instance->totemnet_log_level_security, "encrypt: PK11_CreateContext failed (digest) err %d: %s\n",
+			PR_GetError(), err);
+		return -1;
+	}
+
+
+	PK11_DigestBegin(enc_context);
+
+	rv1 = PK11_DigestOp(enc_context, outdata - 16, *buf_len + 16);
+	rv2 = PK11_DigestFinal(enc_context, header->hash_digest, &tmp2_outlen, sizeof(header->hash_digest));
+
+	PK11_DestroyContext(enc_context, PR_TRUE);
+
+	if (rv1 != SECSuccess || rv2 != SECSuccess)
+		goto out;
+
+
+	*buf_len = *buf_len + sizeof(struct security_header);
+	SECITEM_FreeItem(nss_sec_param, PR_TRUE);
+	return 0;
+
+out:
+	return -1;
+}
+
+
+static int authenticate_and_decrypt_nss (
+	struct totemnet_instance *instance,
+	struct iovec *iov,
+	unsigned int iov_len)
+{
+	PK11Context*  enc_context = NULL;
+	SECStatus     rv1, rv2;
+	int           tmp1_outlen;
+	unsigned int  tmp2_outlen;
+	unsigned char outbuf[FRAME_SIZE_MAX];
+	unsigned char digest[HMAC_HASH_SIZE];
+	unsigned char *outdata;
+	int           result_len;
+	unsigned char *data;
+	unsigned char *inbuf;
+	size_t        datalen;
+	struct security_header *header = iov[0].iov_base;
+	SECItem no_params;
+	SECItem ivdata;
+
+	no_params.type = siBuffer;
+	no_params.data = 0;
+	no_params.len = 0;
+
+	tmp1_outlen = tmp2_outlen = 0;
+	if (iov_len > 1) {
+		inbuf = copy_from_iovec(iov, iov_len, &datalen);
+		if (!inbuf) {
+			log_printf(instance->totemnet_log_level_security, "malloc error copying buffer from iovec\n");
+			return -1;
+		}
+	}
+	else {
+		inbuf = iov[0].iov_base;
+		datalen = iov[0].iov_len;
+	}
+	data = inbuf + sizeof (struct security_header) - 16;
+	datalen = datalen - sizeof (struct security_header) + 16;
+
+	outdata = outbuf + sizeof (struct security_header);
+
+	/* Check the digest */
+	enc_context = PK11_CreateContextBySymKey (
+		CKM_SHA_1_HMAC, CKA_SIGN,
+		instance->nss_sym_key_sign,
+		&no_params);
+	if (!enc_context) {
+		char err[1024];
+		PR_GetErrorText(err);
+		err[PR_GetErrorTextLength()] = 0;
+		log_printf(instance->totemnet_log_level_security, "PK11_CreateContext failed (check digest) err %d: %s\n",
+			PR_GetError(), err);
+		return -1;
+	}
+
+	PK11_DigestBegin(enc_context);
+
+	rv1 = PK11_DigestOp(enc_context, data, datalen);
+	rv2 = PK11_DigestFinal(enc_context, digest, &tmp2_outlen, sizeof(digest));
+
+	PK11_DestroyContext(enc_context, PR_TRUE);
+
+	if (rv1 != SECSuccess || rv2 != SECSuccess) {
+		log_printf(instance->totemnet_log_level_security, "Digest check failed\n");
+		return -1;
+	}
+
+	if (memcmp(digest, header->hash_digest, tmp2_outlen) != 0) {
+		log_printf(instance->totemnet_log_level_error, "Digest does not match\n");
+		return -1;
+	}
+
+	/*
+	 * Get rid of salt
+	 */
+	data += 16;
+	datalen -= 16;
+
+	/* Create cipher context for decryption */
+	ivdata.type = siBuffer;
+	ivdata.data = header->salt;
+	ivdata.len = sizeof(header->salt);
+
+	enc_context = PK11_CreateContextBySymKey(
+		instance->totem_config->crypto_crypt_type,
+		CKA_DECRYPT,
+		instance->nss_sym_key, &ivdata);
+	if (!enc_context) {
+		log_printf(instance->totemnet_log_level_security,
+			"PK11_CreateContext (decrypt) failed (err %d)\n",
+			PR_GetError());
+		return -1;
+	}
+
+	rv1 = PK11_CipherOp(enc_context, outdata, &tmp1_outlen,
+			    sizeof(outbuf) - sizeof (struct security_header),
+			    data, datalen);
+	if (rv1 != SECSuccess) {
+		log_printf(instance->totemnet_log_level_security,
+			"PK11_CipherOp (decrypt) failed (err %d)\n",
+			PR_GetError());
+	}
+	rv2 = PK11_DigestFinal(enc_context, outdata + tmp1_outlen, &tmp2_outlen,
+			       sizeof(outbuf) - tmp1_outlen);
+	PK11_DestroyContext(enc_context, PR_TRUE);
+	result_len = tmp1_outlen + tmp2_outlen + sizeof (struct security_header);
+
+	/* Copy it back to the buffer */
+	copy_to_iovec(iov, iov_len, outbuf, result_len);
+	if (iov_len > 1)
+		free(inbuf);
+
+	if (rv1 != SECSuccess || rv2 != SECSuccess)
+		return -1;
+
+	return 0;
+}
+#endif
+
+static int encrypt_and_sign_sober (
+	struct totemnet_instance *instance,
+	unsigned char *buf,
+	size_t *buf_len,
+	const struct iovec *iovec,
+	unsigned int iov_len)
 {
 	int i;
 	unsigned char *addr;
@@ -304,10 +703,11 @@ static void encrypt_and_sign_worker (
 	unsigned char *cipher_key = &keys[16];
 	unsigned char *initial_vector = &keys[0];
 	unsigned long len;
-	int outlen = 0;
-	hmac_state hmac_state;
+	size_t outlen = 0;
+	hmac_state hmac_st;
 	prng_state keygen_prng_state;
 	prng_state stream_prng_state;
+	prng_state *prng_state_in = &instance->totemnet_prng_state;
 
 	header = (struct security_header *)buf;
 	addr = buf + sizeof (struct security_header);
@@ -322,7 +722,7 @@ static void encrypt_and_sign_worker (
 	sober128_start (&keygen_prng_state);
 	sober128_add_entropy (instance->totemnet_private_key,
 		instance->totemnet_private_key_len,
-		&keygen_prng_state);	
+		&keygen_prng_state);
 	sober128_add_entropy (header->salt, sizeof (header->salt),
 		&keygen_prng_state);
 
@@ -332,8 +732,8 @@ static void encrypt_and_sign_worker (
 	 * Setup stream cipher
 	 */
 	sober128_start (&stream_prng_state);
-	sober128_add_entropy (cipher_key, 16, &stream_prng_state);	
-	sober128_add_entropy (initial_vector, 16, &stream_prng_state);	
+	sober128_add_entropy (cipher_key, 16, &stream_prng_state);
+	sober128_add_entropy (initial_vector, 16, &stream_prng_state);
 
 	outlen = sizeof (struct security_header);
 	/*
@@ -352,47 +752,167 @@ static void encrypt_and_sign_worker (
 		outlen - sizeof (struct security_header),
 		&stream_prng_state);
 
-	memset (&hmac_state, 0, sizeof (hmac_state));
+	memset (&hmac_st, 0, sizeof (hmac_st));
 
 	/*
 	 * Sign the contents of the message with the hmac key and store signature in message
 	 */
-	hmac_init (&hmac_state, DIGEST_SHA1, hmac_key, 16);
+	hmac_init (&hmac_st, DIGEST_SHA1, hmac_key, 16);
 
-	hmac_process (&hmac_state, 
+	hmac_process (&hmac_st,
 		buf + HMAC_HASH_SIZE,
 		outlen - HMAC_HASH_SIZE);
 
 	len = hash_descriptor[DIGEST_SHA1]->hashsize;
 
-	hmac_done (&hmac_state, header->hash_digest, &len);
+	hmac_done (&hmac_st, header->hash_digest, &len);
 
 	*buf_len = outlen;
+
+	return 0;
 }
+
+static int encrypt_and_sign_worker (
+	struct totemnet_instance *instance,
+	unsigned char *buf,
+	size_t *buf_len,
+	const struct iovec *iovec,
+	unsigned int iov_len)
+{
+	if (instance->totem_config->crypto_type == TOTEM_CRYPTO_SOBER ||
+	    instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_OLD)
+		return encrypt_and_sign_sober(instance, buf, buf_len, iovec, iov_len);
+#ifdef HAVE_LIBNSS
+	if (instance->totem_config->crypto_type == TOTEM_CRYPTO_NSS)
+		return encrypt_and_sign_nss(instance, buf, buf_len, iovec, iov_len);
+#endif
+	return -1;
+}
+
+static int authenticate_and_decrypt (
+	struct totemnet_instance *instance,
+	struct iovec *iov,
+	unsigned int iov_len)
+{
+	unsigned char type;
+	unsigned char *endbuf = iov[iov_len-1].iov_base;
+	int res = -1;
+
+	/*
+	 * Get the encryption type and remove it from the buffer
+	 */
+	type = endbuf[iov[iov_len-1].iov_len-1];
+	iov[iov_len-1].iov_len -= 1;
+
+	if (type == TOTEM_CRYPTO_SOBER)
+		res = authenticate_and_decrypt_sober(instance, iov, iov_len);
+
+	/*
+	 * Only try higher crypto options if NEW has been requested
+	 */
+	if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_NEW) {
+#ifdef HAVE_LIBNSS
+		if (type == TOTEM_CRYPTO_NSS)
+		    res = authenticate_and_decrypt_nss(instance, iov, iov_len);
+#endif
+	}
+
+	/*
+	 * If it failed, then try decrypting the whole packet as it might be
+	 * from aisexec
+	 */
+	if (res == -1) {
+		iov[iov_len-1].iov_len += 1;
+		res = authenticate_and_decrypt_sober(instance, iov, iov_len);
+	}
+
+	return res;
+}
+
+static void init_crypto(
+	struct totemnet_instance *instance)
+{
+	/*
+	 * If we are expecting NEW crypto type then initialise all available
+	 * crypto options. For OLD then we only need SOBER128.
+	 */
+
+	init_sober_crypto(instance);
+
+	if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_OLD)
+		return;
+
+#ifdef HAVE_LIBNSS
+	init_nss_crypto(instance);
+#endif
+}
+
+int totemnet_crypto_set (hdb_handle_t handle,
+			 unsigned int type)
+{
+	struct totemnet_instance *instance;
+	int res = 0;
+
+	res = hdb_handle_get (&totemnet_instance_database, handle,
+		(void *)&instance);
+	if (res != 0) {
+		res = ENOENT;
+		goto error_exit;
+	}
+
+	/*
+	 * Can't set crypto type if OLD is selected
+	 */
+	if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_OLD) {
+		res = -1;
+	} else {
+		/*
+		 * Validate crypto algorithm
+		 */
+		switch (type) {
+			case TOTEM_CRYPTO_SOBER:
+				log_printf(instance->totemnet_log_level_security,
+					"Transmit security set to: libtomcrypt SOBER128/SHA1HMAC (mode 0)");
+				break;
+			case TOTEM_CRYPTO_NSS:
+				log_printf(instance->totemnet_log_level_security,
+					"Transmit security set to: NSS AES128CBC/SHA1HMAC (mode 1)");
+				break;
+			default:
+				res = -1;
+				break;
+		}
+	}
+	hdb_handle_put (&totemnet_instance_database, handle);
+
+error_exit:
+	return res;
+}
+
 
 static inline void ucast_sendmsg (
 	struct totemnet_instance *instance,
 	struct totem_ip_address *system_to,
-	struct iovec *iovec_in,
-	int iov_len_in)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct msghdr msg_ucast;
 	int res = 0;
-	int buf_len;
+	size_t buf_len;
 	unsigned char sheader[sizeof (struct security_header)];
 	unsigned char encrypt_data[FRAME_SIZE_MAX];
-	struct iovec iovec_encrypt[20];
-	struct iovec *iovec_sendmsg;
+	struct iovec iovec_encrypt[2];
+	const struct iovec *iovec_sendmsg;
 	struct sockaddr_storage sockaddr;
-	int iov_len;
+	struct iovec iovec;
+	unsigned int iov_len;
 	int addrlen;
 
 	if (instance->totem_config->secauth == 1) {
-
 		iovec_encrypt[0].iov_base = sheader;
 		iovec_encrypt[0].iov_len = sizeof (struct security_header);
-		memcpy (&iovec_encrypt[1], &iovec_in[0],
-			sizeof (struct iovec) * iov_len_in);
+		iovec_encrypt[1].iov_base = (void *)msg;
+		iovec_encrypt[1].iov_len = msg_len;
 
 		/*
 		 * Encrypt and digest the message
@@ -402,16 +922,24 @@ static inline void ucast_sendmsg (
 			encrypt_data,
 			&buf_len,
 			iovec_encrypt,
-			iov_len_in + 1,
-			&instance->totemnet_prng_state);
+			2);
+
+		if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_NEW) {
+			encrypt_data[buf_len++] = instance->totem_config->crypto_type;
+		}
+		else {
+			encrypt_data[buf_len++] = 0;
+		}
 
 		iovec_encrypt[0].iov_base = encrypt_data;
 		iovec_encrypt[0].iov_len = buf_len;
 		iovec_sendmsg = &iovec_encrypt[0];
 		iov_len = 1;
 	} else {
-		iovec_sendmsg = iovec_in;
-		iov_len = iov_len_in;
+		iovec.iov_base = (void *)msg;
+		iovec.iov_len = msg_len;
+		iovec_sendmsg = &iovec;
+		iov_len = 1;
 	}
 
 	/*
@@ -421,11 +949,17 @@ static inline void ucast_sendmsg (
 		instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	msg_ucast.msg_name = &sockaddr;
 	msg_ucast.msg_namelen = addrlen;
-	msg_ucast.msg_iov = iovec_sendmsg;
+	msg_ucast.msg_iov = (void *) iovec_sendmsg;
 	msg_ucast.msg_iovlen = iov_len;
+#if !defined(COROSYNC_SOLARIS)
 	msg_ucast.msg_control = 0;
 	msg_ucast.msg_controllen = 0;
 	msg_ucast.msg_flags = 0;
+#else
+	msg_ucast.msg_accrights = NULL;
+	msg_ucast.msg_accrightslen = 0;
+#endif
+
 
 	/*
 	 * Transmit multicast message
@@ -437,26 +971,27 @@ static inline void ucast_sendmsg (
 
 static inline void mcast_sendmsg (
 	struct totemnet_instance *instance,
-	struct iovec *iovec_in,
-	int iov_len_in)
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct msghdr msg_mcast;
 	int res = 0;
-	int buf_len;
+	size_t buf_len;
 	unsigned char sheader[sizeof (struct security_header)];
 	unsigned char encrypt_data[FRAME_SIZE_MAX];
-	struct iovec iovec_encrypt[20];
-	struct iovec *iovec_sendmsg;
+	struct iovec iovec_encrypt[2];
+	struct iovec iovec;
+	const struct iovec *iovec_sendmsg;
 	struct sockaddr_storage sockaddr;
-	int iov_len;
+	unsigned int iov_len;
 	int addrlen;
 
 	if (instance->totem_config->secauth == 1) {
 
 		iovec_encrypt[0].iov_base = sheader;
 		iovec_encrypt[0].iov_len = sizeof (struct security_header);
-		memcpy (&iovec_encrypt[1], &iovec_in[0],
-			sizeof (struct iovec) * iov_len_in);
+		iovec_encrypt[1].iov_base = (void *)msg;
+		iovec_encrypt[1].iov_len = msg_len;
 
 		/*
 		 * Encrypt and digest the message
@@ -466,16 +1001,25 @@ static inline void mcast_sendmsg (
 			encrypt_data,
 			&buf_len,
 			iovec_encrypt,
-			iov_len_in + 1,
-			&instance->totemnet_prng_state);
+			2);
+
+		if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_NEW) {
+			encrypt_data[buf_len++] = instance->totem_config->crypto_type;
+		}
+		else {
+			encrypt_data[buf_len++] = 0;
+		}
 
 		iovec_encrypt[0].iov_base = encrypt_data;
 		iovec_encrypt[0].iov_len = buf_len;
 		iovec_sendmsg = &iovec_encrypt[0];
 		iov_len = 1;
 	} else {
-		iovec_sendmsg = iovec_in;
-		iov_len = iov_len_in;
+		iovec.iov_base = (void *)msg;
+		iovec.iov_len = msg_len;
+
+		iovec_sendmsg = &iovec;
+		iov_len = 1;
 	}
 
 	/*
@@ -485,11 +1029,16 @@ static inline void mcast_sendmsg (
 		instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	msg_mcast.msg_name = &sockaddr;
 	msg_mcast.msg_namelen = addrlen;
-	msg_mcast.msg_iov = iovec_sendmsg;
+	msg_mcast.msg_iov = (void *) iovec_sendmsg;
 	msg_mcast.msg_iovlen = iov_len;
+#if !defined(COROSYNC_SOLARIS)
 	msg_mcast.msg_control = 0;
 	msg_mcast.msg_controllen = 0;
 	msg_mcast.msg_flags = 0;
+#else
+	msg_mcast.msg_accrights = NULL;
+	msg_mcast.msg_accrightslen = 0;
+#endif
 
 	/*
 	 * Transmit multicast message
@@ -521,35 +1070,32 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	struct msghdr msg_mcast;
 	unsigned char sheader[sizeof (struct security_header)];
 	int res = 0;
-	int buf_len;
-	struct iovec iovec_encrypted;
-	struct iovec *iovec_sendmsg;
+	size_t buf_len;
+	struct iovec iovec_enc[2];
+	struct iovec iovec;
 	struct sockaddr_storage sockaddr;
-	unsigned int iovs;
 	int addrlen;
 
 	if (instance->totem_config->secauth == 1) {
-		memmove (&work_item->iovec[1], &work_item->iovec[0],
-			work_item->iov_len * sizeof (struct iovec));
-		work_item->iovec[0].iov_base = sheader;
-		work_item->iovec[0].iov_len = sizeof (struct security_header);
+		iovec_enc[0].iov_base = sheader;
+		iovec_enc[0].iov_len = sizeof (struct security_header);
+		iovec_enc[1].iov_base = (void *)work_item->msg;
+		iovec_enc[1].iov_len = work_item->msg_len;
 
 		/*
 		 * Encrypt and digest the message
 		 */
 		encrypt_and_sign_worker (
 			instance,
-			totemnet_mcast_thread_state->iobuf, &buf_len,
-			work_item->iovec, work_item->iov_len + 1,
-			&totemnet_mcast_thread_state->prng_state);
+			totemnet_mcast_thread_state->iobuf,
+			&buf_len,
+			iovec_enc, 2);
 
-			iovec_sendmsg = &iovec_encrypted;
-			iovec_sendmsg->iov_base = totemnet_mcast_thread_state->iobuf;
-			iovec_sendmsg->iov_len = buf_len;
-			iovs = 1;
+		iovec.iov_base = totemnet_mcast_thread_state->iobuf;
+		iovec.iov_len = buf_len;
 	} else {
-		iovec_sendmsg = work_item->iovec;
-		iovs = work_item->iov_len;
+		iovec.iov_base = (void *)work_item->msg;
+		iovec.iov_len = work_item->msg_len;
 	}
 
 	totemip_totemip_to_sockaddr_convert(&instance->mcast_address,
@@ -557,11 +1103,16 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 
 	msg_mcast.msg_name = &sockaddr;
 	msg_mcast.msg_namelen = addrlen;
-	msg_mcast.msg_iov = iovec_sendmsg;
-	msg_mcast.msg_iovlen = iovs;
+	msg_mcast.msg_iov = &iovec;
+	msg_mcast.msg_iovlen = 1;
+#if !defined(COROSYNC_SOLARIS)
 	msg_mcast.msg_control = 0;
 	msg_mcast.msg_controllen = 0;
 	msg_mcast.msg_flags = 0;
+#else
+	msg_mcast.msg_accrights = NULL;
+	msg_mcast.msg_accrightslen = 0;
+#endif
 
 	/*
 	 * Transmit multicast message
@@ -569,13 +1120,10 @@ static void totemnet_mcast_worker_fn (void *thread_state, void *work_item_in)
 	 */
 	res = sendmsg (instance->totemnet_sockets.mcast_send, &msg_mcast,
 		MSG_NOSIGNAL);
-	if (res > 0) {
-		instance->stats_sent += res;
-	}
 }
 
 int totemnet_finalize (
-	totemnet_handle handle)
+	hdb_handle_t handle)
 {
 	struct totemnet_instance *instance;
 	int res = 0;
@@ -589,6 +1137,20 @@ int totemnet_finalize (
 
 	worker_thread_group_exit (&instance->worker_thread_group);
 
+	if (instance->totemnet_sockets.mcast_recv > 0) {
+		close (instance->totemnet_sockets.mcast_recv);
+	 	poll_dispatch_delete (instance->totemnet_poll_handle,
+			instance->totemnet_sockets.mcast_recv);
+	}
+	if (instance->totemnet_sockets.mcast_send > 0) {
+		close (instance->totemnet_sockets.mcast_send);
+	}
+	if (instance->totemnet_sockets.token > 0) {
+		close (instance->totemnet_sockets.token);
+		poll_dispatch_delete (instance->totemnet_poll_handle,
+			instance->totemnet_sockets.token);
+	}
+
 	hdb_handle_put (&totemnet_instance_database, handle);
 
 error_exit:
@@ -600,7 +1162,7 @@ error_exit:
  */
 
 static int net_deliver_fn (
-	poll_handle handle,
+	hdb_handle_t handle,
 	int fd,
 	int revents,
 	void *data)
@@ -628,9 +1190,14 @@ static int net_deliver_fn (
 	msg_recv.msg_namelen = sizeof (struct sockaddr_storage);
 	msg_recv.msg_iov = iovec;
 	msg_recv.msg_iovlen = 1;
+#if !defined(COROSYNC_SOLARIS)
 	msg_recv.msg_control = 0;
 	msg_recv.msg_controllen = 0;
 	msg_recv.msg_flags = 0;
+#else
+	msg_recv.msg_accrights = NULL;
+	msg_recv.msg_accrightslen = 0;
+#endif
 
 	bytes_received = recvmsg (fd, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (bytes_received == -1) {
@@ -654,14 +1221,15 @@ static int net_deliver_fn (
 		 * Authenticate and if authenticated, decrypt datagram
 		 */
 
-		res = authenticate_and_decrypt (instance, iovec);
+		res = authenticate_and_decrypt (instance, iovec, 1);
 		if (res == -1) {
+			log_printf (instance->totemnet_log_level_security, "Received message has invalid digest... ignoring.\n");
 			log_printf (instance->totemnet_log_level_security,
 				"Invalid packet data\n");
 			iovec->iov_len = FRAME_SIZE_MAX;
 			return 0;
 		}
-		msg_offset = iovec->iov_base +
+		msg_offset = (unsigned char *)iovec->iov_base +
 			sizeof (struct security_header);
 		size_delv = bytes_received - sizeof (struct security_header);
 	} else {
@@ -676,7 +1244,7 @@ static int net_deliver_fn (
 		instance->context,
 		msg_offset,
 		size_delv);
-		
+
 	iovec->iov_len = FRAME_SIZE_MAX;
 	return (0);
 }
@@ -691,22 +1259,13 @@ static int netif_determine (
 	int res;
 
 	res = totemip_iface_check (bindnet, bound_to,
-		interface_up, interface_num);
+		interface_up, interface_num,
+                instance->totem_config->clear_node_high_bit);
 
-	/*
-	 * If the desired binding is to an IPV4 network and nodeid isn't
-	 * specified, retrieve the node id from this_ip network address
-	 *
-	 * IPV6 networks must have a node ID specified since the node id
-	 * field is only 32 bits.
-	 */
-	if (bound_to->family == AF_INET && bound_to->nodeid == 0) {
-		memcpy (&bound_to->nodeid, bound_to->addr, sizeof (int));
-	}
 
 	return (res);
 }
-	
+
 
 /*
  * If the interface is up, the sockets for totem are built.  If the interface is down
@@ -830,7 +1389,7 @@ static void timer_function_netif_check_timeout (
 				&instance->timer_netif_check_timeout);
 		}
 
-	} else {		
+	} else {
 		if (instance->netif_state_report & NETIF_STATE_REPORT_DOWN) {
 			log_printf (instance->totemnet_log_level_notice,
 				"The network interface is down.\n");
@@ -884,7 +1443,7 @@ static int totemnet_build_sockets_ip (
 	int addrlen;
 	int res;
 	int flag;
-	
+
 	/*
 	 * Create multicast recv socket
 	 */
@@ -901,11 +1460,11 @@ static int totemnet_build_sockets_ip (
 		return (-1);
 	}
 
-	/* 
+	/*
 	 * Force reuse
 	 */
 	 flag = 1;
-	 if ( setsockopt(sockets->mcast_recv, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) { 
+	 if ( setsockopt(sockets->mcast_recv, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) {
 	 	perror("setsockopt reuseaddr");
 		return (-1);
 	}
@@ -937,11 +1496,11 @@ static int totemnet_build_sockets_ip (
 		return (-1);
 	}
 
-	/* 
+	/*
 	 * Force reuse
 	 */
 	 flag = 1;
-	 if ( setsockopt(sockets->mcast_send, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) { 
+	 if ( setsockopt(sockets->mcast_send, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) {
 	 	perror("setsockopt reuseaddr");
 		return (-1);
 	}
@@ -970,11 +1529,11 @@ static int totemnet_build_sockets_ip (
 		return (-1);
 	}
 
-	/* 
+	/*
 	 * Force reuse
 	 */
 	 flag = 1;
-	 if ( setsockopt(sockets->token, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) { 
+	 if ( setsockopt(sockets->token, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) {
 	 	perror("setsockopt reuseaddr");
 		return (-1);
 	}
@@ -1016,32 +1575,47 @@ static int totemnet_build_sockets_ip (
 	totemip_totemip_to_sockaddr_convert(mcast_address, instance->totem_interface->ip_port, &mcast_ss, &addrlen);
 	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port, &boundto_ss, &addrlen);
 
-	switch ( bindnet_address->family ) {
-		case AF_INET:
-		memset(&mreq, 0, sizeof(mreq));
-		mreq.imr_multiaddr.s_addr = mcast_sin->sin_addr.s_addr;
-		mreq.imr_interface.s_addr = boundto_sin->sin_addr.s_addr;
-		res = setsockopt (sockets->mcast_recv, IPPROTO_IP, IP_ADD_MEMBERSHIP,
-			&mreq, sizeof (mreq));
-		if (res == -1) {
-			perror ("join ipv4 multicast group failed");
-			return (-1);
-		}
-		break;
-		case AF_INET6:
-		memset(&mreq6, 0, sizeof(mreq6));
-		memcpy(&mreq6.ipv6mr_multiaddr, &mcast_sin6->sin6_addr, sizeof(struct in6_addr));
-		mreq6.ipv6mr_interface = interface_num;
+	if (instance->totem_config->broadcast_use == 1) {
+		unsigned int broadcast = 1;
 
-		res = setsockopt (sockets->mcast_recv, IPPROTO_IPV6, IPV6_JOIN_GROUP,
-			&mreq6, sizeof (mreq6));
-		if (res == -1) {
-			perror ("join ipv6 multicast group failed");
+		if ((setsockopt(sockets->mcast_recv, SOL_SOCKET,
+			SO_BROADCAST, &broadcast, sizeof (broadcast))) == -1) {
+			perror("setting broadcast option");
 			return (-1);
 		}
-		break;
+		if ((setsockopt(sockets->mcast_send, SOL_SOCKET,
+			SO_BROADCAST, &broadcast, sizeof (broadcast))) == -1) {
+			perror("setting broadcast option");
+			return (-1);
+		}
+	} else {
+		switch (bindnet_address->family) {
+			case AF_INET:
+			memset(&mreq, 0, sizeof(mreq));
+			mreq.imr_multiaddr.s_addr = mcast_sin->sin_addr.s_addr;
+			mreq.imr_interface.s_addr = boundto_sin->sin_addr.s_addr;
+			res = setsockopt (sockets->mcast_recv, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+				&mreq, sizeof (mreq));
+			if (res == -1) {
+				perror ("join ipv4 multicast group failed");
+				return (-1);
+			}
+			break;
+			case AF_INET6:
+			memset(&mreq6, 0, sizeof(mreq6));
+			memcpy(&mreq6.ipv6mr_multiaddr, &mcast_sin6->sin6_addr, sizeof(struct in6_addr));
+			mreq6.ipv6mr_interface = interface_num;
+
+			res = setsockopt (sockets->mcast_recv, IPPROTO_IPV6, IPV6_JOIN_GROUP,
+				&mreq6, sizeof (mreq6));
+			if (res == -1) {
+				perror ("join ipv6 multicast group failed");
+				return (-1);
+			}
+			break;
+		}
 	}
-	
+
 	/*
 	 * Turn on multicast loopback
 	 */
@@ -1105,7 +1679,7 @@ static int totemnet_build_sockets_ip (
 		}
 		break;
 	}
-	
+
 	return 0;
 }
 
@@ -1142,7 +1716,7 @@ static int totemnet_build_sockets (
 	totemnet_traffic_control_set(instance, sockets->token);
 	return res;
 }
-	
+
 /*
  * Totem Network interface - also does encryption/decryption
  * depends on poll abstraction, POSIX, IPV4
@@ -1152,20 +1726,20 @@ static int totemnet_build_sockets (
  * Create an instance
  */
 int totemnet_initialize (
-	poll_handle poll_handle,
-	totemnet_handle *handle,
+	hdb_handle_t poll_handle,
+	hdb_handle_t *handle,
 	struct totem_config *totem_config,
 	int interface_no,
 	void *context,
 
 	void (*deliver_fn) (
 		void *context,
-		void *msg,
-		int msg_len),
+		const void *msg,
+		unsigned int msg_len),
 
 	void (*iface_change_fn) (
 		void *context,
-		struct totem_ip_address *iface_address))
+		const struct totem_ip_address *iface_address))
 {
 	struct totemnet_instance *instance;
 	unsigned int res;
@@ -1192,6 +1766,7 @@ int totemnet_initialize (
 	instance->totemnet_log_level_warning = totem_config->totem_logging_configuration.log_level_warning;
 	instance->totemnet_log_level_notice = totem_config->totem_logging_configuration.log_level_notice;
 	instance->totemnet_log_level_debug = totem_config->totem_logging_configuration.log_level_debug;
+	instance->totemnet_subsys_id = totem_config->totem_logging_configuration.log_subsys_id;
 	instance->totemnet_log_printf = totem_config->totem_logging_configuration.log_printf;
 
 	/*
@@ -1202,7 +1777,7 @@ int totemnet_initialize (
 
 	instance->totemnet_private_key_len = totem_config->private_key_len;
 
-        rng_make_prng (128, PRNG_SOBER, &instance->totemnet_prng_state, NULL);
+	init_crypto(instance);
 
 	/*
 	 * Initialize local variables for totemnet
@@ -1235,8 +1810,6 @@ int totemnet_initialize (
 
 	instance->handle = *handle;
 
-	rng_make_prng (128, PRNG_SOBER, &instance->totemnet_prng_state, NULL);
-
 	totemip_localhost (instance->mcast_address.family, &localhost);
 
 	netif_down_check (instance);
@@ -1251,7 +1824,7 @@ error_destroy:
 }
 
 int totemnet_processor_count_set (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	int processor_count)
 {
 	struct totemnet_instance *instance;
@@ -1280,7 +1853,7 @@ error_exit:
 	return (res);
 }
 
-int totemnet_recv_flush (totemnet_handle handle)
+int totemnet_recv_flush (hdb_handle_t handle)
 {
 	struct totemnet_instance *instance;
 	struct pollfd ufd;
@@ -1314,7 +1887,7 @@ error_exit:
 	return (res);
 }
 
-int totemnet_send_flush (totemnet_handle handle)
+int totemnet_send_flush (hdb_handle_t handle)
 {
 	struct totemnet_instance *instance;
 	int res = 0;
@@ -1325,7 +1898,7 @@ int totemnet_send_flush (totemnet_handle handle)
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 	worker_thread_group_wait (&instance->worker_thread_group);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
@@ -1335,9 +1908,9 @@ error_exit:
 }
 
 int totemnet_token_send (
-	totemnet_handle handle,
-	struct iovec *iovec,
-	int iov_len)
+	hdb_handle_t handle,
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct totemnet_instance *instance;
 	int res = 0;
@@ -1349,7 +1922,7 @@ int totemnet_token_send (
 		goto error_exit;
 	}
 
-	ucast_sendmsg (instance, &instance->token_target, iovec, iov_len);
+	ucast_sendmsg (instance, &instance->token_target, msg, msg_len);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
 
@@ -1357,9 +1930,9 @@ error_exit:
 	return (res);
 }
 int totemnet_mcast_flush_send (
-	totemnet_handle handle,
-	struct iovec *iovec,
-	unsigned int iov_len)
+	hdb_handle_t handle,
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct totemnet_instance *instance;
 	int res = 0;
@@ -1370,8 +1943,8 @@ int totemnet_mcast_flush_send (
 		res = ENOENT;
 		goto error_exit;
 	}
-	
-	mcast_sendmsg (instance, iovec, iov_len);
+
+	mcast_sendmsg (instance, msg, msg_len);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
 
@@ -1380,9 +1953,9 @@ error_exit:
 }
 
 int totemnet_mcast_noflush_send (
-	totemnet_handle handle,
-	struct iovec *iovec,
-	unsigned int iov_len)
+	hdb_handle_t handle,
+	const void *msg,
+	unsigned int msg_len)
 {
 	struct totemnet_instance *instance;
 	struct work_item work_item;
@@ -1394,24 +1967,24 @@ int totemnet_mcast_noflush_send (
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 	if (instance->totem_config->threads) {
-		memcpy (&work_item.iovec[0], iovec, iov_len * sizeof (struct iovec));
-		work_item.iov_len = iov_len;
+		work_item.msg = msg;
+		work_item.msg_len = msg_len;
 		work_item.instance = instance;
 
 		worker_thread_group_work_add (&instance->worker_thread_group,
-			&work_item);         
+			&work_item);
 	} else {
-		mcast_sendmsg (instance, iovec, iov_len);
+		mcast_sendmsg (instance, msg, msg_len);
 	}
-	
+
 	hdb_handle_put (&totemnet_instance_database, handle);
 error_exit:
 	return (res);
 }
 
-extern int totemnet_iface_check (totemnet_handle handle)
+extern int totemnet_iface_check (hdb_handle_t handle)
 {
 	struct totemnet_instance *instance;
 	int res = 0;
@@ -1422,7 +1995,7 @@ extern int totemnet_iface_check (totemnet_handle handle)
 		res = ENOENT;
 		goto error_exit;
 	}
-	
+
 	timer_function_netif_check_timeout (instance);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
@@ -1441,10 +2014,10 @@ extern void totemnet_net_mtu_adjust (struct totem_config *totem_config)
 	}
 }
 
-char *totemnet_iface_print (totemnet_handle handle)  {
+const char *totemnet_iface_print (hdb_handle_t handle)  {
 	struct totemnet_instance *instance;
 	int res = 0;
-	char *ret_char;
+	const char *ret_char;
 
 	res = hdb_handle_get (&totemnet_instance_database, handle,
 		(void *)&instance);
@@ -1452,8 +2025,8 @@ char *totemnet_iface_print (totemnet_handle handle)  {
 		ret_char = "Invalid totemnet handle";
 		goto error_exit;
 	}
-	
-	ret_char = (char *)totemip_print (&instance->my_id);
+
+	ret_char = totemip_print (&instance->my_id);
 
 	hdb_handle_put (&totemnet_instance_database, handle);
 error_exit:
@@ -1461,7 +2034,7 @@ error_exit:
 }
 
 int totemnet_iface_get (
-	totemnet_handle handle,
+	hdb_handle_t handle,
 	struct totem_ip_address *addr)
 {
 	struct totemnet_instance *instance;
@@ -1472,7 +2045,7 @@ int totemnet_iface_get (
 	if (res != 0) {
 		goto error_exit;
 	}
-	
+
 	memcpy (addr, &instance->my_id, sizeof (struct totem_ip_address));
 
 	hdb_handle_put (&totemnet_instance_database, handle);
@@ -1482,8 +2055,8 @@ error_exit:
 }
 
 int totemnet_token_target_set (
-	totemnet_handle handle,
-	struct totem_ip_address *token_target)
+	hdb_handle_t handle,
+	const struct totem_ip_address *token_target)
 {
 	struct totemnet_instance *instance;
 	unsigned int res;
@@ -1493,7 +2066,7 @@ int totemnet_token_target_set (
 	if (res != 0) {
 		goto error_exit;
 	}
-	
+
 	memcpy (&instance->token_target, token_target,
 		sizeof (struct totem_ip_address));
 
@@ -1502,5 +2075,3 @@ int totemnet_token_target_set (
 error_exit:
 	return (res);
 }
-
-

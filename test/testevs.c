@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -32,34 +32,36 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <corosync/corotypes.h>
 #include <corosync/evs.h>
 
-char *delivery_string;
+static const char *delivery_string;
 
-int deliveries = 0;
-void evs_deliver_fn (
+static int deliveries = 0;
+static void evs_deliver_fn (
 	unsigned int nodeid,
-	void *msg,
-	int msg_len)
+	const void *msg,
+	size_t msg_len)
 {
-	char *buf = msg;
+	const char *buf = msg;
 
-//	buf += 100000;
-//	printf ("Delivery callback\n");
 	printf ("API '%s' msg '%s'\n", delivery_string, buf);
 	deliveries++;
 }
 
-void evs_confchg_fn (
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries)
+static void evs_confchg_fn (
+	unsigned int *member_list, size_t member_list_entries,
+	unsigned int *left_list, size_t left_list_entries,
+	unsigned int *joined_list, size_t joined_list_entries)
 {
 	int i;
 
@@ -79,18 +81,18 @@ void evs_confchg_fn (
 	}
 }
 
-evs_callbacks_t callbacks = {
+static evs_callbacks_t callbacks = {
 	evs_deliver_fn,
 	evs_confchg_fn
 };
 
-struct evs_group groups[3] = {
+static struct evs_group groups[3] = {
 	{ "key1" },
 	{ "key2" },
 	{ "key3" }
 };
 
-char buffer[200000];
+static char buffer[2000];
 struct iovec iov = {
 	.iov_base = buffer,
 	.iov_len = sizeof (buffer)
@@ -99,23 +101,23 @@ struct iovec iov = {
 int main (void)
 {
 	evs_handle_t handle;
-	evs_error_t result;
+	cs_error_t result;
 	int i = 0;
 	int fd;
 	unsigned int member_list[32];
 	unsigned int local_nodeid;
-	unsigned int member_list_entries = 32;
+	size_t member_list_entries = 32;
 
 	result = evs_initialize (&handle, &callbacks);
-	if (result != EVS_OK) {
+	if (result != CS_OK) {
 		printf ("Couldn't initialize EVS service %d\n", result);
 		exit (0);
 	}
-	
+
 	result = evs_membership_get (handle, &local_nodeid,
 		member_list, &member_list_entries);
-	printf ("Current membership from evs_membership_get entries %d\n",
-		member_list_entries);
+	printf ("Current membership from evs_membership_get entries %lu\n",
+		(unsigned long int) member_list_entries);
 	for (i = 0; i < member_list_entries; i++) {
 		printf ("member [%d] is %x\n", i, member_list[i]);
 	}
@@ -124,8 +126,6 @@ int main (void)
 	printf ("Init result %d\n", result);
 	result = evs_join (handle, groups, 3);
 	printf ("Join result %d\n", result);
-	result = evs_leave (handle, &groups[0], 1);
-	printf ("Leave result %d\n", result);
 	delivery_string = "evs_mcast_joined";
 
 	/*
@@ -142,15 +142,14 @@ int main (void)
 try_again_one:
 		result = evs_mcast_joined (handle, EVS_TYPE_AGREED,
 			&iov, 1);
-		if (result == EVS_ERR_TRY_AGAIN) {
-//printf ("try again\n");
+		if (result == CS_ERR_TRY_AGAIN) {
 			goto try_again_one;
 		}
-		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	}
 
 	do {
-		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	} while (deliveries < 20);
 	/*
 	 * Demonstrate evs_mcast_joined
@@ -161,21 +160,21 @@ try_again_one:
 try_again_two:
 		result = evs_mcast_groups (handle, EVS_TYPE_AGREED,
 			 &groups[1], 1, &iov, 1);
-		if (result == EVS_ERR_TRY_AGAIN) {
+		if (result == CS_ERR_TRY_AGAIN) {
 			goto try_again_two;
 		}
-	
-		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
+
+		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	}
 	/*
 	 * Flush any pending callbacks
 	 */
 	do {
-		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	} while (deliveries < 500);
 
 	evs_fd_get (handle, &fd);
-	
+
 	evs_finalize (handle);
 
 	return (0);

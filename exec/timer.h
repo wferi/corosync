@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -37,9 +37,10 @@
 
 typedef void * corosync_timer_handle;
 
-extern void corosync_timer_init (
+extern int corosync_timer_init (
         void (*serialize_lock) (void),
-        void (*serialize_unlock) (void));
+        void (*serialize_unlock) (void),
+	int sched_priority);
 
 extern int corosync_timer_add_duration (
 	unsigned long long nanoseconds_in_future,
@@ -60,5 +61,9 @@ extern void corosync_timer_delete_data (corosync_timer_handle timer_handle);
 extern void corosync_timer_lock (void);
 
 extern void corosync_timer_unlock (void);
+
+extern unsigned long long corosync_timer_time_get (void);
+
+extern unsigned long long corosync_timer_expire_time_get (corosync_timer_handle timer_handle);
 
 #endif /* TIMER_H_DEFINED */

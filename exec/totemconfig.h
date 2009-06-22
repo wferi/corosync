@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -36,7 +36,7 @@
 #define TOTEMCONFIG_H_DEFINED
 
 #include <netinet/in.h>
-#include <corosync/saAis.h>
+#include <corosync/corotypes.h>
 #include <corosync/list.h>
 #include <corosync/totem/coropoll.h>
 #include <corosync/totem/totempg.h>
@@ -47,15 +47,15 @@
 extern int totem_config_read (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	char **error_string);
-	
+	const char **error_string);
+
 extern int totem_config_validate (
 	struct totem_config *totem_config,
-	char **error_string);
+	const char **error_string);
 
 int totem_config_keyread (
 	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
-	char **error_string);
+	const char **error_string);
 
 #endif /* TOTEMCONFIG_H_DEFINED */

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2008 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -33,14 +33,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/swab.h>
 #include <corosync/totem/totem.h>
 
+#include <corosync/corotypes.h>
+#include <corosync/coroipc_types.h>
 #include "mainconfig.h"
 #include "util.h"
 #include <corosync/engine/logsys.h>
@@ -49,15 +52,13 @@
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totemip.h>
 #include "main.h"
-#include "ipc.h"
 #include <corosync/engine/coroapi.h>
 #include "service.h"
 
-
-LOGSYS_DECLARE_SUBSYS ("SERV", LOG_INFO);
+LOGSYS_DECLARE_SUBSYS ("SERV");
 
 struct default_service {
-	char *name;
+	const char *name;
 	int ver;
 };
 
@@ -78,17 +79,21 @@ static struct default_service default_services[] = {
 		.name			 = "corosync_confdb",
 		.ver			 = 0,
 	},
+	{
+		.name			 = "corosync_pload",
+		.ver			 = 0,
+	}
 };
 
 struct corosync_service_engine *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 
-static unsigned int object_internal_configuration_handle;
+static hdb_handle_t object_internal_configuration_handle;
 
 
 static unsigned int default_services_requested (struct corosync_api_v1 *corosync_api)
 {
-	unsigned int object_service_handle;
-	unsigned int object_find_handle;
+	hdb_handle_t object_service_handle;
+	hdb_handle_t object_find_handle;
 	char *value;
 
 	/*
@@ -123,15 +128,15 @@ static unsigned int default_services_requested (struct corosync_api_v1 *corosync
 
 unsigned int corosync_service_link_and_init (
 	struct corosync_api_v1 *corosync_api,
-	char *service_name,
+	const char *service_name,
 	unsigned int service_ver)
 {
 	struct corosync_service_engine_iface_ver0 *iface_ver0;
 	void *iface_ver0_p;
-	unsigned int handle;
+	hdb_handle_t handle;
 	struct corosync_service_engine *service;
 	unsigned int res;
-	unsigned int object_service_handle;
+	hdb_handle_t object_service_handle;
 
 	/*
 	 * reference the service interface
@@ -147,7 +152,7 @@ unsigned int corosync_service_link_and_init (
 	iface_ver0 = (struct corosync_service_engine_iface_ver0 *)iface_ver0_p;
 
 	if (iface_ver0 == 0) {
-		log_printf(LOG_LEVEL_ERROR, "Service failed to load '%s'.\n", service_name);
+		log_printf(LOGSYS_LEVEL_ERROR, "Service failed to load '%s'.\n", service_name);
 		return (-1);
 	}
 
@@ -198,53 +203,108 @@ unsigned int corosync_service_link_and_init (
 		&service->id,
 		sizeof (service->id));
 
-	log_printf (LOG_LEVEL_NOTICE, "Service initialized '%s'\n", service->name);
+	log_printf (LOGSYS_LEVEL_NOTICE, "Service initialized '%s'\n", service->name);
 	return (res);
 }
 
-static int corosync_service_unlink_common (
-	struct corosync_api_v1 *corosync_api,
-	unsigned int object_service_handle,
-	const char *service_name,
-	unsigned int service_version) 
+static int service_priority_max(void)
 {
-	unsigned int res;
-	unsigned short *service_id;
-	unsigned int *found_service_handle;
-
-	res = corosync_api->object_key_get (object_service_handle,
-		"handle",
-		strlen ("handle"),
-		(void *)&found_service_handle,
-		NULL);
-	
-	res = corosync_api->object_key_get (object_service_handle,
-		"service_id",
-		strlen ("service_id"),
-		(void *)&service_id,
-		NULL);
-	
-	log_printf(LOG_LEVEL_NOTICE, "Unloading corosync component: %s v%u\n",
-		service_name, service_version);
-
-	if (ais_service[*service_id]->exec_exit_fn) {
-		ais_service[*service_id]->exec_exit_fn ();
+    int lpc = 0, max = 0;
+    for(; lpc < SERVICE_HANDLER_MAXIMUM_COUNT; lpc++) {
+	if(ais_service[lpc] != NULL && ais_service[lpc]->priority > max) {
+	    max = ais_service[lpc]->priority;
 	}
-	ais_service[*service_id] = NULL;
-    
-	return lcr_ifact_release (*found_service_handle);	
+    }
+    return max;
+}
+
+extern unsigned int corosync_service_unlink_priority (struct corosync_api_v1 *corosync_api, int priority)
+{
+	char *service_name;
+	unsigned int *service_ver;
+	unsigned short *service_id;
+	hdb_handle_t object_service_handle;
+	hdb_handle_t object_find_handle;
+	int p = service_priority_max();
+	int lpc = 0;
+
+	if(priority == 0) {
+	    log_printf(LOGSYS_LEVEL_NOTICE, "Unloading all corosync components\n");
+	} else {
+	    log_printf(LOGSYS_LEVEL_NOTICE, "Unloading corosync components up to (and including) priority %d\n", priority);
+	}
+
+	for( ; p >= priority; p--) {
+	    for(lpc = 0; lpc < SERVICE_HANDLER_MAXIMUM_COUNT; lpc++) {
+		if(ais_service[lpc] == NULL || ais_service[lpc]->priority != p) {
+		    continue;
+		}
+
+		/* unload
+		 *
+		 * If we had a pointer to the objdb entry, we'd not need to go looking again...
+		 */
+ 		corosync_api->object_find_create (
+		    object_internal_configuration_handle,
+		    "service", strlen ("service"), &object_find_handle);
+
+		while(corosync_api->object_find_next (
+			  object_find_handle, &object_service_handle) == 0) {
+
+		    int res = corosync_api->object_key_get (
+			object_service_handle,
+			"service_id", strlen ("service_id"), (void *)&service_id, NULL);
+
+		    service_name = NULL;
+		    if(res == 0 && *service_id == ais_service[lpc]->id) {
+			hdb_handle_t *found_service_handle;
+			corosync_api->object_key_get (
+			    object_service_handle,
+			    "name", strlen ("name"), (void *)&service_name, NULL);
+
+			corosync_api->object_key_get (
+			    object_service_handle,
+			    "ver", strlen ("ver"), (void *)&service_ver, NULL);
+
+			res = corosync_api->object_key_get (
+			    object_service_handle,
+			    "handle", strlen ("handle"), (void *)&found_service_handle, NULL);
+
+			res = corosync_api->object_key_get (
+			    object_service_handle,
+			    "service_id", strlen ("service_id"), (void *)&service_id, NULL);
+
+			log_printf(LOGSYS_LEVEL_NOTICE, "Unloading corosync component: %s v%u\n",
+				   service_name, *service_ver);
+
+			if (ais_service[*service_id]->exec_exit_fn) {
+			    ais_service[*service_id]->exec_exit_fn ();
+			}
+			ais_service[*service_id] = NULL;
+
+			lcr_ifact_release (*found_service_handle);
+
+			corosync_api->object_destroy (object_service_handle);
+			break;
+		    }
+		}
+
+		corosync_api->object_find_destroy (object_find_handle);
+	    }
+	}
+	return 0;
 }
 
 extern unsigned int corosync_service_unlink_and_exit (
 	struct corosync_api_v1 *corosync_api,
-	char *service_name,
+	const char *service_name,
 	unsigned int service_ver)
 {
-	unsigned int res;
-	unsigned int object_service_handle;
+	hdb_handle_t object_service_handle;
 	char *found_service_name;
+	unsigned short *service_id;
 	unsigned int *found_service_ver;
-	unsigned int object_find_handle;
+	hdb_handle_t object_find_handle;
 
 	corosync_api->object_find_create (
 		object_internal_configuration_handle,
@@ -262,6 +322,10 @@ extern unsigned int corosync_service_unlink_and_exit (
 			(void *)&found_service_name,
 			NULL);
 
+		if (strcmp (service_name, found_service_name) != 0) {
+		    continue;
+		}
+
 		corosync_api->object_key_get (object_service_handle,
 			"ver",
 			strlen ("ver"),
@@ -271,15 +335,22 @@ extern unsigned int corosync_service_unlink_and_exit (
 		/*
 		 * If service found and linked exit it
 		 */
-		if ((strcmp (service_name, found_service_name) == 0) &&
-			(service_ver == *found_service_ver)) {
+		if (service_ver != *found_service_ver) {
+		    continue;
+		}
 
-			res = corosync_service_unlink_common (
-				corosync_api, object_service_handle,
-				service_name, service_ver);
+		corosync_api->object_key_get (
+		    object_service_handle,
+		    "service_id", strlen ("service_id"),
+		    (void *)&service_id, NULL);
 
-			corosync_api->object_destroy (object_service_handle);
-			return res;
+		if(service_id != NULL
+		   && *service_id > 0
+		   && *service_id < SERVICE_HANDLER_MAXIMUM_COUNT
+		   && ais_service[*service_id] != NULL) {
+
+		    corosync_api->object_find_destroy (object_find_handle);
+		    return corosync_service_unlink_priority (corosync_api, ais_service[*service_id]->priority);
 		}
 	}
 
@@ -291,61 +362,7 @@ extern unsigned int corosync_service_unlink_and_exit (
 extern unsigned int corosync_service_unlink_all (
 	struct corosync_api_v1 *corosync_api)
 {
-	char *service_name;
-	unsigned int *service_ver;
-	unsigned int object_service_handle;
-	unsigned int object_find_handle;
-	int found; 
-
-	log_printf(LOG_LEVEL_NOTICE, "Unloading all corosync components\n");
-
-	/*
-	 * TODO
-	 * Deleting of keys not supported during iteration at this time
-	 * hence this ugly hack
-	 */
-	while(corosync_api->object_find_create (
-			object_internal_configuration_handle,
-			"service",
-			strlen ("service"),
-			&object_find_handle) == 0)
-	{
-
-		found = 0;
-
-		while(corosync_api->object_find_next (
-			object_find_handle,
-			&object_service_handle) == 0)
-			found = 1;
-
-		if(!found)
-			break;
-
-		corosync_api->object_key_get (
-			object_service_handle,
-			"name",
-			strlen ("name"),
-			(void *)&service_name,
-			NULL);
-
-		corosync_api->object_key_get (
-			object_service_handle,
-			"ver",
-			strlen ("ver"),
-			(void *)&service_ver,
-			NULL);
-
-		corosync_service_unlink_common (
-			corosync_api, object_service_handle,
-			service_name, *service_ver);
-
-		corosync_api->object_destroy (object_service_handle);
-
-		corosync_api->object_find_destroy (object_find_handle);
-
-	}
-
-	return (0);
+    return corosync_service_unlink_priority (corosync_api, 0);
 }
 
 /*
@@ -355,12 +372,12 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 {
 	unsigned int i;
 
-	unsigned int object_service_handle;
+	hdb_handle_t object_service_handle;
 	char *found_service_name;
 	char *found_service_ver;
 	unsigned int found_service_ver_atoi;
-	unsigned int object_find_handle;
- 
+	hdb_handle_t object_find_handle;
+
 	corosync_api->object_create (OBJECT_PARENT_HANDLE,
 		&object_internal_configuration_handle,
 		"internal_configuration",
@@ -410,6 +427,6 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 			default_services[i].name,
 			default_services[i].ver);
 	}
-			
+
 	return (0);
 }

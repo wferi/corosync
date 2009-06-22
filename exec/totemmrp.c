@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -32,7 +32,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <assert.h>
+
+#include <config.h>
+
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -48,7 +50,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <signal.h>
 #include <sched.h>
 #include <time.h>
 #include <sys/time.h>
@@ -56,39 +57,54 @@
 
 #include <corosync/totem/totem.h>
 #include <corosync/totem/coropoll.h>
+#include <corosync/hdb.h>
 
+#include "totemmrp.h"
 #include "totemsrp.h"
 
-totemsrp_handle totemsrp_handle_in;
+hdb_handle_t totemsrp_handle_in;
+
+void totemmrp_deliver_fn (
+	unsigned int nodeid,
+	const void *msg,
+	unsigned int msg_len,
+	int endian_conversion_required);
+
+void totemmrp_confchg_fn (
+	enum totem_configuration_type configuration_type,
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id);
 
 void (*pg_deliver_fn) (
 	unsigned int nodeid,
-	struct iovec *iovec,
-	int iov_len,
+	const void *msg,
+	unsigned int msg_len,
 	int endian_conversion_required) = 0;
 
 void (*pg_confchg_fn) (
 	enum totem_configuration_type configuration_type,
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries,
-	struct memb_ring_id *ring_id) = 0;
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id) = 0;
 
 void totemmrp_deliver_fn (
 	unsigned int nodeid,
-	struct iovec *iovec,
-	int iov_len,
+	const void *msg,
+	unsigned int msg_len,
 	int endian_conversion_required)
 {
-	pg_deliver_fn (nodeid, iovec, iov_len, endian_conversion_required);
+	pg_deliver_fn (nodeid, msg, msg_len, endian_conversion_required);
 }
 
 void totemmrp_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries,
-	struct memb_ring_id *ring_id)
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
 {
 	pg_confchg_fn (configuration_type,
 		member_list, member_list_entries,
@@ -101,20 +117,20 @@ void totemmrp_confchg_fn (
  * Initialize the totem multiple ring protocol
  */
 int totemmrp_initialize (
-	poll_handle poll_handle,
+	hdb_handle_t poll_handle,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
-		struct iovec *iovec,
-		int iov_len,
+		const void *msg,
+		unsigned int msg_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		unsigned int *member_list, int member_list_entries,
-		unsigned int *left_list, int left_list_entries,
-		unsigned int *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id))
+		const unsigned int *member_list, size_t member_list_entries,
+		const unsigned int *left_list, size_t left_list_entries,
+		const unsigned int *joined_list, size_t joined_list_entries,
+		const struct memb_ring_id *ring_id))
 {
 	int result;
 	pg_deliver_fn = deliver_fn;
@@ -140,7 +156,7 @@ void totemmrp_finalize (void)
  */
 int totemmrp_mcast (
 	struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	int priority)
 {
 	return totemsrp_mcast (totemsrp_handle_in, iovec, iov_len, priority);
@@ -158,8 +174,8 @@ int totemmrp_callback_token_create (
 	void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, void *),
-	void *data)
+	int (*callback_fn) (enum totem_callback_token_type type, const void *),
+	const void *data)
 {
 	return totemsrp_callback_token_create (totemsrp_handle_in, handle_out, type, delete, callback_fn, data);
 }
@@ -192,7 +208,14 @@ int totemmrp_ifaces_get (
 	return (res);
 }
 
-int totemmrp_my_nodeid_get (void)
+int totemmrp_crypto_set (
+	unsigned int type)
+{
+	return totemsrp_crypto_set (totemsrp_handle_in,
+				    type);
+}
+
+unsigned int totemmrp_my_nodeid_get (void)
 {
 	return (totemsrp_my_nodeid_get (totemsrp_handle_in));
 }
@@ -211,4 +234,3 @@ extern int totemmrp_ring_reenable (void)
 
 	return (res);
 }
-

@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -32,6 +32,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -39,23 +42,24 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <string.h>
+#include <corosync/corotypes.h>
 #include <corosync/evs.h>
 #include "../exec/crypto.h"
 
-char *delivery_string;
-struct msg {
+const char *delivery_string;
+struct my_msg {
 	unsigned int msg_size;
 	unsigned char sha1[20];
 	unsigned char buffer[0];
 };
 
-int deliveries = 0;
-void evs_deliver_fn (
+static int deliveries = 0;
+static void evs_deliver_fn (
 	unsigned int nodeid,
-	void *m,
-	int msg_len)
+	const void *m,
+	size_t msg_len)
 {
-	struct msg *msg2 = (struct msg *)m;
+	const struct my_msg *msg2 = m;
 	unsigned char sha1_compare[20];
 	hash_state sha1_hash;
 	unsigned int i;
@@ -76,10 +80,10 @@ printf ("\n");
 	deliveries++;
 }
 
-void evs_confchg_fn (
-	unsigned int *member_list, int member_list_entries,
-	unsigned int *left_list, int left_list_entries,
-	unsigned int *joined_list, int joined_list_entries)
+static void evs_confchg_fn (
+	unsigned int *member_list, size_t member_list_entries,
+	unsigned int *left_list, size_t left_list_entries,
+	unsigned int *joined_list, size_t joined_list_entries)
 {
 	int i;
 
@@ -99,7 +103,7 @@ void evs_confchg_fn (
 	}
 }
 
-evs_callbacks_t callbacks = {
+static evs_callbacks_t callbacks = {
 	evs_deliver_fn,
 	evs_confchg_fn
 };
@@ -110,32 +114,30 @@ struct evs_group groups[3] = {
 	{ "key3" }
 };
 
-struct msg msg;
-
-char buffer[200000];
+static unsigned char buffer[200000];
 int main (void)
 {
 	evs_handle_t handle;
-	evs_error_t result;
+	cs_error_t result;
 	unsigned int i = 0, j;
 	int fd;
 	unsigned int member_list[32];
 	unsigned int local_nodeid;
-	int member_list_entries = 32;
-	struct msg msg;
+	size_t member_list_entries = 32;
+	struct my_msg msg;
 	hash_state sha1_hash;
 	struct iovec iov[2];
 
 	result = evs_initialize (&handle, &callbacks);
-	if (result != EVS_OK) {
+	if (result != CS_OK) {
 		printf ("Couldn't initialize EVS service %d\n", result);
 		exit (0);
 	}
-	
+
 	result = evs_membership_get (handle, &local_nodeid,
 		member_list, &member_list_entries);
-	printf ("Current membership from evs_membership_get entries %d\n",
-		member_list_entries);
+	printf ("Current membership from evs_membership_get entries %lu\n",
+		(unsigned long int) member_list_entries);
 	for (i = 0; i < member_list_entries; i++) {
 		printf ("member [%d] is %x\n", i, member_list[i]);
 	}
@@ -149,7 +151,7 @@ int main (void)
 	delivery_string = "evs_mcast_joined";
 
 	iov[0].iov_base = &msg;
-	iov[0].iov_len = sizeof (struct msg);
+	iov[0].iov_len = sizeof (struct my_msg);
 	iov[1].iov_base = buffer;
 
 	/*
@@ -169,14 +171,14 @@ int main (void)
 try_again_one:
 		result = evs_mcast_joined (handle, EVS_TYPE_AGREED,
 			iov, 2);
-		if (result == EVS_ERR_TRY_AGAIN) {
+		if (result == CS_ERR_TRY_AGAIN) {
 			goto try_again_one;
 		}
-		result = evs_dispatch (handle, EVS_DISPATCH_ALL);
+		result = evs_dispatch (handle, CS_DISPATCH_ALL);
 	}
 
 	evs_fd_get (handle, &fd);
-	
+
 	evs_finalize (handle);
 
 	return (0);

@@ -7,7 +7,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -36,116 +36,25 @@
 #ifndef AIS_UTIL_H_DEFINED
 #define AIS_UTIL_H_DEFINED
 
-#include <pthread.h>
-#include <sys/poll.h>
-#include <sys/socket.h>
+#include <errno.h>
 
-#include "../include/ipc_gen.h"
+static inline cs_error_t hdb_error_to_cs (int res)		\
+{								\
+	if (res == 0) {						\
+		return (CS_OK);					\
+	} else {						\
+		if (errno == EBADF) {				\
+			return (CS_ERR_BAD_HANDLE);		\
+		} else						\
+		if (errno == ENOMEM) {				\
+			return (CS_ERR_NO_MEMORY);		\
+		}						\
+		return (CS_ERR_LIBRARY);			\
+	}							\
+}
 
-/* Debug macro
- */
-#ifdef DEBUG
-	#define DPRINT(s) printf s
-#else
-	#define DPRINT(s)
-#endif
-		
-#ifdef SO_NOSIGPIPE
-#ifndef MSG_NOSIGNAL
-#define MSG_NOSIGNAL 0
-#endif
-void socket_nosigpipe(int s);
-#else
-#define socket_nosigpipe(s)
-#endif
-
-struct saHandleDatabase {
-	unsigned int handleCount;
-	struct saHandle *handles;
-	pthread_mutex_t mutex;
-	void (*handleInstanceDestructor) (void *);
-};
-
-
-struct saVersionDatabase {
-	int versionCount;
-	SaVersionT *versionsSupported;
-};
-
-SaAisErrorT
-saServiceConnect (
-        int *responseOut,
-        int *callbackOut,
-        enum service_types service);
-
-SaAisErrorT
-saRecvRetry (
-	int s,
-	void *msg,
-	size_t len);
-
-SaAisErrorT
-saSendRetry (
-	int s,
-	const void *msg,
-	size_t len);
-
-SaAisErrorT saSendMsgRetry (
-	int s,
-	struct iovec *iov,
-	int iov_len);
-
-SaAisErrorT saSendMsgReceiveReply (
-	int s,
-	struct iovec *iov,
-	int iov_len,
-	void *responseMessage,
-	int responseLen);
-
-SaAisErrorT saSendReceiveReply (
-	int s,
-	void *requestMessage,
-	int requestLen,
-	void *responseMessage,
-	int responseLen);
-
-SaAisErrorT
-saPollRetry (
-	struct pollfd *ufds,
-	unsigned int nfds,
-	int timeout);
-
-SaAisErrorT
-saHandleCreate (
-	struct saHandleDatabase *handleDatabase,
-	int instanceSize,
-	SaUint64T *handleOut);
-
-SaAisErrorT
-saHandleDestroy (
-	struct saHandleDatabase *handleDatabase,
-	SaUint64T handle);
-
-SaAisErrorT
-saHandleInstanceGet (
-	struct saHandleDatabase *handleDatabase,
-	SaUint64T handle,
-	void **instance);
-
-SaAisErrorT
-saHandleInstancePut (
-	struct saHandleDatabase *handleDatabase,
-	SaUint64T handle);
-
-SaAisErrorT
-saVersionVerify (
-	struct saVersionDatabase *versionDatabase,
-	SaVersionT *version);
-
-#define offset_of(type,member) (int)(&(((type *)0)->member))
-
-SaTimeT
-clustTimeNow(void);
+#define IPC_REQUEST_SIZE        8192*128
+#define IPC_RESPONSE_SIZE       8192*128
+#define IPC_DISPATCH_SIZE       8192*128
 
 #endif /* AIS_UTIL_H_DEFINED */
-

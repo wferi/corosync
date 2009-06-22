@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -56,29 +56,29 @@ extern void totemmrp_log_printf_init (
  * Initialize the group messaging interface
  */
 extern int totemmrp_initialize (
-	poll_handle poll_handle,
+	hdb_handle_t poll_handle,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
-		struct iovec *iovec,
-		int iov_len,
+		const void *msg,
+		unsigned int msg_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		unsigned int *member_list, int member_list_entries,
-		unsigned int *left_list, int left_list_entries,
-		unsigned int *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id));
+		const unsigned int *member_list, size_t member_list_entries,
+		const unsigned int *left_list, size_t left_list_entries,
+		const unsigned int *joined_list, size_t joined_list_entries,
+		const struct memb_ring_id *ring_id));
 
-extern int totemmrp_finalize (void);
+extern void totemmrp_finalize (void);
 
 /*
  * Multicast a message
  */
 extern int totemmrp_mcast (
 	struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	int priority);
 
 /*
@@ -90,8 +90,8 @@ extern int totemmrp_callback_token_create (
 	void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, void *),
-	void *data);
+	int (*callback_fn) (enum totem_callback_token_type type, const void *),
+	const void *data);
 
 extern void totemmrp_callback_token_destroy (
 	void *handle_out);
@@ -104,9 +104,11 @@ extern int totemmrp_ifaces_get (
 	char ***status,
 	unsigned int *iface_count);
 
-extern int totemmrp_my_nodeid_get (void);
+extern unsigned int totemmrp_my_nodeid_get (void);
 
 extern int totemmrp_my_family_get (void);
+
+extern int totemmrp_crypto_set (unsigned int);
 
 extern int totemmrp_ring_reenable (void);
 

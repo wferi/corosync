@@ -6,8 +6,11 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@iahu.ca, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@iahu.ca, http://libtomcrypt.com
  */
+
+#include <config.h>
+
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
@@ -20,13 +23,14 @@
 #endif
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdint.h>
 
 #include "crypto.h"
 
 #define CONST64(n) n ## ULL
 
-typedef unsigned long ulong32;
-typedef unsigned long long ulong64;
+typedef uint32_t ulong32;
+typedef uint64_t ulong64;
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define ENDIAN_LITTLE
@@ -36,15 +40,15 @@ typedef unsigned long long ulong64;
 #define ENDIAN_LITTLE
 #elif _BYTE_ORDER == _BIG_ENDIAN
 #define ENDIAN_BIG
-#elif
-#warning "cannot detect byte order"
+#else
+#error "cannot detect byte order"
 #endif
 
 #if defined(COROSYNC_LINUX)
-#if __WORDIZE == 64
+#if __WORDSIZE == 64
 #define ENDIAN_64BITWORD
 #endif
-#if __WORDIZE == 32
+#if __WORDSIZE == 32
 #define ENDIAN_32BITWORD
 #endif
 #else
@@ -126,7 +130,7 @@ typedef unsigned long long ulong64;
          (((ulong64)((y)[4] & 255))<<24)|(((ulong64)((y)[5] & 255))<<16) | \
          (((ulong64)((y)[6] & 255))<<8)|(((ulong64)((y)[7] & 255))); }
 
-#ifdef ENDIAN_32BITWORD 
+#ifdef ENDIAN_32BITWORD
 
 #define STORE32L(x, y)        \
      { unsigned long __t = (x); memcpy(y, &__t, 4); }
@@ -187,7 +191,7 @@ typedef unsigned long long ulong64;
          (((ulong64)((y)[3] & 255))<<24)|(((ulong64)((y)[2] & 255))<<16) | \
          (((ulong64)((y)[1] & 255))<<8)|(((ulong64)((y)[0] & 255))); }
 
-#ifdef ENDIAN_32BITWORD 
+#ifdef ENDIAN_32BITWORD
 
 #define STORE32H(x, y)        \
      { unsigned long __t = (x); memcpy(y, &__t, 4); }
@@ -380,7 +384,7 @@ int func_name (hash_state * md, const unsigned char *buf, unsigned long len)    
          (((ulong64)((y)[4] & 255))<<24)|(((ulong64)((y)[5] & 255))<<16) | \
          (((ulong64)((y)[6] & 255))<<8)|(((ulong64)((y)[7] & 255))); }
 
-#ifdef ENDIAN_32BITWORD 
+#ifdef ENDIAN_32BITWORD
 
 #define STORE32L(x, y)        \
      { unsigned long __t = (x); memcpy(y, &__t, 4); }
@@ -441,7 +445,7 @@ int func_name (hash_state * md, const unsigned char *buf, unsigned long len)    
          (((ulong64)((y)[3] & 255))<<24)|(((ulong64)((y)[2] & 255))<<16) | \
          (((ulong64)((y)[1] & 255))<<8)|(((ulong64)((y)[0] & 255))); }
 
-#ifdef ENDIAN_32BITWORD 
+#ifdef ENDIAN_32BITWORD
 
 #define STORE32H(x, y)        \
      { unsigned long __t = (x); memcpy(y, &__t, 4); }
@@ -579,7 +583,7 @@ static const ulong32 Multab[256] = {
  * "On the Design of 8*32 S-boxes". Unpublished report, by the
  * Information Systems Research Centre,
  * Queensland University of Technology, 1999.
- * 
+ *
  * The most significant 8 bits are the Skipjack "F table", which can be
  * found at http://csrc.nist.gov/CryptoToolkit/skipjack/skipjack.pdf .
  * In this optimised table, though, the intent is to XOR the word from
@@ -659,7 +663,7 @@ static const ulong32 Sbox[256] = {
  * Based on s128fast.c reference code supplied by Greg Rose of QUALCOMM.
  */
 
-const struct _prng_descriptor sober128_desc = 
+const struct _prng_descriptor sober128_desc =
 {
    "sober128", 64,
     &sober128_start,
@@ -681,7 +685,7 @@ const struct _prng_descriptor *prng_descriptor[] = {
 
 #define B(x,i) ((unsigned char)(((x) >> (8*i)) & 0xFF))
 
-static ulong32 BYTE2WORD(unsigned char *b)
+static ulong32 BYTE2WORD(const unsigned char *b)
 {
    ulong32 t;
    LOAD32L(t, b);
@@ -748,7 +752,7 @@ int sober128_start(prng_state *prng)
     struct sober128_prng *c;
 
     c = &(prng->sober128);
-    
+
     /* Register initialised to Fibonacci numbers */
     c->R[0] = 1;
     c->R[1] = 1;
@@ -807,7 +811,7 @@ static void s128_genkonst(struct sober128_prng *c)
    c->R[FOLDP] ^= (nl);
 
 /* nonlinear diffusion of register for key */
-#define DROUND(z) STEP(c->R,z); NLFUNC(c,(z+1)); c->R[OFF((z+1),FOLDP)] ^= t; 
+#define DROUND(z) STEP(c->R,z); NLFUNC(c,(z+1)); c->R[OFF((z+1),FOLDP)] ^= t;
 static void s128_diffuse(struct sober128_prng *c)
 {
     ulong32 t;
@@ -842,9 +846,9 @@ int sober128_add_entropy(const unsigned char *buf, unsigned long len, prng_state
        /* this is the first call to the add_entropy so this input is the key */
        /* len must be multiple of 4 bytes */
        assert ((len & 3) == 0);
-    
+
        for (i = 0; i < len; i += 4) {
-           k = BYTE2WORD((unsigned char *)&buf[i]);
+           k = BYTE2WORD(&buf[i]);
           ADDKEY(k);
           cycle(c->R);
           XORNL(nltap(c));
@@ -859,7 +863,7 @@ int sober128_add_entropy(const unsigned char *buf, unsigned long len, prng_state
        s128_genkonst(c);
        s128_savestate(c);
        c->nbuf = 0;
-       c->flag = 0;       
+       c->flag = 0;
        c->set  = 1;
     } else {
        /* ok we are adding an IV then... */
@@ -867,9 +871,9 @@ int sober128_add_entropy(const unsigned char *buf, unsigned long len, prng_state
 
        /* len must be multiple of 4 bytes */
        assert ((len & 3) == 0);
-    
+
        for (i = 0; i < len; i += 4) {
-           k = BYTE2WORD((unsigned char *)&buf[i]);
+           k = BYTE2WORD(&buf[i]);
           ADDKEY(k);
           cycle(c->R);
           XORNL(nltap(c));
@@ -903,7 +907,7 @@ unsigned long sober128_read(unsigned char *buf, unsigned long nbytes, prng_state
    c = &(prng->sober128);
    t = 0;
    tlen = nbytes;
-   
+
    /* handle any previously buffered bytes */
    while (c->nbuf != 0 && nbytes != 0) {
       *buf++ ^= c->sbuf & 0xFF;
@@ -972,7 +976,7 @@ const struct _hash_descriptor sha1_desc =
     64,
 
     /* DER identifier */
-    { 0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2B, 0x0E, 
+    { 0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2B, 0x0E,
       0x03, 0x02, 0x1A, 0x05, 0x00, 0x04, 0x14 },
     15,
 
@@ -986,7 +990,7 @@ const struct _hash_descriptor sha1_desc =
 #define F2(x,y,z)  ((x & y) | (z & (x | y)))
 #define F3(x,y,z)  (x ^ y ^ z)
 
-static void sha1_compress(hash_state *md, unsigned char *buf)
+static void sha1_compress(hash_state *md, const unsigned char *buf)
 {
     ulong32 a,b,c,d,e,W[80],i;
 
@@ -1004,7 +1008,7 @@ static void sha1_compress(hash_state *md, unsigned char *buf)
 
     /* expand it */
     for (i = 16; i < 80; i++) {
-        W[i] = ROL(W[i-3] ^ W[i-8] ^ W[i-14] ^ W[i-16], 1); 
+        W[i] = ROL(W[i-3] ^ W[i-8] ^ W[i-14] ^ W[i-16], 1);
     }
 
     /* compress */
@@ -1013,7 +1017,7 @@ static void sha1_compress(hash_state *md, unsigned char *buf)
     #define FF1(a,b,c,d,e,i) e = (ROL(a, 5) + F1(b,c,d) + e + W[i] + 0x6ed9eba1UL); b = ROL(b, 30);
     #define FF2(a,b,c,d,e,i) e = (ROL(a, 5) + F2(b,c,d) + e + W[i] + 0x8f1bbcdcUL); b = ROL(b, 30);
     #define FF3(a,b,c,d,e,i) e = (ROL(a, 5) + F3(b,c,d) + e + W[i] + 0xca62c1d6UL); b = ROL(b, 30);
- 
+
     for (i = 0; i < 20; ) {
        FF0(a,b,c,d,e,i++);
        FF0(e,a,b,c,d,i++);
@@ -1023,7 +1027,7 @@ static void sha1_compress(hash_state *md, unsigned char *buf)
     }
 
     /* round two */
-    for (; i < 40; )  { 
+    for (; i < 40; )  {
        FF1(a,b,c,d,e,i++);
        FF1(e,a,b,c,d,i++);
        FF1(d,e,a,b,c,i++);
@@ -1032,7 +1036,7 @@ static void sha1_compress(hash_state *md, unsigned char *buf)
     }
 
     /* round three */
-    for (; i < 60; )  { 
+    for (; i < 60; )  {
        FF2(a,b,c,d,e,i++);
        FF2(e,a,b,c,d,i++);
        FF2(d,e,a,b,c,i++);
@@ -1041,7 +1045,7 @@ static void sha1_compress(hash_state *md, unsigned char *buf)
     }
 
     /* round four */
-    for (; i < 80; )  { 
+    for (; i < 80; )  {
        FF3(a,b,c,d,e,i++);
        FF3(e,a,b,c,d,i++);
        FF3(d,e,a,b,c,i++);
@@ -1082,7 +1086,7 @@ int sha1_done(hash_state * md, unsigned char *hash)
 	/*
 	 * Assert there isn't an invalid argument
 	 */
-	assert (md->sha1.curlen < sizeof (md->sha1.buf)); 
+	assert (md->sha1.curlen < sizeof (md->sha1.buf));
 
     /* increase the length of the message */
     md->sha1.length += md->sha1.curlen * 8;
@@ -1165,7 +1169,7 @@ int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned lon
     hash_descriptor[hash]->init(&hmac->md);
     err = hash_descriptor[hash]->process(&hmac->md, buf, hash_descriptor[hash]->blocksize);
 
-   return err;    
+   return err;
 }
 
 int hmac_process(hmac_state *hmac, const unsigned char *buf, unsigned long len)
@@ -1227,7 +1231,7 @@ int hmac_done(hmac_state *hmac, unsigned char *hashOut, unsigned long *outlen)
        goto __ERR;
     }
 
-    // copy to output 
+    // copy to output
     for (i = 0; i < hashsize && i < *outlen; i++) {
         hashOut[i] = buf[i];
     }
@@ -1246,15 +1250,15 @@ const struct _hash_descriptor *hash_descriptor[] =
 
 /* portable way to get secure random bits to feed a PRNG */
 /* on *NIX read /dev/random */
-static unsigned long rng_nix(unsigned char *buf, unsigned long len, 
+static unsigned long rng_nix(unsigned char *buf, unsigned long len,
                              void (*callback)(void))
 {
 	int fd;
-	int rb;
+	unsigned long rb;
 
 	fd = open ("/dev/urandom", O_RDONLY);
-	
-	rb = read (fd, buf, len);
+
+	rb = (unsigned long)read (fd, buf, len);
 
 	close (fd);
 
@@ -1266,7 +1270,7 @@ static unsigned long rng_nix(unsigned char *buf, unsigned long len,
 
 #define ANSI_RNG
 
-static unsigned long rng_ansic(unsigned char *buf, unsigned long len, 
+static unsigned long rng_ansic(unsigned char *buf, unsigned long len,
                                void (*callback)(void))
 {
    clock_t t1;
@@ -1288,7 +1292,7 @@ static unsigned long rng_ansic(unsigned char *buf, unsigned long len,
           } while (a == b);
           acc = (acc << 1) | a;
        }
-       *buf++ = acc; 
+       *buf++ = acc;
        acc  = 0;
        bits = 8;
    }
@@ -1296,9 +1300,9 @@ static unsigned long rng_ansic(unsigned char *buf, unsigned long len,
    return l;
 }
 
-#endif 
+#endif
 
-unsigned long rng_get_bytes(unsigned char *buf, unsigned long len, 
+unsigned long rng_get_bytes(unsigned char *buf, unsigned long len,
                             void (*callback)(void))
 {
    unsigned long x;
@@ -1310,12 +1314,12 @@ unsigned long rng_get_bytes(unsigned char *buf, unsigned long len,
    return 0;
 }
 
-int rng_make_prng(int bits, int wprng, prng_state *prng, 
+int rng_make_prng(int bits, int wprng, prng_state *prng,
                   void (*callback)(void))
 {
    unsigned char buf[256];
    int err;
-   
+
    if (bits < 64 || bits > 1024) {
       return CRYPT_INVALID_PRNGSIZE;
    }
@@ -1339,4 +1343,3 @@ int rng_make_prng(int bits, int wprng, prng_state *prng,
 
    return CRYPT_OK;
 }
-

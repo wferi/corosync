@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2003-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -38,8 +38,6 @@
 #include <corosync/totem/totem.h>
 #include <corosync/totem/coropoll.h>
 
-typedef unsigned int totemsrp_handle;
-
 /*
  * Totem Single Ring Protocol
  * depends on poll abstraction, POSIX, IPV4
@@ -49,68 +47,72 @@ typedef unsigned int totemsrp_handle;
  * Create a protocol instance
  */
 int totemsrp_initialize (
-	poll_handle poll_handle,
-	totemsrp_handle *handle,
+	hdb_handle_t poll_handle,
+	hdb_handle_t *handle,
 	struct totem_config *totem_config,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
-		struct iovec *iovec,
-		int iov_len,
+		const void *msg,
+		unsigned int msg_len,
 		int endian_conversion_required),
 	void (*confchg_fn) (
 		enum totem_configuration_type configuration_type,
-		unsigned int *member_list, int member_list_entries,
-		unsigned int *left_list, int left_list_entries,
-		unsigned int *joined_list, int joined_list_entries,
-		struct memb_ring_id *ring_id));
+		const unsigned int *member_list, size_t member_list_entries,
+		const unsigned int *left_list, size_t left_list_entries,
+		const unsigned int *joined_list, size_t joined_list_entries,
+		const struct memb_ring_id *ring_id));
 
-void totemsrp_finalize (totemsrp_handle handle);
+void totemsrp_finalize (hdb_handle_t handle);
 
 /*
  * Multicast a message
  */
 int totemsrp_mcast (
-	totemsrp_handle handle,
+	hdb_handle_t handle,
 	struct iovec *iovec,
-	int iov_len,
+	unsigned int iov_len,
 	int priority);
 
 /*
  * Return number of available messages that can be queued
  */
-int totemsrp_avail (totemsrp_handle handle);
+int totemsrp_avail (hdb_handle_t handle);
 
 int totemsrp_callback_token_create (
-	totemsrp_handle handle,
+	hdb_handle_t handle,
 	void **handle_out,
 	enum totem_callback_token_type type,
 	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, void *),
-	void *data);
+	int (*callback_fn) (enum totem_callback_token_type type, const void *),
+	const void *data);
 
 void totemsrp_callback_token_destroy (
-	totemsrp_handle handle,
+	hdb_handle_t handle,
 	void **handle_out);
 
-int totemsrp_new_msg_signal (totemsrp_handle handle);
+int totemsrp_new_msg_signal (hdb_handle_t handle);
 
 extern void totemsrp_net_mtu_adjust (struct totem_config *totem_config);
 
 extern int totemsrp_ifaces_get (
-	totemsrp_handle handle,
+	hdb_handle_t handle,
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
 	char ***status,
 	unsigned int *iface_count);
 
-extern int totemsrp_my_nodeid_get (
-	totemsrp_handle handle);
+extern unsigned int totemsrp_my_nodeid_get (
+	hdb_handle_t handle);
 
 extern int totemsrp_my_family_get (
-	totemsrp_handle handle);
+	hdb_handle_t handle);
+
+extern int totemsrp_crypto_set (
+	hdb_handle_t handle,
+	unsigned int type);
 
 extern int totemsrp_ring_reenable (
-	totemsrp_handle handle);
+	hdb_handle_t handle);
 
 #endif /* TOTEMSRP_H_DEFINED */

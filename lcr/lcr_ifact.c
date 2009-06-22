@@ -2,7 +2,7 @@
  * Copyright (C) 2006 Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -28,6 +28,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <dlfcn.h>
 #include <dirent.h>
@@ -38,6 +40,7 @@
 #ifdef COROSYNC_SOLARIS
 #include <iso/limits_iso.h>
 #endif
+#include <corosync/hdb.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/hdb.h>
@@ -46,18 +49,23 @@
 struct lcr_component_instance {
 	struct lcr_iface *ifaces;
 	int iface_count;
-	unsigned int comp_handle;
+	hdb_handle_t comp_handle;
 	void *dl_handle;
 	int refcount;
 	char library_name[256];
 };
 
 struct lcr_iface_instance {
-	unsigned int component_handle;
+	hdb_handle_t component_handle;
 	void *context;
 	void (*destructor) (void *context);
 };
-	
+
+DECLARE_HDB_DATABASE_FIRSTRUN (lcr_component_instance_database);
+
+DECLARE_HDB_DATABASE_FIRSTRUN (lcr_iface_instance_database);
+
+/*
 static struct hdb_handle_database lcr_component_instance_database = {
 	.handle_count	= 0,
 	.handles	= 0,
@@ -69,8 +77,9 @@ static struct hdb_handle_database lcr_iface_instance_database = {
 	.handles	= 0,
 	.iterator	= 0
 };
+*/
 
-static unsigned int g_component_handle = 0xFFFFFFFF;
+static hdb_handle_t g_component_handle = 0xFFFFFFFF;
 
 #if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
 static int lcr_select_so (const struct dirent *dirent)
@@ -90,8 +99,7 @@ static int lcr_select_so (struct dirent *dirent)
 	return (0);
 }
 
-#ifndef COROSYNC_SOLARIS
-#ifdef COROSYNC_LINUX
+#if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
 static int pathlist_select (const struct dirent *dirent)
 #else
 static int pathlist_select (struct dirent *dirent)
@@ -103,16 +111,15 @@ static int pathlist_select (struct dirent *dirent)
 
 	return (0);
 }
-#endif
 
 static inline struct lcr_component_instance *lcr_comp_find (
-	char *iface_name,
+	const char *iface_name,
 	unsigned int version,
 	unsigned int *iface_number)
 {
 	struct lcr_component_instance *instance;
 	void *instance_p = NULL;
-	unsigned int component_handle = 0;
+	hdb_handle_t component_handle = 0;
 	int i;
 
 	/*
@@ -143,7 +150,7 @@ static inline int lcr_lib_loaded (
 {
 	struct lcr_component_instance *instance;
 	void *instance_p = NULL;
-	unsigned int component_handle = 0;
+	hdb_handle_t component_handle = 0;
 
 	/*
 	 * Try to find interface in already loaded component
@@ -164,7 +171,8 @@ static inline int lcr_lib_loaded (
 	return (0);
 }
 
-char *path_list[128];
+enum { PATH_LIST_SIZE = 128 };
+const char *path_list[PATH_LIST_SIZE];
 unsigned int path_list_entries = 0;
 
 static void defaults_path_build (void)
@@ -173,11 +181,10 @@ static void defaults_path_build (void)
 	char *res;
 
 	res = getcwd (cwd, sizeof (cwd));
-	if (res != NULL) {
-		path_list[0] = strdup (cwd);
+	if (res != NULL && (path_list[0] = strdup (cwd)) != NULL) {
 		path_list_entries++;
 	}
-	
+
 	path_list[path_list_entries++] = LCRSODIR;
 }
 
@@ -198,16 +205,18 @@ static void ld_library_path_build (void)
 
 	p_s = strtok_r (my_ld_library_path, ":", &ptrptr);
 	while (p_s != NULL) {
-		path_list[path_list_entries++] = strdup (p_s);
+		char *p = strdup (p_s);
+		if (p && path_list_entries < PATH_LIST_SIZE) {
+			path_list[path_list_entries++] = p;
+		}
 		p_s = strtok_r (NULL, ":", &ptrptr);
 	}
 
 	free (my_ld_library_path);
 }
 
-static int ldso_path_build (char *path, char *filename)
+static int ldso_path_build (const char *path, const char *filename)
 {
-#ifndef COROSYNC_SOLARIS
 	FILE *fp;
 	char string[1024];
 	char filename_cat[1024];
@@ -218,7 +227,7 @@ static int ldso_path_build (char *path, char *filename)
 	struct dirent **scandir_list;
 	unsigned int scandir_entries;
 
-	sprintf (filename_cat, "%s/%s", path, filename);
+	snprintf (filename_cat, sizeof(filename_cat), "%s/%s", path, filename);
 	if (filename[0] == '*') {
 		scandir_entries = scandir (
 			path,
@@ -241,7 +250,9 @@ static int ldso_path_build (char *path, char *filename)
 	}
 
 	while (fgets (string, sizeof (string), fp)) {
-		string[strlen(string) - 1] = '\0';
+		char *p;
+		if (strlen(string) > 0)
+			string[strlen(string) - 1] = '\0';
 		if (strncmp (string, "include", strlen ("include")) == 0) {
 			newpath_tmp = string + strlen ("include") + 1;
 			for (j = strlen (string);
@@ -258,10 +269,12 @@ static int ldso_path_build (char *path, char *filename)
 			ldso_path_build (newpath, new_filename);
 			continue;
 		}
-		path_list[path_list_entries++] = strdup (string);
+		p = strdup (string);
+		if (p && path_list_entries < PATH_LIST_SIZE) {
+			path_list[path_list_entries++] = p;
+		}
 	}
 	fclose(fp);
-#endif
 	return (0);
 }
 
@@ -324,9 +337,7 @@ fail:
 		namelist_items--;
 		free (*namelist[namelist_items]);
 	}
-	if (names != NULL) {
-		free (names);
-	}
+	free (names);
 	*namelist = NULL;
 	errno = err;
 	return -1;
@@ -342,8 +353,8 @@ static int alphasort (const struct dirent **a, const struct dirent **b)
 #endif
 
 static int interface_find_and_load (
-	char *path,
-	char *iface_name,
+	const char *path,
+	const char *iface_name,
 	int version,
 	struct lcr_component_instance **instance_ret,
 	unsigned int *iface_number)
@@ -354,6 +365,9 @@ static int interface_find_and_load (
 	int scandir_entries;
 	unsigned int libs_to_scan;
 	char dl_name[1024];
+#ifdef COROSYNC_SOLARIS
+	void (*comp_reg)(void);
+#endif
 
 	scandir_entries = scandir (path,  &scandir_list, lcr_select_so, alphasort);
 	if (scandir_entries > 0)
@@ -364,19 +378,28 @@ static int interface_find_and_load (
 		/*
 		 * Load objects, scan them, unload them if they are not a match
 		 */
-		sprintf (dl_name, "%s/%s", path, scandir_list[libs_to_scan]->d_name);
+		snprintf (dl_name, sizeof(dl_name), "%s/%s",
+			path, scandir_list[libs_to_scan]->d_name);
 		/*
 	 	 * Don't reload already loaded libraries
 		 */
 		if (lcr_lib_loaded (dl_name)) {
 			continue;
 		}
-		dl_handle = dlopen (dl_name, RTLD_LAZY);
+		dl_handle = dlopen (dl_name, RTLD_NOW);
 		if (dl_handle == NULL) {
 			fprintf(stderr, "%s: open failed: %s\n",
 				dl_name, dlerror());
 			continue;
 		}
+/*
+ * constructors don't work in Solaris dlopen, so we have to specifically call
+ * a function to register the component
+ */
+#ifdef COROSYNC_SOLARIS
+		comp_reg = dlsym (dl_handle, "corosync_lcr_component_register");
+		comp_reg ();
+#endif
 		instance = lcr_comp_find (iface_name, version, iface_number);
 		if (instance) {
 			instance->dl_handle = dl_handle;
@@ -403,6 +426,7 @@ static int interface_find_and_load (
 		}
 		free (scandir_list);
 	}
+	g_component_handle = 0xFFFFFFFF;
 	return -1;
 
 found:
@@ -414,14 +438,15 @@ found:
 		}
 		free (scandir_list);
 	}
+	g_component_handle = 0xFFFFFFFF;
 	return 0;
 }
 
 static unsigned int lcr_initialized = 0;
 
 int lcr_ifact_reference (
-	unsigned int *iface_handle,
-	char *iface_name,
+	hdb_handle_t *iface_handle,
+	const char *iface_name,
 	int version,
 	void **iface,
 	void *context)
@@ -486,7 +511,7 @@ found:
 	return (0);
 }
 
-int lcr_ifact_release (unsigned int handle)
+int lcr_ifact_release (hdb_handle_t handle)
 {
 	struct lcr_iface_instance *iface_instance;
 	int res = 0;
@@ -509,7 +534,7 @@ int lcr_ifact_release (unsigned int handle)
 void lcr_component_register (struct lcr_comp *comp)
 {
 	struct lcr_component_instance *instance;
-	static unsigned int comp_handle;
+	static hdb_handle_t comp_handle;
 
 	hdb_handle_create (&lcr_component_instance_database,
 		sizeof (struct lcr_component_instance),

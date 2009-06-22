@@ -2,7 +2,7 @@
  * Copyright (c) 2006 Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -27,6 +27,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <sys/uio.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -41,7 +44,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <signal.h>
 #include <sched.h>
 #include <time.h>
 #include <pthread.h>
@@ -49,7 +51,7 @@
 #include <string.h>
 
 #if defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS)
-/* SUN_LEN is broken for abstract namespace 
+/* SUN_LEN is broken for abstract namespace
  */
 #define AIS_SUN_LEN(a) sizeof(*(a))
 #else
@@ -57,10 +59,14 @@
 #endif
 
 #ifdef COROSYNC_LINUX
-static char *socketname = "lcr.socket";
+static const char *socketname = "lcr.socket";
 #else
-static char *socketname = "/var/run/lcr.socket";
+static const char *socketname = SOCKETDIR "/lcr.socket";
 #endif
+
+static int uic_connect (int *fd);
+
+static int uic_msg_send (int fd, void *msg);
 
 int uic_connect (int *fd)
 {
@@ -88,22 +94,23 @@ int uic_connect (int *fd)
 	return 0;
 }
 
-struct req_msg {
+struct uic_req_msg {
 	int len;
 	char msg[0];
 };
 
-int uic_msg_send (int fd, char *msg)
+static int uic_msg_send (int fd, void *msg)
 {
 	struct msghdr msg_send;
 	struct iovec iov_send[2];
-	struct req_msg req_msg;
+	struct uic_req_msg req_msg;
+	ssize_t send_res;
 	int res;
 
 	req_msg.len = strlen (msg) + 1;
 	iov_send[0].iov_base = (void *)&req_msg;
-	iov_send[0].iov_len = sizeof (struct req_msg);
-	iov_send[1].iov_base = (void *)msg;
+	iov_send[0].iov_len = sizeof (struct uic_req_msg);
+	iov_send[1].iov_base = msg;
 	iov_send[1].iov_len = req_msg.len;
 
 	msg_send.msg_iov = iov_send;
@@ -120,12 +127,14 @@ int uic_msg_send (int fd, char *msg)
 #endif
 
 	retry_send:
-	res = sendmsg (fd, &msg_send, 0);
-	if (res == -1 && errno == EINTR) {
+	send_res = sendmsg (fd, &msg_send, 0);
+	if (send_res == -1 && errno == EINTR) {
                 goto retry_send;
         }
-	if (res == -1) {
+	if (send_res == -1) {
 		res = -errno;
+	} else {
+		res = (int)send_res;
 	}
 	return (res);
 
@@ -136,12 +145,13 @@ int main (void)
 {
 	int client_fd;
 	int res;
+	char command[128] = "livereplace ckpt version2";
 
 	res = uic_connect (&client_fd);
 	if (res != 0) {
 		printf ("Couldn't connect to live replacement service\n");
 	}
-	uic_msg_send (client_fd, "livereplace ckpt version 2");
+	uic_msg_send (client_fd, (void *)command);
 
 	return 0;
 }

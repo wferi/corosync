@@ -6,7 +6,7 @@
  * Author: Lon Hohberger (lhh@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -31,16 +31,23 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <stdio.h>
 #include <stdint.h>
-#include "../exec/logsys.h"
+
+#include <corosync/engine/logsys.h>
 
 LOGSYS_DECLARE_SYSTEM ("logtest_t2",
-	LOG_MODE_OUTPUT_STDERR | LOG_MODE_OUTPUT_SYSLOG_THREADED | LOG_MODE_BUFFER_BEFORE_CONFIG,
+	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED,
+	0,
 	NULL,
-	LOG_DAEMON);
-
-LOGSYS_DECLARE_NOSUBSYS(LOG_LEVEL_INFO);
+	LOGSYS_LEVEL_INFO,
+	LOG_DAEMON,
+	LOGSYS_LEVEL_INFO,
+	NULL,
+	1000000);
 
 int
 main(int argc, char **argv)
@@ -48,29 +55,29 @@ main(int argc, char **argv)
 	/*
 	 * fork could occur here and the file to output to could be set
 	 */
-	logsys_config_mode_set (LOG_MODE_OUTPUT_STDERR | LOG_MODE_OUTPUT_SYSLOG_THREADED | LOG_MODE_FLUSH_AFTER_CONFIG);
+	logsys_config_mode_set (NULL, LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED);
 
-	log_printf(LOG_NOTICE, "Hello, world!\n");
-	log_printf(LOG_DEBUG, "If you see this, the logger's busted\n");
+	log_printf(LOGSYS_LEVEL_NOTICE, "Hello, world!\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "If you see this, the logger's busted\n");
 
-	logsys_config_priority_set (LOG_ALERT);
+	logsys_config_logfile_priority_set (NULL, LOGSYS_LEVEL_ALERT);
 
-	log_printf(LOG_DEBUG, "If you see this, the logger's busted\n");
-	log_printf(LOG_CRIT, "If you see this, the logger's busted\n");
-	log_printf(LOG_ALERT, "Alert 1\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "If you see this, the logger's busted\n");
+	log_printf(LOGSYS_LEVEL_CRIT, "If you see this, the logger's busted\n");
+	log_printf(LOGSYS_LEVEL_ALERT, "Alert 1\n");
 
-	logsys_config_priority_set (LOG_NOTICE);
+	logsys_config_logfile_priority_set (NULL, LOGSYS_LEVEL_NOTICE);
 
-	log_printf(LOG_CRIT, "Crit 1\n");
-	log_printf(LOG_INFO, "If you see this, the logger's busted\n");
+	log_printf(LOGSYS_LEVEL_CRIT, "Crit 1\n");
+	log_printf(LOGSYS_LEVEL_INFO, "If you see this, the logger's busted\n");
 
-	logsys_config_priority_set (LOG_DEBUG);
+	logsys_config_logfile_priority_set (NULL, LOGSYS_LEVEL_DEBUG);
 
-	log_printf(LOG_DEBUG, "Debug 1\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Debug 1\n");
 
-	logsys_config_mode_set (LOG_MODE_OUTPUT_STDERR);
+	logsys_config_mode_set (NULL, LOGSYS_MODE_OUTPUT_STDERR);
 
-	log_printf(LOG_DEBUG, "Debug 2\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Debug 2\n");
 
 	return 0;
 }

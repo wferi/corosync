@@ -6,7 +6,7 @@
 .\" * Author: Christine Caulfield <ccaulfie@redhat.com>
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
-.\" * 
+.\" *
 .\" * Redistribution and use in source and binary forms, with or without
 .\" * modification, are permitted provided that the following conditions are met:
 .\" *
@@ -34,16 +34,24 @@
 .TH CONFDB_OVERVIEW 8 2006-03-06 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH OVERVIEW
 The CONFDB library is delivered with the corosync project.  This library is used
-to examine manipulate the configuratin databser used by corosync.
+to examine manipulate the configuration database used by corosync.
 .PP
 The library provides a mechanism to:
+.PP
 * Create new objects
+.PP
 * Create new key/value pairs within those objects
+.PP
 * Remove existing keys
+.PP
 * Remove an existing object and all it sub-objects and keys
+.PP
 * Read keys and values
+.PP
 * Iterate keys within an object
+.PP
 * Iterate subobjects within a parent object
+.PP
 * Find a named object
 .PP
 .SH BUGS
@@ -56,14 +64,14 @@ This software is not yet production, so there may still be some bugs.
 .BR confdb_object_create (3),
 .BR confdb_object_destroy (3),
 .BR confdb_object_parent_get (3),
-.BR confdb_key_create (3),	
-.BR confdb_key_delete (3),	
+.BR confdb_key_create (3),
+.BR confdb_key_delete (3),
 .BR confdb_key_get (3),
 .BR confdb_key_replace (3),
 .BR confdb_object_find_start (3),
 .BR confdb_object_find (3),
-.BR confdb_object_iter_start (3),	
-.BR confdb_object_iter (3),	
-.BR confdb_key_iter_start (3),	
-.BR confdb_key_iter (3),	
+.BR confdb_object_iter_start (3),
+.BR confdb_object_iter (3),
+.BR confdb_key_iter_start (3),
+.BR confdb_key_iter (3),
 .PP

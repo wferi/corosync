@@ -6,7 +6,7 @@
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -31,6 +31,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -44,7 +47,7 @@ char *delivery_string;
 
 #define CALLBACKS 200000
 int callback_count = 0;
-void evs_deliver_fn (struct in_addr source_addr, void *msg, int msg_len)
+void evs_deliver_fn (struct in_addr source_addr, const void *msg, size_t msg_len)
 {
 #ifdef PRINT_OUTPUT
 	char *buf;
@@ -59,9 +62,9 @@ void evs_deliver_fn (struct in_addr source_addr, void *msg, int msg_len)
 }
 
 void evs_confchg_fn (
-	struct in_addr *member_list, int member_list_entries,
-	struct in_addr *left_list, int left_list_entries,
-	struct in_addr *joined_list, int joined_list_entries)
+	const struct in_addr *member_list, size_t member_list_entries,
+	const struct in_addr *left_list, size_t left_list_entries,
+	const struct in_addr *joined_list, size_t joined_list_entries)
 {
 	int i;
 

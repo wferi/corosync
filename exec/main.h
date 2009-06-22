@@ -1,13 +1,13 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2009 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -32,47 +32,38 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef AIS_EXEC_H_DEFINED
-#define AIS_EXEC_H_DEFINED
+#ifndef MAIN_H_DEFINED
+#define MAIN_H_DEFINED
 
 #define TRUE 1
 #define FALSE 0
-#include <corosync/saAis.h>
-#include <corosync/ipc_gen.h>
+#include <corosync/corotypes.h>
+#include <corosync/hdb.h>
 #include <corosync/totem/coropoll.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
-
-/*
- * Size of the queue (entries) for I/O's to the API over socket IPC.
- */
-
-#ifndef SIZEQUEUE
-#define SIZEQUEUE 800
-#endif /* SIZEQUEUE */
-
-#define SOCKET_SERVICE_INIT 254
-
-#define SIZEINB MESSAGE_SIZE_MAX
+#include <corosync/engine/coroapi.h>
 
 extern struct totempg_group corosync_group;
 
-extern totempg_groups_handle corosync_group_handle;
+extern hdb_handle_t corosync_group_handle;
 
-poll_handle aisexec_poll_handle;
+extern hdb_handle_t corosync_poll_handle;
 
 extern unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 extern void main_get_config_modules(struct config_iface_ver0 ***modules, int *num);
 
 extern int main_mcast (
-	struct iovec *iovec,
-	int iov_len,
+	const struct iovec *iovec,
+	unsigned int iov_len,
 	unsigned int guarantee);
 
-extern int main_send_ok (
-        struct iovec *iovec,
-        int iov_len);
+extern void message_source_set (mar_message_source_t *source, void *conn);
 
-#endif /* AIS_EXEC_H_DEFINED */
+extern int message_source_is_local (const mar_message_source_t *source);
+
+extern void corosync_request_shutdown (void);
+
+#endif /* MAIN_H_DEFINED */
