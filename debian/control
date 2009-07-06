@@ -2,9 +2,8 @@ Source: corosync
 Section: admin
 Priority: optional
 Maintainer: Fabio M. Di Nitto <fabbione@ubuntu.com>
-XSBC-Original-Maintainer: Debian Kernel Team <debian-kernel@lists.debian.org>
 Uploaders: Bastian Blank <waldi@debian.org>, Frederik Schüler <fs@debian.org>
-Standards-Version: 3.7.3
+Standards-Version: 3.8.2
 Build-Depends: dpatch, debhelper (>> 5)
 
 Package: corosync
