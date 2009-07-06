@@ -1,3 +1,12 @@
+corosync (0.98-1) unstable; urgency=low
+
+  * [8de0f26] Imported Upstream version 0.98
+  * [421c337] we need groff
+  * [47bdb6c] drop all patches for now
+  * [3e2730b] Update build for new upstream version
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 06 Jul 2009 15:35:11 +0200
+
 corosync (0.92-0ubuntu3) jaunty; urgency=low
 
   * Update to trunk svn 1750.
