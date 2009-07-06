@@ -150,7 +150,8 @@ struct corosync_service_engine evs_service_engine = {
 	.exec_engine_count	= sizeof (evs_exec_engine) / sizeof (struct corosync_exec_handler),
 	.confchg_fn		= evs_confchg_fn,
 	.exec_init_fn		= evs_exec_init_fn,
-	.exec_dump_fn		= NULL
+	.exec_dump_fn		= NULL,
+	.sync_mode		= CS_SYNC_V1
 };
 
 static DECLARE_LIST_INIT (confchg_notify);
@@ -204,6 +205,10 @@ __attribute__ ((constructor)) static void corosync_lcr_component_register (void)
 static int evs_exec_init_fn (
 	struct corosync_api_v1 *corosync_api)
 {
+#ifdef COROSYNC_SOLARIS
+	logsys_subsys_init();
+#endif
+
 	api = corosync_api;
 
 	return 0;
@@ -513,7 +518,7 @@ static void message_handler_req_exec_mcast (
 
 		if (found) {
 			res_evs_deliver_callback.local_nodeid = nodeid;
-			iov[0].iov_base = &res_evs_deliver_callback;
+			iov[0].iov_base = (void *)&res_evs_deliver_callback;
 			iov[0].iov_len = sizeof (struct res_evs_deliver_callback);
 			iov[1].iov_base = (void *) msg_addr; /* discard const */
 			iov[1].iov_len = req_exec_evs_mcast->msg_len;

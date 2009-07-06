@@ -35,7 +35,7 @@
 #include <config.h>
 
 #include <sys/types.h>
-#ifndef COROSYNC_BSD
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
 #endif
 #include <sys/types.h>
@@ -164,7 +164,7 @@ static void quorum_confchg_fn (
 	const unsigned int *joined_list, size_t joined_list_entries,
 	const struct memb_ring_id *ring_id);
 
-static int votequorum_exec_init_fn (struct corosync_api_v1 *corosync_api);
+static int votequorum_exec_init_fn (struct corosync_api_v1 *api);
 
 static int quorum_lib_init_fn (void *conn);
 
@@ -316,6 +316,7 @@ static struct corosync_service_engine quorum_service_handler = {
 	.exec_engine				= votequorum_exec_engine,
 	.exec_engine_count		        = sizeof (votequorum_exec_engine) / sizeof (struct corosync_exec_handler),
 	.confchg_fn                             = quorum_confchg_fn,
+	.sync_mode				= CS_SYNC_V1
 };
 
 /*
@@ -499,6 +500,9 @@ static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	hdb_handle_t object_handle;
 	hdb_handle_t find_handle;
 
+#ifdef COROSYNC_SOLARIS
+	logsys_subsys_init();
+#endif
 	ENTER();
 
 	corosync_api = api;
@@ -849,7 +853,7 @@ static int quorum_exec_send_nodeinfo()
 	req_exec_quorum_nodeinfo.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_NODEINFO);
 	req_exec_quorum_nodeinfo.header.size = sizeof(req_exec_quorum_nodeinfo);
 
-	iov[0].iov_base = &req_exec_quorum_nodeinfo;
+	iov[0].iov_base = (void *)&req_exec_quorum_nodeinfo;
 	iov[0].iov_len = sizeof(req_exec_quorum_nodeinfo);
 
 	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
@@ -874,7 +878,7 @@ static int quorum_exec_send_reconfigure(int param, int nodeid, int value)
 	req_exec_quorum_reconfigure.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_RECONFIGURE);
 	req_exec_quorum_reconfigure.header.size = sizeof(req_exec_quorum_reconfigure);
 
-	iov[0].iov_base = &req_exec_quorum_reconfigure;
+	iov[0].iov_base = (void *)&req_exec_quorum_reconfigure;
 	iov[0].iov_len = sizeof(req_exec_quorum_reconfigure);
 
 	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
@@ -897,7 +901,7 @@ static int quorum_exec_send_killnode(int nodeid, unsigned int reason)
 	req_exec_quorum_killnode.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_KILLNODE);
 	req_exec_quorum_killnode.header.size = sizeof(req_exec_quorum_killnode);
 
-	iov[0].iov_base = &req_exec_quorum_killnode;
+	iov[0].iov_base = (void *)&req_exec_quorum_killnode;
 	iov[0].iov_len = sizeof(req_exec_quorum_killnode);
 
 	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);

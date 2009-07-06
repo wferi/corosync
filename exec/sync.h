@@ -40,28 +40,30 @@
 #include "totemsrp.h"
 
 struct sync_callbacks {
-	void (*sync_init) (void);
+	void (*sync_init) (
+		const unsigned int *member_list,
+		size_t member_list_entries,
+		const struct memb_ring_id *ring_id);
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
 	const char *name;
 };
 
-struct corosync_api_v1;
 int sync_register (
-	int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callbacks),
-	void (*synchronization_completed) (void));
+	int (*sync_callbacks_retrieve) (
+		int sync_id,
+		struct sync_callbacks *callbacks),
 
-int sync_in_process (void);
+	void (*sync_started) (
+		const struct memb_ring_id *ring_id),
 
-int sync_primary_designated (void);
+	void (*sync_aborted) (void),
 
-/**
- * Execute synchronization upon request for the named service
- * @param name service handler name to synchronize
- *
- * @return int 0 OK, error code otherwise
- */
-extern int sync_request (const char *name);
+	void (*next_start) (
+		const unsigned int *member_list,
+		size_t member_list_entries,
+		const struct memb_ring_id *ring_id));
+
 
 #endif /* SYNC_H_DEFINED */

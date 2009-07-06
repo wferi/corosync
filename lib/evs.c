@@ -66,6 +66,7 @@ struct evs_inst {
 	hdb_handle_t handle;
 	int finalize;
 	evs_callbacks_t callbacks;
+	void *context;
 };
 
 DECLARE_HDB_DATABASE (evs_handle_t_db,NULL);
@@ -178,6 +179,44 @@ evs_error_t evs_fd_get (
 	return (CS_OK);
 }
 
+evs_error_t evs_context_get (
+	evs_handle_t handle,
+	void **context)
+{
+	cs_error_t error;
+	struct evs_inst *evs_inst;
+
+	error = hdb_error_to_cs (hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	*context = evs_inst->context;
+
+	hdb_handle_put (&evs_handle_t_db, handle);
+
+	return (CS_OK);
+}
+
+cs_error_t evs_context_set (
+	evs_handle_t handle,
+	void *context)
+{
+	cs_error_t error;
+	struct evs_inst *evs_inst;
+
+	error = hdb_error_to_cs (hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	evs_inst->context = context;
+
+	hdb_handle_put (&evs_handle_t_db, handle);
+
+	return (CS_OK);
+}
+
 evs_error_t evs_dispatch (
 	evs_handle_t handle,
 	cs_dispatch_flags_t dispatch_types)
@@ -240,6 +279,7 @@ evs_error_t evs_dispatch (
 		case MESSAGE_RES_EVS_DELIVER_CALLBACK:
 			res_evs_deliver_callback = (struct res_evs_deliver_callback *)dispatch_data;
 			callbacks.evs_deliver_fn (
+				handle,
 				res_evs_deliver_callback->local_nodeid,
 				&res_evs_deliver_callback->msg,
 				res_evs_deliver_callback->msglen);
@@ -248,12 +288,14 @@ evs_error_t evs_dispatch (
 		case MESSAGE_RES_EVS_CONFCHG_CALLBACK:
 			res_evs_confchg_callback = (struct res_evs_confchg_callback *)dispatch_data;
 			callbacks.evs_confchg_fn (
+				handle,
 				res_evs_confchg_callback->member_list,
 				res_evs_confchg_callback->member_list_entries,
 				res_evs_confchg_callback->left_list,
 				res_evs_confchg_callback->left_list_entries,
 				res_evs_confchg_callback->joined_list,
-				res_evs_confchg_callback->joined_list_entries);
+				res_evs_confchg_callback->joined_list_entries,
+				NULL);
 			break;
 
 		default:
@@ -311,7 +353,7 @@ evs_error_t evs_join (
 	req_lib_evs_join.header.id = MESSAGE_REQ_EVS_JOIN;
 	req_lib_evs_join.group_entries = group_entries;
 
-	iov[0].iov_base = &req_lib_evs_join;
+	iov[0].iov_base = (void *)&req_lib_evs_join;
 	iov[0].iov_len = sizeof (struct req_lib_evs_join);
 	iov[1].iov_base = (void*) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
@@ -352,7 +394,7 @@ evs_error_t evs_leave (
 	req_lib_evs_leave.header.id = MESSAGE_REQ_EVS_LEAVE;
 	req_lib_evs_leave.group_entries = group_entries;
 
-	iov[0].iov_base = &req_lib_evs_leave;
+	iov[0].iov_base = (void *)&req_lib_evs_leave;
 	iov[0].iov_len = sizeof (struct req_lib_evs_leave);
 	iov[1].iov_base = (void *) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
@@ -402,7 +444,7 @@ evs_error_t evs_mcast_joined (
 	req_lib_evs_mcast_joined.guarantee = guarantee;
 	req_lib_evs_mcast_joined.msg_len = msg_len;
 
-	iov[0].iov_base = &req_lib_evs_mcast_joined;
+	iov[0].iov_base = (void *)&req_lib_evs_mcast_joined;
 	iov[0].iov_len = sizeof (struct req_lib_evs_mcast_joined);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 
@@ -453,7 +495,7 @@ evs_error_t evs_mcast_groups (
 	req_lib_evs_mcast_groups.msg_len = msg_len;
 	req_lib_evs_mcast_groups.group_entries = group_entries;
 
-	iov[0].iov_base = &req_lib_evs_mcast_groups;
+	iov[0].iov_base = (void *)&req_lib_evs_mcast_groups;
 	iov[0].iov_len = sizeof (struct req_lib_evs_mcast_groups);
 	iov[1].iov_base = (void *) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
@@ -496,7 +538,7 @@ evs_error_t evs_membership_get (
 	req_lib_evs_membership_get.header.size = sizeof (struct req_lib_evs_membership_get);
 	req_lib_evs_membership_get.header.id = MESSAGE_REQ_EVS_MEMBERSHIP_GET;
 
-	iov.iov_base = &req_lib_evs_membership_get;
+	iov.iov_base = (void *)&req_lib_evs_membership_get;
 	iov.iov_len = sizeof (struct req_lib_evs_membership_get);
 
 	error = coroipcc_msg_send_reply_receive (evs_inst->handle,

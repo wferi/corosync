@@ -125,24 +125,8 @@ static struct hdb_handle_database (database_name) = {			\
 	.handles 	= NULL,						\
 	.iterator	= 0,						\
 	.destructor	= destructor_function,				\
-	.first_run	= 0						\
+	.first_run	= 1						\
 };									\
-static void database_name##_init(void)__attribute__((constructor));	\
-static void database_name##_init(void)					\
-{                                                                       \
-	hdb_database_lock_init (&(database_name).lock);		\
-}
-
-#define DECLARE_HDB_DATABASE_FIRSTRUN(database_name)			\
-static struct hdb_handle_database (database_name) = {			\
-	.first_run = 1, 						\
-};									\
-static void database_name##_init(void)__attribute__((constructor));	\
-static void database_name##_init(void)					\
-{                                                                       \
-	memset (&(database_name), 0, sizeof (struct hdb_handle_database));\
-	hdb_database_lock_init (&(database_name).lock);		\
-}
 
 static inline void hdb_create (
 	struct hdb_handle_database *handle_database)
@@ -173,7 +157,7 @@ static inline int hdb_handle_create (
 	int i;
 
 	if (handle_database->first_run == 1) {
-		memset (handle_database, 0, sizeof (struct hdb_handle_database));
+		handle_database->first_run = 0;
 		hdb_database_lock_init (&handle_database->lock);
 	}
 	hdb_database_lock (&handle_database->lock);
@@ -241,6 +225,10 @@ static inline int hdb_handle_get (
 	unsigned int check = ((unsigned int)(((unsigned long long)handle_in) >> 32));
 	unsigned int handle = handle_in & 0xffffffff;
 
+	if (handle_database->first_run == 1) {
+		handle_database->first_run = 0;
+		hdb_database_lock_init (&handle_database->lock);
+	}
 	hdb_database_lock (&handle_database->lock);
 
 	*instance = NULL;
@@ -279,6 +267,10 @@ static inline int hdb_handle_put (
 	unsigned int check = ((unsigned int)(((unsigned long long)handle_in) >> 32));
 	unsigned int handle = handle_in & 0xffffffff;
 
+	if (handle_database->first_run == 1) {
+		handle_database->first_run = 0;
+		hdb_database_lock_init (&handle_database->lock);
+	}
 	hdb_database_lock (&handle_database->lock);
 
 	if (handle >= handle_database->handle_count) {
@@ -318,6 +310,10 @@ static inline int hdb_handle_destroy (
 	unsigned int handle = handle_in & 0xffffffff;
 	int res;
 
+	if (handle_database->first_run == 1) {
+		handle_database->first_run = 0;
+		hdb_database_lock_init (&handle_database->lock);
+	}
 	hdb_database_lock (&handle_database->lock);
 
 	if (handle >= handle_database->handle_count) {
@@ -338,6 +334,41 @@ static inline int hdb_handle_destroy (
 	hdb_database_unlock (&handle_database->lock);
 	res = hdb_handle_put (handle_database, handle_in);
 	return (res);
+}
+
+static inline int hdb_handle_refcount_get (
+	struct hdb_handle_database *handle_database,
+	hdb_handle_t handle_in)
+{
+	unsigned int check = ((unsigned int)(((unsigned long long)handle_in) >> 32));
+	unsigned int handle = handle_in & 0xffffffff;
+
+	int refcount = 0;
+
+	if (handle_database->first_run == 1) {
+		handle_database->first_run = 0;
+		hdb_database_lock_init (&handle_database->lock);
+	}
+	hdb_database_lock (&handle_database->lock);
+
+	if (handle >= handle_database->handle_count) {
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
+		return (-1);
+	}
+
+	if (check != 0xffffffff &&
+		check != handle_database->handles[handle].check) {
+		hdb_database_unlock (&handle_database->lock);
+		errno = EBADF;
+		return (-1);
+	}
+
+	refcount = handle_database->handles[handle].ref_count;
+
+	hdb_database_unlock (&handle_database->lock);
+
+	return (refcount);
 }
 
 static inline void hdb_iterator_reset (

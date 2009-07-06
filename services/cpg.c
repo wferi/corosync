@@ -35,7 +35,7 @@
 
 #include <config.h>
 
-#ifndef COROSYNC_BSD
+#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
 #endif
 #include <sys/types.h>
@@ -206,7 +206,11 @@ static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *grou
 
 static int cpg_exec_send_joinlist(void);
 
-static void cpg_sync_init (void);
+static void cpg_sync_init (
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id);
+
 static int  cpg_sync_process (void);
 static void cpg_sync_activate (void);
 static void cpg_sync_abort (void);
@@ -277,6 +281,7 @@ struct corosync_service_engine cpg_service_engine = {
 	.exec_engine				= cpg_exec_engine,
 	.exec_engine_count		        = sizeof (cpg_exec_engine) / sizeof (struct corosync_exec_handler),
 	.confchg_fn                             = cpg_confchg_fn,
+	.sync_mode				= CS_SYNC_V1,
 	.sync_init                              = cpg_sync_init,
 	.sync_process                           = cpg_sync_process,
 	.sync_activate                          = cpg_sync_activate,
@@ -353,7 +358,10 @@ struct req_exec_cpg_downlist {
 
 static struct req_exec_cpg_downlist g_req_exec_cpg_downlist;
 
-static void cpg_sync_init (void)
+static void cpg_sync_init (
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id)
 {
 }
 
@@ -492,6 +500,9 @@ static int notify_lib_joinlist(
 
 static int cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
+#ifdef COROSYNC_SOLARIS
+	logsys_subsys_init();
+#endif
 	api = corosync_api;
 	return (0);
 }
@@ -789,7 +800,7 @@ static void message_handler_req_exec_cpg_joinlist (
 	const coroipc_response_header_t *res = (const coroipc_response_header_t *)message;
 	const struct join_list_entry *jle = (const struct join_list_entry *)(message + sizeof(coroipc_response_header_t));
 
-	log_printf(LOGSYS_LEVEL_NOTICE, "got joinlist message from node %d\n",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got joinlist message from node %x\n",
 		nodeid);
 
 	/* Ignore our own messages */
@@ -811,9 +822,10 @@ static void message_handler_req_exec_cpg_mcast (
 	const struct req_exec_cpg_mcast *req_exec_cpg_mcast = message;
 	struct res_lib_cpg_deliver_callback res_lib_cpg_mcast;
 	int msglen = req_exec_cpg_mcast->msglen;
-	struct list_head *iter;
+	struct list_head *iter, *pi_iter;
 	struct cpg_pd *cpd;
 	struct iovec iovec[2];
+	int known_node = 0;
 
 	res_lib_cpg_mcast.header.id = MESSAGE_RES_CPG_DELIVER_CALLBACK;
 	res_lib_cpg_mcast.header.size = sizeof(res_lib_cpg_mcast) + msglen;
@@ -823,7 +835,7 @@ static void message_handler_req_exec_cpg_mcast (
 
 	memcpy(&res_lib_cpg_mcast.group_name, &req_exec_cpg_mcast->group_name,
 		sizeof(mar_cpg_name_t));
-	iovec[0].iov_base = &res_lib_cpg_mcast;
+	iovec[0].iov_base = (void *)&res_lib_cpg_mcast;
 	iovec[0].iov_len = sizeof (res_lib_cpg_mcast);
 
 	iovec[1].iov_base = (char*)message+sizeof(*req_exec_cpg_mcast);
@@ -835,6 +847,27 @@ static void message_handler_req_exec_cpg_mcast (
 
 		if ((cpd->cpd_state == CPD_STATE_LEAVE_STARTED || cpd->cpd_state == CPD_STATE_JOIN_COMPLETED)
 			&& (mar_name_compare (&cpd->group_name, &req_exec_cpg_mcast->group_name) == 0)) {
+
+			if (!known_node) {
+				/* Try to find, if we know the node */
+				for (pi_iter = process_info_list_head.next;
+					pi_iter != &process_info_list_head; pi_iter = pi_iter->next) {
+
+					struct process_info *pi = list_entry (pi_iter, struct process_info, list);
+
+					if (pi->nodeid == nodeid &&
+						mar_name_compare (&pi->group, &req_exec_cpg_mcast->group_name) == 0) {
+						known_node = 1;
+						break;
+					}
+				}
+			}
+
+			if (!known_node) {
+				/* Unknown node -> we will not deliver message */
+				return ;
+			}
+
 			api->ipc_dispatch_iov_send (cpd->conn, iovec, 2);
 		}
 	}

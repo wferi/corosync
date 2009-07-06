@@ -280,6 +280,7 @@ struct corosync_service_engine cfg_service_engine = {
 	.exec_engine				= cfg_exec_engine,
 	.exec_engine_count			= 0, /* sizeof (cfg_aisexec_handler_fns) / sizeof (coroync_exec_handler), */
 	.confchg_fn				= cfg_confchg_fn,
+	.sync_mode				= CS_SYNC_V1
 };
 
 /*
@@ -352,6 +353,10 @@ struct req_exec_cfg_shutdown {
 static int cfg_exec_init_fn (
 	struct corosync_api_v1 *corosync_api_v1)
 {
+#ifdef COROSYNC_SOLARIS
+	logsys_subsys_init();
+#endif
+
 	api = corosync_api_v1;
 
 	list_init(&trackers_list);
@@ -626,7 +631,7 @@ static void message_handler_req_exec_cfg_shutdown (
 
 	log_printf(LOGSYS_LEVEL_NOTICE, "Node %d was shut down by sysadmin\n", nodeid);
 	if (nodeid == api->totem_nodeid_get()) {
-		api->request_shutdown();
+		api->shutdown_request();
 	}
 	LEAVE();
 }

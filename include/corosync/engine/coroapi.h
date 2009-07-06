@@ -134,6 +134,11 @@ enum cs_flow_control_state {
 
 #endif /* COROSYNC_FLOW_CONTROL_STATE */
 
+enum cs_sync_mode {
+	CS_SYNC_V1	= 0,
+	CS_SYNC_V2	= 1
+};
+
 typedef enum {
 	COROSYNC_FATAL_ERROR_EXIT = -1,
 	COROSYNC_LIBAIS_SOCKET = -6,
@@ -575,7 +580,15 @@ struct corosync_api_v1 {
 #define corosync_fatal_error(err) api->fatal_error ((err), __FILE__, __LINE__)
 	void (*fatal_error) (cs_fatal_error_t err, const char *file, unsigned int line);
 
-	void (*request_shutdown) (void);
+	void (*shutdown_request) (void);
+
+	void (*state_dump) (void);
+
+	/*
+	 * The use of this interface is highly discouraged.
+	 * Please avoid using any of coropoll apis in your service engines.
+	 */
+	hdb_handle_t (*poll_handle_get) (void);
 };
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )
@@ -621,7 +634,11 @@ struct corosync_service_engine {
 		const unsigned int *left_list, size_t left_list_entries,
 		const unsigned int *joined_list, size_t joined_list_entries,
 		const struct memb_ring_id *ring_id);
-	void (*sync_init) (void);
+	enum cs_sync_mode sync_mode;
+	void (*sync_init) (
+		const unsigned int *member_list,
+		size_t member_list_entries,
+		const struct memb_ring_id *ring_id);
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
