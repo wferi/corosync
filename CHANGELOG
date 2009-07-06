@@ -1,4 +1,414 @@
 ------------------------------------------------------------------------
+r2342 | sdake | 2009-07-01 14:08:24 -0700 (Wed, 01 Jul 2009) | 2 lines
+
+Create flatiron branch.
+
+------------------------------------------------------------------------
+r2341 | sdake | 2009-07-01 13:57:37 -0700 (Wed, 01 Jul 2009) | 2 lines
+
+Add ring id field to evs.
+
+------------------------------------------------------------------------
+r2340 | sdake | 2009-07-01 13:29:55 -0700 (Wed, 01 Jul 2009) | 2 lines
+
+Set version field in totem header in case it isn't set by default.
+
+------------------------------------------------------------------------
+r2339 | sdake | 2009-07-01 13:21:48 -0700 (Wed, 01 Jul 2009) | 2 lines
+
+Pass handle is evs callback functions.
+
+------------------------------------------------------------------------
+r2338 | sdake | 2009-07-01 13:04:20 -0700 (Wed, 01 Jul 2009) | 2 lines
+
+Send ERR_SECURITY when invalid security context is provided via ipc clients.
+
+------------------------------------------------------------------------
+r2337 | sdake | 2009-07-01 13:03:07 -0700 (Wed, 01 Jul 2009) | 2 lines
+
+Set ERR_SECURITY to 100 to give plenty of room for other people's error codes.
+
+------------------------------------------------------------------------
+r2336 | sdake | 2009-07-01 12:55:18 -0700 (Wed, 01 Jul 2009) | 2 lines
+
+Fix build on bsd systems.
+
+------------------------------------------------------------------------
+r2335 | sdake | 2009-07-01 12:48:14 -0700 (Wed, 01 Jul 2009) | 2 lines
+
+Align syncv2 on 8 byte boundaries.
+
+------------------------------------------------------------------------
+r2334 | sdake | 2009-07-01 12:37:59 -0700 (Wed, 01 Jul 2009) | 2 lines
+
+Make compatibility mode none work properly.
+
+------------------------------------------------------------------------
+r2333 | sdake | 2009-07-01 12:19:06 -0700 (Wed, 01 Jul 2009) | 2 lines
+
+Code cleanup for evs service from Wojtek.
+
+------------------------------------------------------------------------
+r2332 | honzaf | 2009-07-01 06:36:00 -0700 (Wed, 01 Jul 2009) | 11 lines
+
+Don't deliver cpg messages from unknown nodes
+
+This patch fixes situation, when in the middle of
+sync some node will send regular message before
+another node will receive confch message, and regular
+message is delivered to application. From application
+point of view, this node is unknown -> don't expect
+any messages.
+
+Now, no such messages are delivered to application.
+
+------------------------------------------------------------------------
+r2331 | sdake | 2009-06-30 23:33:22 -0700 (Tue, 30 Jun 2009) | 2 lines
+
+Add context get set man pages for evs.
+
+------------------------------------------------------------------------
+r2330 | sdake | 2009-06-30 23:32:49 -0700 (Tue, 30 Jun 2009) | 2 lines
+
+Add new man pages to Makfile.am
+
+------------------------------------------------------------------------
+r2329 | sdake | 2009-06-30 23:27:00 -0700 (Tue, 30 Jun 2009) | 2 lines
+
+Add context get and set operations to evs handles and man pages.
+
+------------------------------------------------------------------------
+r2328 | sdake | 2009-06-30 23:24:19 -0700 (Tue, 30 Jun 2009) | 2 lines
+
+Add context get/set to See Also section of cpg man pages.
+
+------------------------------------------------------------------------
+r2327 | sdake | 2009-06-30 23:20:23 -0700 (Tue, 30 Jun 2009) | 2 lines
+
+Add see also reference to context get/set operation.
+
+------------------------------------------------------------------------
+r2325 | sdake | 2009-06-30 23:18:56 -0700 (Tue, 30 Jun 2009) | 2 lines
+
+Add votequorum_context_get/set man pages.
+
+------------------------------------------------------------------------
+r2324 | sdake | 2009-06-30 23:18:25 -0700 (Tue, 30 Jun 2009) | 2 lines
+
+Add man pages for confdb_context_get/set operations.
+
+------------------------------------------------------------------------
+r2323 | meyering | 2009-06-30 02:27:27 -0700 (Tue, 30 Jun 2009) | 3 lines
+
+remove unnecessary #include
+
+* exec/evil.c: Don't include <signal.h>.
+------------------------------------------------------------------------
+r2322 | meyering | 2009-06-30 02:27:20 -0700 (Tue, 30 Jun 2009) | 7 lines
+
+remove trailing blanks
+
+* corosync.spec.in:
+* exec/evil.c:
+* exec/main.c:
+* exec/mainconfig.c:
+* exec/syncv2.c:
+------------------------------------------------------------------------
+r2321 | fabbione | 2009-06-30 00:05:50 -0700 (Tue, 30 Jun 2009) | 3 lines
+
+Reset version to 0.99 in configure.ac to unbreak rpm/srpm.
+
+
+------------------------------------------------------------------------
+r2319 | sdake | 2009-06-29 16:32:17 -0700 (Mon, 29 Jun 2009) | 2 lines
+
+Reset 0.98 in configure.ac to trunk so toplevel makefile works properly
+
+------------------------------------------------------------------------
+r2318 | sdake | 2009-06-29 16:24:24 -0700 (Mon, 29 Jun 2009) | 2 lines
+
+Export poll handle via coroapi.h.
+
+------------------------------------------------------------------------
+r2317 | sdake | 2009-06-29 16:16:32 -0700 (Mon, 29 Jun 2009) | 2 lines
+
+Fix segfault during dispatch within confdb library.
+
+------------------------------------------------------------------------
+r2316 | sdake | 2009-06-27 23:03:06 -0700 (Sat, 27 Jun 2009) | 2 lines
+
+Static-ize some main.c variables.
+
+------------------------------------------------------------------------
+r2315 | sdake | 2009-06-27 22:26:25 -0700 (Sat, 27 Jun 2009) | 2 lines
+
+Simplify notifications from totem at the notice level.
+
+------------------------------------------------------------------------
+r2314 | sdake | 2009-06-27 22:21:14 -0700 (Sat, 27 Jun 2009) | 2 lines
+
+Remove hard coded sync values and use defines from coroapi.h.
+
+------------------------------------------------------------------------
+r2313 | sdake | 2009-06-27 22:12:27 -0700 (Sat, 27 Jun 2009) | 2 lines
+
+Slay the debug messages coming out at notice level in totem.
+
+------------------------------------------------------------------------
+r2312 | sdake | 2009-06-27 21:57:31 -0700 (Sat, 27 Jun 2009) | 2 lines
+
+Remove totemsrp warning.
+
+------------------------------------------------------------------------
+r2311 | sdake | 2009-06-27 21:51:38 -0700 (Sat, 27 Jun 2009) | 2 lines
+
+Allow syncv2 to determine membership list when run in compatibility mode.
+
+------------------------------------------------------------------------
+r2310 | sdake | 2009-06-27 21:50:18 -0700 (Sat, 27 Jun 2009) | 4 lines
+
+Follow synchronization model of event service so corosync without openais
+service engines can communicate with the openais whitetank event service
+in compatibility mode.
+
+------------------------------------------------------------------------
+r2309 | sdake | 2009-06-27 17:16:54 -0700 (Sat, 27 Jun 2009) | 3 lines
+
+Send fake barriers for the event service when operating in compatibility mode
+whitetank.
+
+------------------------------------------------------------------------
+r2308 | asalkeld | 2009-06-26 21:37:51 -0700 (Fri, 26 Jun 2009) | 9 lines
+
+add "-p" option to corosync-objctl
+
+This just adds a "-p" option to corosync-objctl.
+
+So you can do the following (like sysctl).
+
+corosync-objctl -p /path/to/object.conf
+
+
+------------------------------------------------------------------------
+r2307 | fabbione | 2009-06-26 21:00:15 -0700 (Fri, 26 Jun 2009) | 2 lines
+
+Fix rpm version generation and adapt release manager Makefile.
+
+------------------------------------------------------------------------
+r2306 | sdake | 2009-06-26 19:06:20 -0700 (Fri, 26 Jun 2009) | 2 lines
+
+Remove some debug printfs that snuck in.
+
+------------------------------------------------------------------------
+r2305 | sdake | 2009-06-26 18:59:59 -0700 (Fri, 26 Jun 2009) | 3 lines
+
+Change sync_init api call to pass information relevant for making
+synchronization decisions.
+
+------------------------------------------------------------------------
+r2304 | sdake | 2009-06-26 14:39:44 -0700 (Fri, 26 Jun 2009) | 3 lines
+
+Add ability to detect process pause and not implode the membership algorithm
+when this occurs.
+
+------------------------------------------------------------------------
+r2303 | sdake | 2009-06-26 14:18:38 -0700 (Fri, 26 Jun 2009) | 3 lines
+
+Previously if a process was interrupted by a signal it could become unkillable
+because the operation was retried on signal interrupts.
+
+------------------------------------------------------------------------
+r2302 | sdake | 2009-06-26 14:15:19 -0700 (Fri, 26 Jun 2009) | 2 lines
+
+Add syncv2.
+
+------------------------------------------------------------------------
+r2301 | sdake | 2009-06-25 19:50:38 -0700 (Thu, 25 Jun 2009) | 2 lines
+
+Add AMF_V2_SERVICE defintion
+
+------------------------------------------------------------------------
+r2300 | sdake | 2009-06-25 18:20:06 -0700 (Thu, 25 Jun 2009) | 2 lines
+
+Fix build error in evil.c
+
+------------------------------------------------------------------------
+r2299 | sdake | 2009-06-25 17:53:43 -0700 (Thu, 25 Jun 2009) | 2 lines
+
+Fix no boottime support warning.
+
+------------------------------------------------------------------------
+r2298 | sdake | 2009-06-25 17:25:52 -0700 (Thu, 25 Jun 2009) | 4 lines
+
+Add compatability option in config file.  Defaults to whitetank.
+Add sync_mode to coroapi to indicate to corosync the service engine's
+desired compatibility mode.
+
+------------------------------------------------------------------------
+r2297 | sdake | 2009-06-25 16:20:38 -0700 (Thu, 25 Jun 2009) | 2 lines
+
+definition error in corodefs.h
+
+------------------------------------------------------------------------
+r2296 | sdake | 2009-06-25 15:07:26 -0700 (Thu, 25 Jun 2009) | 2 lines
+
+sync-v1 onwire compat layer for raw corosync to communicate with whitetank.
+
+------------------------------------------------------------------------
+r2295 | sdake | 2009-06-25 13:55:16 -0700 (Thu, 25 Jun 2009) | 2 lines
+
+Define CMAN and CRM service ids.
+
+------------------------------------------------------------------------
+r2294 | sdake | 2009-06-25 10:24:44 -0700 (Thu, 25 Jun 2009) | 2 lines
+
+Convert got joinlist message notice to debug level.
+
+------------------------------------------------------------------------
+r2293 | fabbione | 2009-06-25 10:09:28 -0700 (Thu, 25 Jun 2009) | 3 lines
+
+Add support for make srpm and make rpm targets
+
+
+------------------------------------------------------------------------
+r2292 | fabbione | 2009-06-25 04:06:24 -0700 (Thu, 25 Jun 2009) | 2 lines
+
+Fix make dist target
+
+------------------------------------------------------------------------
+r2291 | honzaf | 2009-06-25 03:22:23 -0700 (Thu, 25 Jun 2009) | 5 lines
+
+Add database lock init to hdb_* functions
+
+Without this, lock can be called to unitialized and locking unitialized
+lock isn't good idea.
+
+------------------------------------------------------------------------
+r2290 | honzaf | 2009-06-25 03:21:54 -0700 (Thu, 25 Jun 2009) | 2 lines
+
+Add locking of database in hdb_handle_refcount_get
+
+------------------------------------------------------------------------
+r2289 | sdake | 2009-06-23 22:21:13 -0700 (Tue, 23 Jun 2009) | 2 lines
+
+Remove totempg debug message.
+
+------------------------------------------------------------------------
+r2288 | sdake | 2009-06-23 18:01:57 -0700 (Tue, 23 Jun 2009) | 10 lines
+
+Add assembly to free list when it is removed from a configuration change as
+indicated by being in the left list.
+
+This has side effect of clearing the assembly buffer the next time it is
+referenced from the free list.  This fixes a defect that stops forward
+processing of the message streams because sync fails to finish when receiving
+a sync message from a restarted processor because it throws away the message.
+
+
+
+------------------------------------------------------------------------
+r2287 | rohara | 2009-06-23 15:28:31 -0700 (Tue, 23 Jun 2009) | 4 lines
+
+
+Add hdb_handle_refcount_get call.
+
+
+------------------------------------------------------------------------
+r2286 | sdake | 2009-06-23 10:09:24 -0700 (Tue, 23 Jun 2009) | 2 lines
+
+Tidy's up startup printfs.
+
+------------------------------------------------------------------------
+r2285 | sdake | 2009-06-22 22:53:05 -0700 (Mon, 22 Jun 2009) | 3 lines
+
+Change startup notice to Corosync Cluster Engine.
+Change 2008 to 2009 in copyright.
+
+------------------------------------------------------------------------
+r2284 | sdake | 2009-06-22 22:50:04 -0700 (Mon, 22 Jun 2009) | 2 lines
+
+Remove "AIS" string from exit notice.
+
+------------------------------------------------------------------------
+r2283 | sdake | 2009-06-22 11:50:29 -0700 (Mon, 22 Jun 2009) | 2 lines
+
+Remove warning by casting properly in totemnet.
+
+------------------------------------------------------------------------
+r2282 | sdake | 2009-06-22 11:29:43 -0700 (Mon, 22 Jun 2009) | 2 lines
+
+Rename request_shutdown to shutdown_request in coroapi.
+
+------------------------------------------------------------------------
+r2281 | sdake | 2009-06-22 11:18:15 -0700 (Mon, 22 Jun 2009) | 3 lines
+
+Add dump_state to coroapi.h.  Need to remove logging output from signal
+handlers.
+
+------------------------------------------------------------------------
+r2280 | sdake | 2009-06-21 22:32:41 -0700 (Sun, 21 Jun 2009) | 2 lines
+
+Sanitize -p option to not set scheduling parameters in all software.
+
+------------------------------------------------------------------------
+r2279 | meyering | 2009-06-21 11:27:02 -0700 (Sun, 21 Jun 2009) | 4 lines
+
+totemsrp: remove unnecessary cast to avoid "make syntax-check" failure
+
+* exec/totemsrp.c (message_handler_memb_join): Remove unnecessary
+cast of alloca return value.
+------------------------------------------------------------------------
+r2278 | sdake | 2009-06-21 09:46:24 -0700 (Sun, 21 Jun 2009) | 2 lines
+
+Use HAVE_ALLOCA_H define before including alloca.h
+
+------------------------------------------------------------------------
+r2277 | sdake | 2009-06-21 09:33:25 -0700 (Sun, 21 Jun 2009) | 3 lines
+
+Add tests for posix scheduling apis to configure.ac and use them to determine
+if we should set scheduling priorities or not.
+
+------------------------------------------------------------------------
+r2276 | sdake | 2009-06-20 22:02:09 -0700 (Sat, 20 Jun 2009) | 2 lines
+
+Work around dlopen'ed objects not executing constructors on solaris platform.
+
+------------------------------------------------------------------------
+r2275 | sdake | 2009-06-20 21:49:33 -0700 (Sat, 20 Jun 2009) | 2 lines
+
+Remove hdb constructor usage.
+
+------------------------------------------------------------------------
+r2274 | sdake | 2009-06-20 10:36:04 -0700 (Sat, 20 Jun 2009) | 2 lines
+
+Remove timersub redefine.
+
+------------------------------------------------------------------------
+r2273 | sdake | 2009-06-20 10:34:59 -0700 (Sat, 20 Jun 2009) | 2 lines
+
+Set nosigpipe socket option on platforms that send sigpipes in coroipcc.
+
+------------------------------------------------------------------------
+r2272 | sdake | 2009-06-20 10:34:10 -0700 (Sat, 20 Jun 2009) | 2 lines
+
+Remove use without init warning which is harmless.
+
+------------------------------------------------------------------------
+r2271 | sdake | 2009-06-20 10:33:38 -0700 (Sat, 20 Jun 2009) | 2 lines
+
+Remove shadow warnings.
+
+------------------------------------------------------------------------
+r2270 | sdake | 2009-06-19 13:43:12 -0700 (Fri, 19 Jun 2009) | 2 lines
+
+Add (void *) casts for iovector assignments to remove compile warnings.
+
+------------------------------------------------------------------------
+r2268 | sdake | 2009-06-19 08:53:13 -0700 (Fri, 19 Jun 2009) | 2 lines
+
+Fix unused variable on linux because of portage work.
+
+------------------------------------------------------------------------
 r2267 | sdake | 2009-06-19 08:42:15 -0700 (Fri, 19 Jun 2009) | 2 lines
 
 Patch from Wojtek to fix Solaris segfault with compiler optimization.

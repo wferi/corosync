@@ -73,11 +73,19 @@ static const struct memb_ring_id *sync_ring_id;
 
 static int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callack);
 
+static void (*sync_started) (
+	const struct memb_ring_id *ring_id);
+
+static void (*sync_aborted) (void);
+
 static struct sync_callbacks sync_callbacks;
 
 static int sync_processing = 0;
 
-static void (*sync_synchronization_completed) (void);
+static void (*sync_next_start) (
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id);
 
 static int sync_recovery_index = 0;
 
@@ -88,6 +96,10 @@ static struct barrier_data barrier_data_confchg[PROCESSOR_COUNT_MAX];
 static size_t barrier_data_confchg_entries;
 
 static struct barrier_data barrier_data_process[PROCESSOR_COUNT_MAX];
+
+static unsigned int my_member_list[PROCESSOR_COUNT_MAX];
+
+static unsigned int my_member_list_entries;
 
 static int sync_barrier_send (const struct memb_ring_id *ring_id);
 
@@ -107,9 +119,12 @@ static void sync_deliver_fn (
 
 static void sync_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	const unsigned int *member_list, size_t member_list_entries,
-	const unsigned int *left_list, size_t left_list_entries,
-	const unsigned int *joined_list, size_t joined_list_entries,
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const unsigned int *left_list,
+	size_t left_list_entries,
+	const unsigned int *joined_list,
+	size_t joined_list_entries,
 	const struct memb_ring_id *ring_id);
 
 static void sync_primary_callback_fn (
@@ -166,7 +181,7 @@ static void sync_start_init (const struct memb_ring_id *ring_id)
 
 static void sync_service_init (struct memb_ring_id *ring_id)
 {
-	sync_callbacks.sync_init ();
+	sync_callbacks.sync_init (my_member_list, my_member_list_entries, ring_id);
 	totempg_callback_token_destroy (&sync_callback_token_handle);
 
 	/*
@@ -249,8 +264,19 @@ static int sync_service_process (enum totem_callback_token_type type,
 }
 
 int sync_register (
-	int (*callbacks_retrieve) (int sync_id, struct sync_callbacks *callack),
-	void (*synchronization_completed) (void))
+	int (*callbacks_retrieve) (
+		int sync_id,
+		struct sync_callbacks *callbacks),
+
+	void (*started) (
+		const struct memb_ring_id *ring_id),
+
+	void (*aborted) (void),
+
+	void (*next_start) (
+		const unsigned int *member_list,
+		size_t member_list_entries,
+		const struct memb_ring_id *ring_id))
 {
 	unsigned int res;
 
@@ -274,7 +300,9 @@ int sync_register (
 	}
 
 	sync_callbacks_retrieve = callbacks_retrieve;
-	sync_synchronization_completed = synchronization_completed;
+	sync_next_start = next_start;
+	sync_started = started;
+	sync_aborted = aborted;
 	return (0);
 }
 
@@ -412,15 +440,21 @@ static void sync_deliver_fn (
 				sync_callbacks.name);
 			sync_service_init (&deliver_ring_id);
 		}
+		if (sync_processing == 0) {
+			sync_next_start (my_member_list, my_member_list_entries, sync_ring_id);
+		}
 	}
 	return;
 }
 
 static void sync_confchg_fn (
 	enum totem_configuration_type configuration_type,
-	const unsigned int *member_list, size_t member_list_entries,
-	const unsigned int *left_list, size_t left_list_entries,
-	const unsigned int *joined_list, size_t joined_list_entries,
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const unsigned int *left_list,
+	size_t left_list_entries,
+	const unsigned int *joined_list,
+	size_t joined_list_entries,
 	const struct memb_ring_id *ring_id)
 {
 	sync_ring_id = ring_id;
@@ -428,24 +462,21 @@ static void sync_confchg_fn (
 	if (configuration_type != TOTEM_CONFIGURATION_REGULAR) {
 		return;
 	}
+	memcpy (my_member_list, member_list, member_list_entries * sizeof (unsigned int));
+	my_member_list_entries = member_list_entries;
+
 	if (sync_processing && sync_callbacks.sync_abort != NULL) {
+		sync_aborted ();
 		sync_callbacks.sync_abort ();
 		sync_callbacks.sync_activate = NULL;
 	}
+
+	sync_started (
+		ring_id);
 
 	sync_primary_callback_fn (
 		member_list,
 		member_list_entries,
 		1,
 		ring_id);
-}
-
-int sync_in_process (void)
-{
-	return (sync_processing);
-}
-
-int sync_primary_designated (void)
-{
-	return (1);
 }

@@ -4,7 +4,7 @@
 # bootstrap / init
 AC_PREREQ([2.61])
 
-AC_INIT([corosync], [0.98], [openais@lists.osdl.org])
+AC_INIT([corosync], [0.100], [openais@lists.osdl.org])
 AM_INIT_AUTOMAKE([-Wno-portability])
 
 AC_CONFIG_SRCDIR([lib/coroipcc.c])
@@ -104,19 +104,20 @@ AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
 		getcwd getpeerucred getpeereid gettimeofday inet_ntoa memmove \
 		memset mkdir scandir select socket strcasecmp strchr strdup \
 		strerror strrchr strspn strstr pthread_spin_lock \
-		pthread_spin_unlock])
+		pthread_spin_unlock pthread_setschedparam \
+		sched_get_priority_max])
 
-# add man and init dirs?
 AC_CONFIG_FILES([Makefile
-                 exec/Makefile
-                 include/Makefile
-                 lcr/Makefile
-                 lib/Makefile
-                 man/Makefile
-                 pkgconfig/Makefile
-                 services/Makefile
-                 test/Makefile
-                 tools/Makefile])
+		 exec/Makefile
+		 include/Makefile
+		 init/Makefile
+		 lcr/Makefile
+		 lib/Makefile
+		 man/Makefile
+		 pkgconfig/Makefile
+		 services/Makefile
+		 test/Makefile
+		 tools/Makefile])
 
 ### Local business
 

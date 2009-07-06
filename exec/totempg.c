@@ -84,6 +84,9 @@
 
 #include <config.h>
 
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 #include <netinet/in.h>
 #include <sys/uio.h>
 #include <stdio.h>
@@ -323,8 +326,19 @@ static inline void app_confchg_fn (
 {
 	int i;
 	struct totempg_group_instance *instance;
+	struct assembly *assembly;
 	unsigned int res;
 
+	/*
+	 * For every leaving processor, add to free list
+	 * This also has the side effect of clearing out the dataset
+	 * In the leaving processor's assembly buffer.
+	 */
+	for (i = 0; i < left_list_entries; i++) {
+		assembly = assembly_ref (left_list[i]);
+		list_del (&assembly->list);
+		list_add (&assembly->list, &assembly_list_free);
+	}
 	for (i = 0; i <= totempg_max_handle; i++) {
 		res = hdb_handle_get (&totempg_groups_instance_database,
 			hdb_nocheck_convert (i), (void *)&instance);
@@ -567,7 +581,7 @@ static void totempg_deliver_fn (
 	 */
 	msg_count = mcast->fragmented ? mcast->msg_count - 1 : mcast->msg_count;
 	continuation = mcast->continuation;
-	iov_delv.iov_base = &assembly->data[0];
+	iov_delv.iov_base = (void *)&assembly->data[0];
 	iov_delv.iov_len = assembly->index + msg_lens[0];
 
 	/*
@@ -588,7 +602,7 @@ static void totempg_deliver_fn (
 			assembly->throw_away_mode = THROW_AWAY_INACTIVE;
 
 			assembly->index += msg_lens[0];
-			iov_delv.iov_base = &assembly->data[assembly->index];
+			iov_delv.iov_base = (void *)&assembly->data[assembly->index];
 			iov_delv.iov_len = msg_lens[1];
 			start = 1;
 		}
@@ -600,7 +614,7 @@ static void totempg_deliver_fn (
 				app_deliver_fn(nodeid, iov_delv.iov_base, iov_delv.iov_len,
 					endian_conversion_required);
 				assembly->index += msg_lens[i];
-				iov_delv.iov_base = &assembly->data[assembly->index];
+				iov_delv.iov_base = (void *)&assembly->data[assembly->index];
 				if (i < (msg_count - 1)) {
 					iov_delv.iov_len = msg_lens[i + 1];
 				}
@@ -655,6 +669,7 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 		pthread_mutex_unlock (&mcast_msg_mutex);
 		return (0);
 	}
+	mcast.header.version = 0;
 	mcast.fragmented = 0;
 
 	/*
@@ -666,11 +681,11 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 
 	mcast.msg_count = mcast_packed_msg_count;
 
-	iovecs[0].iov_base = &mcast;
+	iovecs[0].iov_base = (void *)&mcast;
 	iovecs[0].iov_len = sizeof (struct totempg_mcast);
-	iovecs[1].iov_base = mcast_packed_msg_lens;
+	iovecs[1].iov_base = (void *)mcast_packed_msg_lens;
 	iovecs[1].iov_len = mcast_packed_msg_count * sizeof (unsigned short);
-	iovecs[2].iov_base = &fragmentation_data[0];
+	iovecs[2].iov_base = (void *)&fragmentation_data[0];
 	iovecs[2].iov_len = fragment_size;
 	res = totemmrp_mcast (iovecs, 3, 0);
 
@@ -782,6 +797,7 @@ static int mcast_msg (
 		return(-1);
 	}
 
+	mcast.header.version = 0;
 	for (i = 0; i < iov_len; ) {
 		mcast.fragmented = 0;
 		mcast.continuation = fragment_continuation;
@@ -847,12 +863,12 @@ static int mcast_msg (
 			 * assemble the message and send it
 			 */
 			mcast.msg_count = ++mcast_packed_msg_count;
-			iovecs[0].iov_base = &mcast;
+			iovecs[0].iov_base = (void *)&mcast;
 			iovecs[0].iov_len = sizeof(struct totempg_mcast);
-			iovecs[1].iov_base = mcast_packed_msg_lens;
+			iovecs[1].iov_base = (void *)mcast_packed_msg_lens;
 			iovecs[1].iov_len = mcast_packed_msg_count *
 				sizeof(unsigned short);
-			iovecs[2].iov_base = data_ptr;
+			iovecs[2].iov_base = (void *)data_ptr;
 			iovecs[2].iov_len = max_packet_size;
 			assert (totemmrp_avail() > 0);
 			res = totemmrp_mcast (iovecs, 3, guarantee);

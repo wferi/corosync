@@ -36,6 +36,7 @@
 #include <inttypes.h>
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
+#include <corosync/hdb.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,25 +63,27 @@ typedef enum {
 #define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
 
 /** These are the things that get passed around */
-struct evs_address {
-	unsigned int nodeid;
-	unsigned short family;
-	unsigned char addr[TOTEMIP_ADDRLEN];
-};
-
 struct evs_group {
 	char key[32];
 };
 
+struct evs_ring_id {
+	unsigned int nodeid;
+	unsigned long long seq;
+};
+
 typedef void (*evs_deliver_fn_t) (
+	hdb_handle_t handle, 
 	unsigned int nodeid,
 	const void *msg,
 	size_t msg_len);
 
 typedef void (*evs_confchg_fn_t) (
-	unsigned int *member_list, size_t member_list_entries,
-	unsigned int *left_list, size_t left_list_entries,
-	unsigned int *joined_list, size_t joined_list_entries);
+	hdb_handle_t handle, 
+	const unsigned int *member_list, size_t member_list_entries,
+	const unsigned int *left_list, size_t left_list_entries,
+	const unsigned int *joined_list, size_t joined_list_entries,
+	const struct evs_ring_id *ring_id);
 
 typedef struct {
 	evs_deliver_fn_t evs_deliver_fn;
@@ -109,6 +112,17 @@ cs_error_t evs_finalize (
 cs_error_t evs_fd_get (
 	evs_handle_t handle,
 	int *fd);
+
+/*
+ * Get and set contexts for a EVS handle
+ */
+cs_error_t evs_context_get (
+	evs_handle_t handle,
+	void **context);
+
+cs_error_t evs_context_set (
+	evs_handle_t handle,
+	void *context);
 
 /*
  * Dispatch messages and configuration changes

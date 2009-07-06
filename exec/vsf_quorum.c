@@ -161,6 +161,7 @@ static struct corosync_service_engine quorum_service_handler = {
 	.lib_engine				= quorum_lib_service,
 	.exec_init_fn				= quorum_exec_init_fn,
 	.lib_engine_count			= sizeof (quorum_lib_service) / sizeof (struct corosync_lib_handler),
+	.sync_mode				= CS_SYNC_V1
 };
 
 static struct lcr_iface corosync_quorum_ver0[1] = {
@@ -261,6 +262,9 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 	int res;
 	void *quorum_iface_p;
 
+#ifdef COROSYNC_SOLARIS
+	logsys_subsys_init();
+#endif
 	corosync_api = api;
 	list_init (&lib_trackers_list);
 	list_init (&internal_trackers_list);

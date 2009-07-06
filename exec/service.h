@@ -38,6 +38,8 @@
 /*
  * Link and initialize a service
  */
+struct corosync_api_v1;
+
 extern unsigned int corosync_service_link_and_init (
 	struct corosync_api_v1 *objdb,
 	const char *service_name,

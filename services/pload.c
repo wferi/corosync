@@ -160,7 +160,8 @@ struct corosync_service_engine pload_service_engine = {
 	.exec_engine_count	= sizeof (pload_exec_engine) / sizeof (struct corosync_exec_handler),
 	.confchg_fn		= pload_confchg_fn,
 	.exec_init_fn		= pload_exec_init_fn,
-	.exec_dump_fn		= NULL
+	.exec_dump_fn		= NULL,
+	.sync_mode		= CS_SYNC_V2
 };
 
 static DECLARE_LIST_INIT (confchg_notify);
@@ -214,6 +215,9 @@ __attribute__ ((constructor)) static void corosync_lcr_component_register (void)
 static int pload_exec_init_fn (
 	struct corosync_api_v1 *corosync_api)
 {
+#ifdef COROSYNC_SOLARIS
+	logsys_subsys_init();
+#endif
 	api = corosync_api;
 
 	return 0;
@@ -250,7 +254,7 @@ static void message_handler_req_pload_start (void *conn, const void *msg)
 	req_exec_pload_start.msg_size = req_lib_pload_start->msg_size;
 	req_exec_pload_start.msg_count = req_lib_pload_start->msg_count;
 	req_exec_pload_start.time_interval = req_lib_pload_start->time_interval;
-	iov.iov_base = &req_exec_pload_start;
+	iov.iov_base = (void *)&req_exec_pload_start;
 	iov.iov_len = sizeof (struct req_exec_pload_start);
 
 	msgs_delivered = 0;
@@ -281,7 +285,7 @@ static int send_message (const void *arg)
 		SERVICE_ID_MAKE (PLOAD_SERVICE, MESSAGE_REQ_EXEC_PLOAD_MCAST);
 	req_exec_pload_mcast.header.size = sizeof (struct req_exec_pload_mcast) + msg_size;
 
-	iov[0].iov_base = &req_exec_pload_mcast;
+	iov[0].iov_base = (void *)&req_exec_pload_mcast;
 	iov[0].iov_len = sizeof (struct req_exec_pload_mcast);
 	if (msg_size > sizeof (req_exec_pload_mcast)) {
 		iov[1].iov_base = buffer;
@@ -328,6 +332,7 @@ static void message_handler_req_exec_pload_start (
 	start_mcasting ();
 }
 
+#ifndef timersub
 # define timersub(a, b, result)                                               \
   do {                                                                        \
     (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;                             \
@@ -337,6 +342,7 @@ static void message_handler_req_exec_pload_start (
       (result)->tv_usec += 1000000;                                           \
     }                                                                         \
   } while (0)
+#endif
 
 struct timeval tv1;
 struct timeval tv2;

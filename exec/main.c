@@ -76,6 +76,7 @@
 #include "totemconfig.h"
 #include "main.h"
 #include "sync.h"
+#include "syncv2.h"
 #include "tlist.h"
 #include "timer.h"
 #include "util.h"
@@ -83,6 +84,7 @@
 #include "service.h"
 #include "schedwrk.h"
 #include "version.h"
+#include "evil.h"
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
 	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED | LOGSYS_MODE_FORK,
@@ -118,13 +120,22 @@ static struct objdb_iface_ver0 *objdb = NULL;
 
 static struct corosync_api_v1 *api = NULL;
 
-unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
+static enum cs_sync_mode minimum_sync_mode;
 
-hdb_handle_t corosync_poll_handle;
+static enum cs_sync_mode minimum_sync_mode;
+
+static int sync_in_process = 1;
+
+static hdb_handle_t corosync_poll_handle;
 
 struct sched_param global_sched_param;
 
-static void sigusr2_handler (int num)
+hdb_handle_t corosync_poll_handle_get (void)
+{
+	return (corosync_poll_handle);
+}
+
+void corosync_state_dump (void)
 {
 	int i;
 
@@ -135,10 +146,19 @@ static void sigusr2_handler (int num)
 	}
 }
 
+static void sigusr2_handler (int num)
+{
+	/*
+	 * TODO remove this from sigusr2 handler and access via cfg service
+	 * engine api - corosync-cfgtool
+	 */
+	corosync_state_dump ();
+}
+
 /*
  * TODO this function needs some love
  */
-void corosync_request_shutdown (void)
+void corosync_shutdown_request (void)
 {
 	if (api) {
 		corosync_service_unlink_all (api);
@@ -153,12 +173,12 @@ void corosync_request_shutdown (void)
 
 static void sigquit_handler (int num)
 {
-	corosync_request_shutdown ();
+	corosync_shutdown_request ();
 }
 
 static void sigintr_handler (int num)
 {
-	corosync_request_shutdown ();
+	corosync_shutdown_request ();
 }
 
 static void sigsegv_handler (int num)
@@ -179,9 +199,9 @@ static void sigabrt_handler (int num)
 
 #define LOCALHOST_IP inet_addr("127.0.0.1")
 
-hdb_handle_t corosync_group_handle;
+static hdb_handle_t corosync_group_handle;
 
-struct totempg_group corosync_group = {
+static struct totempg_group corosync_group = {
 	.group		= "a",
 	.group_len	= 1
 };
@@ -210,38 +230,71 @@ static void serialize_unlock (void)
 }
 #endif
 
-
-
 static void corosync_sync_completed (void)
 {
+	log_printf (LOGSYS_LEVEL_NOTICE,
+		"Completed service synchronization, ready to provide service.\n");
+	sync_in_process = 0;
 }
 
 static int corosync_sync_callbacks_retrieve (int sync_id,
 	struct sync_callbacks *callbacks)
 {
 	unsigned int ais_service_index;
-	unsigned int ais_services_found = 0;
+	int res;
 
 	for (ais_service_index = 0;
 		ais_service_index < SERVICE_HANDLER_MAXIMUM_COUNT;
 		ais_service_index++) {
 
-		if (ais_service[ais_service_index] != NULL) {
-			if (ais_services_found == sync_id) {
+		if (ais_service[ais_service_index] != NULL
+			&& ais_service[ais_service_index]->sync_mode == CS_SYNC_V1) {
+			if (ais_service_index == sync_id) {
 				break;
 			}
-			ais_services_found += 1;
 		}
 	}
+	/*
+	 * Try to load backwards compat sync engines
+	 */
 	if (ais_service_index == SERVICE_HANDLER_MAXIMUM_COUNT) {
-		memset (callbacks, 0, sizeof (struct sync_callbacks));
-		return (-1);
+		res = evil_callbacks_load (sync_id, callbacks);
+		return (res);
 	}
 	callbacks->name = ais_service[ais_service_index]->name;
 	callbacks->sync_init = ais_service[ais_service_index]->sync_init;
 	callbacks->sync_process = ais_service[ais_service_index]->sync_process;
 	callbacks->sync_activate = ais_service[ais_service_index]->sync_activate;
 	callbacks->sync_abort = ais_service[ais_service_index]->sync_abort;
+	return (0);
+}
+
+static int corosync_sync_v2_callbacks_retrieve (
+	int service_id,
+	struct sync_callbacks *callbacks)
+{
+	int res;
+
+	if (minimum_sync_mode == CS_SYNC_V2 && service_id == CLM_SERVICE && ais_service[CLM_SERVICE] == NULL) {
+		res = evil_callbacks_load (service_id, callbacks);
+		return (res);
+	}
+	if (minimum_sync_mode == CS_SYNC_V2 && service_id == EVT_SERVICE && ais_service[EVT_SERVICE] == NULL) {
+		res = evil_callbacks_load (service_id, callbacks);
+		return (res);
+	}
+	if (ais_service[service_id] == NULL) {
+		return (-1);
+	}
+	if (minimum_sync_mode == CS_SYNC_V1 && ais_service[service_id]->sync_mode != CS_SYNC_V2) {
+		return (-1);
+	}
+
+	callbacks->name = ais_service[service_id]->name;
+	callbacks->sync_init = ais_service[service_id]->sync_init;
+	callbacks->sync_process = ais_service[service_id]->sync_process;
+	callbacks->sync_activate = ais_service[service_id]->sync_activate;
+	callbacks->sync_abort = ais_service[service_id]->sync_abort;
 	return (0);
 }
 
@@ -255,7 +308,12 @@ static void confchg_fn (
 	const struct memb_ring_id *ring_id)
 {
 	int i;
+	int abort_activate = 0;
 
+	if (sync_in_process == 1) {
+		abort_activate = 1;
+	}
+	sync_in_process = 1;
 	serialize_lock ();
 	memcpy (&corosync_ring_id, ring_id, sizeof (struct memb_ring_id));
 
@@ -271,6 +329,13 @@ static void confchg_fn (
 		}
 	}
 	serialize_unlock ();
+
+	if (abort_activate) {
+		sync_v2_abort ();
+	}
+	if (minimum_sync_mode == CS_SYNC_V2 && configuration_type == TOTEM_CONFIGURATION_REGULAR) {
+		sync_v2_start (member_list, member_list_entries, ring_id);
+	}
 }
 
 static void priv_drop (void)
@@ -322,28 +387,6 @@ static void corosync_tty_detach (void)
 		if (fd > 2)
 			close(fd);
 	}
-}
-
-static void corosync_setscheduler (void)
-{
-#if ! defined(TS_CLASS) && (defined(COROSYNC_BSD) || defined(COROSYNC_LINUX) || defined(COROSYNC_SOLARIS))
-	int res;
-
-	sched_priority = sched_get_priority_max (SCHED_RR);
-	if (sched_priority != -1) {
-		global_sched_param.sched_priority = sched_priority;
-		res = sched_setscheduler (0, SCHED_RR, &global_sched_param);
-		if (res == -1) {
-			log_printf (LOGSYS_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
-				global_sched_param.sched_priority, strerror (errno));
-		}
-	} else {
-		log_printf (LOGSYS_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
-		sched_priority = 0;
-	}
-#else
-	log_printf(LOGSYS_LEVEL_WARNING, "Scheduler priority left to default value (no OS support)\n");
-#endif
 }
 
 static void corosync_mlockall (void)
@@ -400,10 +443,18 @@ static void deliver_fn (
 	 */
 	service = id >> 16;
 	fn_id = id & 0xffff;
-	if (!ais_service[service])
-		return;
 
 	serialize_lock();
+
+	if (ais_service[service] == NULL && service == EVT_SERVICE) {
+		evil_deliver_fn (nodeid, service, fn_id, msg,
+			endian_conversion_required);
+	}
+
+	if (!ais_service[service]) {
+		serialize_unlock();
+		return;
+	}
 
 	if (endian_conversion_required) {
 		assert(ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
@@ -530,7 +581,7 @@ static int corosync_sending_allowed (
 		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
 		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) &&
 		(pd->reserved_msgs) &&
-		(sync_in_process() == 0)));
+		(sync_in_process == 0)));
 
 	return (sending_allowed);
 }
@@ -613,9 +664,9 @@ static void corosync_poll_dispatch_modify (
 		corosync_poll_handler_dispatch);
 }
 
-struct coroipcs_init_state ipc_init_state = {
+static struct coroipcs_init_state ipc_init_state = {
 	.socket_name			= COROSYNC_SOCKET_NAME,
-	.sched_policy			= SCHED_RR,
+	.sched_policy			= SCHED_OTHER,
 	.sched_param			= &global_sched_param,
 	.malloc				= malloc,
 	.free				= free,
@@ -635,6 +686,35 @@ struct coroipcs_init_state ipc_init_state = {
 	.exit_fn_get			= corosync_exit_fn_get,
 	.handler_fn_get			= corosync_handler_fn_get
 };
+
+static void corosync_setscheduler (void)
+{
+#if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
+	int res;
+
+	sched_priority = sched_get_priority_max (SCHED_RR);
+	if (sched_priority != -1) {
+		global_sched_param.sched_priority = sched_priority;
+		res = sched_setscheduler (0, SCHED_RR, &global_sched_param);
+		if (res == -1) {
+			global_sched_param.sched_priority = 0;
+			log_printf (LOGSYS_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
+				global_sched_param.sched_priority, strerror (errno));
+		} else {
+			/*
+			 * Turn on SCHED_RR in ipc system
+			 */
+			ipc_init_state.sched_policy = SCHED_RR;
+		}
+	} else {
+		log_printf (LOGSYS_LEVEL_WARNING, "Could not get maximum scheduler priority: %s\n", strerror (errno));
+		sched_priority = 0;
+	}
+#else
+	log_printf(LOGSYS_LEVEL_WARNING,
+		"The Platform is missing process priority setting features.  Leaving at default.");
+#endif
+}
 
 int main (int argc, char **argv)
 {
@@ -696,9 +776,7 @@ int main (int argc, char **argv)
 
 	corosync_mlockall ();
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Executive Service RELEASE '%s'\n", RELEASE_VERSION);
-	log_printf (LOGSYS_LEVEL_NOTICE, "Copyright (C) 2002-2006 MontaVista Software, Inc and contributors.\n");
-	log_printf (LOGSYS_LEVEL_NOTICE, "Copyright (C) 2006-2008 Red Hat, Inc.\n");
+	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.\n", RELEASE_VERSION);
 
 	(void)signal (SIGINT, sigintr_handler);
 	(void)signal (SIGUSR2, sigusr2_handler);
@@ -713,8 +791,6 @@ int main (int argc, char **argv)
 		serialize_lock,
 		serialize_unlock,
 		sched_priority);
-
-	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Executive Service: started and ready to provide service.\n");
 
 	corosync_poll_handle = poll_create ();
 
@@ -824,7 +900,6 @@ int main (int argc, char **argv)
 		corosync_exit_error (AIS_DONE_DIR_NOT_PRESENT);
 	}
 
-
 	res = totem_config_read (objdb, &totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
@@ -860,6 +935,22 @@ int main (int argc, char **argv)
 	totem_config.totem_logging_configuration.log_level_debug = LOGSYS_LEVEL_DEBUG;
 	totem_config.totem_logging_configuration.log_printf = _logsys_log_printf;
 
+	res = corosync_main_config_compatibility_read (objdb,
+		&minimum_sync_mode,
+		&error_string);
+	if (res == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
+	}
+
+	res = corosync_main_config_compatibility_read (objdb,
+		&minimum_sync_mode,
+		&error_string);
+	if (res == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
+	}
+
 	/*
 	 * Sleep for a while to let other nodes in the cluster
 	 * understand that this node has been away (if it was
@@ -892,7 +983,6 @@ int main (int argc, char **argv)
 		&corosync_group,
 		1);
 
-
 	/*
 	 * This must occur after totempg is initialized because "this_ip" must be set
 	 */
@@ -901,9 +991,27 @@ int main (int argc, char **argv)
 		log_printf (LOGSYS_LEVEL_ERROR, "Could not initialize default services\n");
 		corosync_exit_error (AIS_DONE_INIT_SERVICES);
 	}
+	evil_init (api);
 
+	if (minimum_sync_mode == CS_SYNC_V2) {
+		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");
+		sync_v2_init (
+			corosync_sync_v2_callbacks_retrieve,
+			corosync_sync_completed);
+	} else
+	if (minimum_sync_mode == CS_SYNC_V1) {
+		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.\n");
+		sync_register (
+			corosync_sync_callbacks_retrieve,
+			sync_v2_memb_list_determine,
+			sync_v2_memb_list_abort,
+			sync_v2_start);
 
-	sync_register (corosync_sync_callbacks_retrieve, corosync_sync_completed);
+		sync_v2_init (
+			corosync_sync_v2_callbacks_retrieve,
+			corosync_sync_completed);
+	}
+
 
 	/*
 	 * Drop root privleges to user 'ais'
