@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Fabio M. Di Nitto <fabbione@ubuntu.com>
 Uploaders: Bastian Blank <waldi@debian.org>, Frederik Schüler <fs@debian.org>
 Standards-Version: 3.8.2
-Build-Depends: dpatch, debhelper (>> 5)
+Build-Depends: debhelper (>> 5)
 
 Package: corosync
 Section: admin
