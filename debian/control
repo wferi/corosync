@@ -4,12 +4,12 @@ Priority: optional
 Maintainer: Fabio M. Di Nitto <fabbione@ubuntu.com>
 Uploaders: Bastian Blank <waldi@debian.org>, Frederik Schüler <fs@debian.org>
 Standards-Version: 3.8.2
-Build-Depends: debhelper (>> 5), libnss3-dev
+Build-Depends: debhelper (>> 5), libnss3-dev, pkg-config, groff
 
 Package: corosync
 Section: admin
 Architecture: any
-Depends: ${shlibs:Depends}, lsb-base (>= 3.0-6), libcorosync4 (>= ${binary:Verson}), groff, adduser
+Depends: ${shlibs:Depends}, lsb-base (>= 3.0-6), libcorosync4 (>= ${binary:Verson}), adduser
 Conflicts: openais (<< 0.85)
 Description: Standards-based cluster framework (daemon and modules)
  The corosync project is a project to implement a production quality
