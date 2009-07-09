@@ -1,3 +1,12 @@
+corosync (1.0.0-1) unstable; urgency=low
+
+  * [f5b3b0e] depend on adduser since we create a group in the postinst and
+    add missing build-dep on libnss3-dev.
+  * [24bd855] don't ignore errors in postinst
+  * [7e4833d] Imported Upstream version 1.0.0
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 09 Jul 2009 14:29:03 +0200
+
 corosync (0.100-1) unstable; urgency=low
 
   * [9c10653] Imported Upstream version 0.100
