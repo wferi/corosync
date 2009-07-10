@@ -14,7 +14,12 @@ setup: $(STAMPS_DIR)/setup
 
 configure-stamp:
 	dh_testdir
-	./configure --prefix=/usr --libexecdir=/usr/lib/ --localstatedir=/var
+	./configure --prefix=/usr \
+		    --libexecdir=/usr/lib/ \
+		    --localstatedir=/var \
+		    --sysconfdir=/etc \
+		    --with-lcrso-dir=/usr/lib/corosync/lcrso \
+		    --with-socket-dir=/var/run/corosync
 	touch configure-stamp
 
 build: configure-stamp
@@ -43,10 +48,12 @@ install: build
 	dh_installlogrotate
 	dh_strip
 ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
-	strip --remove-section=.comment --remove-section=.note --strip-unneeded debian/corosync/usr/lib/lcrso/*
+	strip --remove-section=.comment --remove-section=.note --strip-unneeded debian/corosync/usr/lib/corosync/lcrso/*
 endif
+	# install example configuration file
+	cp -ax $(CURDIR)/debian/corosync.example-config $(CURDIR)/debian/tmp/etc/corosync/corosync.conf
 	dh_compress
-	chmod 644 debian/corosync/usr/lib/lcrso/*.lcrso
+	chmod 644 debian/corosync/usr/lib/corosync/lcrso/*.lcrso
 	dh_fixperms
 	dh_makeshlibs -V
 	dh_installdeb
@@ -60,7 +67,4 @@ binary-arch: install
 binary-indep:
 
 binary: binary-arch binary-indep
-
-# This is to make dpatch-edit-patch work
-unpatch: clean
 
