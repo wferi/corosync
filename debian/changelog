@@ -1,3 +1,12 @@
+corosync (1.0.0-1ubuntu0ivoks2) unstable; urgency=low
+
+  * [28b621c] install files in etc/
+  * [e506cbc] don't install LICENSE and INSTALL
+  * [4827444] change maintainer to Debian HA maintainers
+  * [dff4236] add LSB header
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 11 Jul 2009 13:37:50 +0200
+
 corosync (1.0.0-1ubuntu0ivoks1) karmic; urgency=low
 
   * debian/rules:
