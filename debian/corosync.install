@@ -3,3 +3,4 @@ usr/share/man/man5
 usr/share/man/man8
 usr/lib/corosync/lcrso
 usr/share/doc/corosync/
+etc/corosync/
