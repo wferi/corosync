@@ -1,3 +1,10 @@
+corosync (1.0.0-3) unstable; urgency=low
+
+  * [c235864] add debug package
+  * [8a65dc8] update copyright information
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 11 Jul 2009 17:05:09 +0200
+
 corosync (1.0.0-2) unstable; urgency=low
 
   * [28b621c] install files in etc/
