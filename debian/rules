@@ -3,6 +3,8 @@
 # Uncomment this to turn on verbose mode.
 # export DH_VERBOSE=1
 
+include /usr/share/quilt/quilt.make
+
 SOURCE  := $(shell dpkg-parsechangelog | sed -ne 's,^Source: *\(.*\)$$,\1,p')
 VERSION := $(shell dpkg-parsechangelog | perl -ne '/^Version:\s+(\S+)-[^-]+$$/ && print $$1;')
 
@@ -22,10 +24,10 @@ configure-stamp:
 		    --with-socket-dir=/var/run/corosync
 	touch configure-stamp
 
-build: configure-stamp
+build: patch configure-stamp
 	$(MAKE)
 
-clean:
+clean: unpatch
 	dh_testdir
 	-$(MAKE) clean
 	dh_clean configure-stamp
