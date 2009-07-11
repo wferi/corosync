@@ -1,8 +1,8 @@
 Source: corosync
 Section: admin
 Priority: optional
-Maintainer: Fabio M. Di Nitto <fabbione@ubuntu.com>
-Uploaders: Bastian Blank <waldi@debian.org>, Frederik Schüler <fs@debian.org>
+Maintainer: Debian HA Maintainers <debian-ha@lists.alioth.debian.org>
+Uploaders: Martin Gerhard Loschwitz <martin.loschwitz@linbit.com>, Guido Günther <agx@sigxcpu.org>
 Standards-Version: 3.8.2
 Build-Depends: debhelper (>> 5), libnss3-dev, pkg-config, groff
 
