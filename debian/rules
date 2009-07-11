@@ -48,7 +48,7 @@ install: build
 	dh_installexamples
 	dh_installinit -p corosync -- start 59 S . start 7 0 6 .
 	dh_installlogrotate
-	dh_strip
+	dh_strip --dbg-package=corosync-dbg
 ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	strip --remove-section=.comment --remove-section=.note --strip-unneeded debian/corosync/usr/lib/corosync/lcrso/*
 endif
