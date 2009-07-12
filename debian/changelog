@@ -1,4 +1,4 @@
-corosync (1.0.0-3) unstable; urgency=low
+corosync (1.0.0-3) experimental; urgency=low
 
   * [c235864] add debug package
   * [8a65dc8] update copyright information
