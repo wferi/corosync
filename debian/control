@@ -1,7 +1,7 @@
 Source: corosync
 Section: admin
 Priority: optional
-Maintainer: Debian HA Maintainers <debian-ha@lists.alioth.debian.org>
+Maintainer: Debian HA Maintainers <debian-ha-maintainers@lists.alioth.debian.org>
 Uploaders: Martin Gerhard Loschwitz <martin.loschwitz@linbit.com>, Guido Günther <agx@sigxcpu.org>
 Standards-Version: 3.8.2
 Build-Depends: debhelper (>> 5), libnss3-dev, pkg-config, groff, quilt
