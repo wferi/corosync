@@ -1,3 +1,10 @@
+corosync (1.0.0-4) experimental; urgency=low
+
+  * [5b1180a] fix debian-ha address
+  * [6d5347e] add Vcs-{Git,Browser}
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 14 Jul 2009 17:49:38 +0200
+
 corosync (1.0.0-3) experimental; urgency=low
 
   * [c235864] add debug package
