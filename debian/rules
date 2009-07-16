@@ -53,7 +53,7 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	strip --remove-section=.comment --remove-section=.note --strip-unneeded debian/corosync/usr/lib/corosync/lcrso/*
 endif
 	# install example configuration file
-	cp -ax $(CURDIR)/debian/corosync.example-config $(CURDIR)/debian/tmp/etc/corosync/corosync.conf
+	cp -ax $(CURDIR)/debian/corosync.example-config $(CURDIR)/debian/corosync/etc/corosync/corosync.conf
 	dh_compress
 	chmod 644 debian/corosync/usr/lib/corosync/lcrso/*.lcrso
 	dh_fixperms
