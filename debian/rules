@@ -14,7 +14,7 @@ export COROSYNC_BUILD=$(if $(findstring debug,$(DEB_BUILD_OPTIONS)),DEBUG,RELEAS
 
 setup: $(STAMPS_DIR)/setup
 
-configure-stamp:
+configure-stamp: patch
 	dh_testdir
 	./configure --prefix=/usr \
 		    --libexecdir=/usr/lib/ \
@@ -24,12 +24,12 @@ configure-stamp:
 		    --with-socket-dir=/var/run/corosync
 	touch configure-stamp
 
-build: patch configure-stamp
+build: configure-stamp
 	$(MAKE)
 
 clean: unpatch
 	dh_testdir
-	-$(MAKE) clean
+	-$(MAKE) distclean
 	dh_clean configure-stamp
 
 maintainerclean:
