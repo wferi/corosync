@@ -70,7 +70,7 @@ Package: libcorosync-dev
 Section: libdevel
 Architecture: any
 Depends: libcorosync4 (= ${binary:Version})
-Conflicts: libopenais-dev (<< 0.85)
+Conflicts: libopenais-dev (<< 0.85), libopenais-legacy-dev (<< 1.0.0)
 Description: Standards-based cluster framework (developer files)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
