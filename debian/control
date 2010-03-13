@@ -31,7 +31,7 @@ Package: corosync-dbg
 Section: debug
 Priority: extra
 Architecture: any
-Depends: ${shlibs:Depends}, libcorosync4 (= ${binary:Version}),
+Depends: ${shlibs:Depends}, libcorosync4 (= ${binary:Version}) |
  corosync (= ${binary:Version})
 Description: Standards-based cluster framework (debugging symbols)
  The corosync project is a project to implement a production quality
