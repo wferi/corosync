@@ -93,7 +93,7 @@
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
 #define QUEUE_RTR_ITEMS_SIZE_MAX		16384 /* allow 16384 retransmit items */
-#define RETRANS_MESSAGE_QUEUE_SIZE_MAX		500 /* allow 500 messages to be queued */
+#define RETRANS_MESSAGE_QUEUE_SIZE_MAX		16384 /* allow 500 messages to be queued */
 #define RECEIVED_MESSAGE_QUEUE_SIZE_MAX		500 /* allow 500 messages to be queued */
 #define MAXIOVS					5
 #define RETRANSMIT_ENTRIES_MAX			30
@@ -298,6 +298,8 @@ enum memb_state {
 struct totemsrp_instance {
 	int iface_changes;
 
+	int failed_to_recv;
+
 	/*
 	 * Flow control mcasts and remcasts on last and current orf_token
 	 */
@@ -391,7 +393,7 @@ struct totemsrp_instance {
 
 	struct list_head token_callback_sent_listhead;
 
-	char *orf_token_retransmit[TOKEN_SIZE_MAX];
+	char orf_token_retransmit[TOKEN_SIZE_MAX];
 
 	int orf_token_retransmit_size;
 
@@ -1390,6 +1392,8 @@ static void old_ring_state_save (struct totemsrp_instance *instance)
 {
 	if (instance->old_ring_state_saved == 0) {
 		instance->old_ring_state_saved = 1;
+		memcpy (&instance->my_old_ring_id, &instance->my_ring_id,
+			sizeof (struct memb_ring_id));
 		instance->old_ring_state_aru = instance->my_aru;
 		instance->old_ring_state_high_seq_received = instance->my_high_seq_received;
 		log_printf (instance->totemsrp_log_level_debug,
@@ -1401,7 +1405,9 @@ static void old_ring_state_save (struct totemsrp_instance *instance)
 static void ring_state_restore (struct totemsrp_instance *instance)
 {
 	if (instance->old_ring_state_saved) {
-		totemip_zero_set(&instance->my_ring_id.rep);
+		memcpy (&instance->my_ring_id, &instance->my_old_ring_id,
+			sizeof (struct memb_ring_id));
+
 		instance->my_aru = instance->old_ring_state_aru;
 		instance->my_high_seq_received = instance->old_ring_state_high_seq_received;
 		log_printf (instance->totemsrp_log_level_debug,
@@ -1412,6 +1418,8 @@ static void ring_state_restore (struct totemsrp_instance *instance)
 
 static void old_ring_state_reset (struct totemsrp_instance *instance)
 {
+	log_printf (instance->totemsrp_log_level_debug,
+		"Resetting old ring state\n");
 	instance->old_ring_state_saved = 0;
 }
 
@@ -2320,7 +2328,6 @@ static int orf_token_mcast (
 	struct cs_queue *mcast_queue;
 	struct sq *sort_queue;
 	struct sort_queue_item sort_queue_item;
-	struct sort_queue_item *sort_queue_item_ptr;
 	struct mcast *mcast;
 	unsigned int fcc_mcast_current;
 
@@ -2366,8 +2373,7 @@ static int orf_token_mcast (
 		/*
 		 * Add message to retransmit queue
 		 */
-		sort_queue_item_ptr = sq_item_add (sort_queue,
-			&sort_queue_item, message_item->mcast->seq);
+		sq_item_add (sort_queue, &sort_queue_item, message_item->mcast->seq);
 
 		totemrrp_mcast_noflush_send (
 			instance->totemrrp_context,
@@ -2460,7 +2466,7 @@ static int orf_token_rtr (
 			orf_token->rtr_list_entries -= 1;
 			assert (orf_token->rtr_list_entries >= 0);
 			memmove (&rtr_list[i], &rtr_list[i + 1],
-				sizeof (struct rtr_item) * (orf_token->rtr_list_entries));
+				sizeof (struct rtr_item) * (orf_token->rtr_list_entries - i));
 
 			instance->stats.mcast_retx++;
 			instance->fcc_remcast_current++;
@@ -3057,6 +3063,7 @@ static void memb_ring_id_create_or_load (
 	int fd;
 	int res;
 	char filename[256];
+	char error_str[100];
 
 	snprintf (filename, sizeof(filename), "%s/ringid_%s",
 		rundir, totemip_print (&instance->my_id.addr[0]));
@@ -3070,18 +3077,17 @@ static void memb_ring_id_create_or_load (
 		memb_ring_id->seq = 0;
 		umask(0);
 		fd = open (filename, O_CREAT|O_RDWR, 0700);
-		if (fd == -1) {
-			char error_str[100];
-			strerror_r(errno, error_str, 100);
+		if (fd >= 0) {
+			res = write (fd, &memb_ring_id->seq, sizeof (unsigned long long));
+			assert (res == sizeof (unsigned long long));
+			close (fd);
+		} else {
+			strerror_r (errno, error_str, 100);
 			log_printf (instance->totemsrp_log_level_warning,
 				"Couldn't create %s %s\n", filename, error_str);
 		}
-		res = write (fd, &memb_ring_id->seq, sizeof (unsigned long long));
-		assert (res == sizeof (unsigned long long));
-		close (fd);
 	} else {
-		char error_str[100];
-		strerror_r(errno, error_str, 100);
+		strerror_r (errno, error_str, 100);
 		log_printf (instance->totemsrp_log_level_warning,
 			"Couldn't open %s %s\n", filename, error_str);
 	}
@@ -3275,7 +3281,9 @@ static void fcc_rtr_limit (
 	struct orf_token *token,
 	unsigned int *transmits_allowed)
 {
-	assert ((QUEUE_RTR_ITEMS_SIZE_MAX - *transmits_allowed - instance->totem_config->window_size) >= 0);
+	int check = QUEUE_RTR_ITEMS_SIZE_MAX;
+	check -= (*transmits_allowed + instance->totem_config->window_size);
+	assert (check >= 0);
 	if (sq_lt_compare (instance->last_released +
 		QUEUE_RTR_ITEMS_SIZE_MAX - *transmits_allowed -
 		instance->totem_config->window_size,
@@ -3293,7 +3301,6 @@ static void fcc_token_update (
 {
 	token->fcc += msgs_transmitted - instance->my_trc;
 	token->backlog += instance->my_cbl - instance->my_pbl;
-	assert (token->backlog >= 0);
 	instance->my_trc = msgs_transmitted;
 	instance->my_pbl = instance->my_cbl;
 }
@@ -3410,15 +3417,16 @@ static int message_handler_orf_token (
 
 	case MEMB_STATE_OPERATIONAL:
 		messages_free (instance, token->aru);
+		/*
+		 * Do NOT add break, this case should also execute code in gather case.
+		 */
+
 	case MEMB_STATE_GATHER:
 		/*
 		 * DO NOT add break, we use different free mechanism in recovery state
 		 */
 
 	case MEMB_STATE_RECOVERY:
-		last_aru = instance->my_last_aru;
-		instance->my_last_aru = token->aru;
-
 		/*
 		 * Discard tokens from another configuration
 		 */
@@ -3459,6 +3467,8 @@ static int message_handler_orf_token (
 
 			return (0); /* discard token */
 		}
+		last_aru = instance->my_last_aru;
+		instance->my_last_aru = token->aru;
 
 		transmits_allowed = fcc_calculate (instance, token);
 		mcasted_retransmit = orf_token_rtr (instance, token, &transmits_allowed);
@@ -3492,19 +3502,16 @@ printf ("token seq %d\n", token->seq);
 		}
 
 		if (instance->my_aru_count > instance->totem_config->fail_to_recv_const &&
-			token->aru_addr != instance->my_id.addr[0].nodeid) {
+			token->aru_addr == instance->my_id.addr[0].nodeid) {
 
 			log_printf (instance->totemsrp_log_level_error,
 				"FAILED TO RECEIVE\n");
-// TODO if we fail to receive, it may be possible to end with a gather
-// state of proc == failed = 0 entries
-/* THIS IS A BIG TODO
-			memb_set_merge (&token->aru_addr, 1,
+
+			instance->failed_to_recv = 1;
+
+			memb_set_merge (&instance->my_id, 1,
 				instance->my_failed_list,
 				&instance->my_failed_list_entries);
-*/
-
-			ring_state_restore (instance);
 
 			memb_state_gather_enter (instance, 6);
 		} else {
@@ -3746,10 +3753,7 @@ static int message_handler_mcast (
 
 #ifdef TEST_DROP_MCAST_PERCENTAGE
 	if (random()%100 < TEST_DROP_MCAST_PERCENTAGE) {
-		printf ("dropping message %d\n", mcast_header.seq);
 		return (0);
-	} else {
-		printf ("accepting message %d\n", mcast_header.seq);
 	}
 #endif
 
@@ -3928,6 +3932,18 @@ static int memb_join_process (
 
 		memb_consensus_set (instance, &memb_join->system_from);
 
+		if (memb_consensus_agreed (instance) && instance->failed_to_recv == 1) {
+				instance->failed_to_recv = 0;
+				srp_addr_copy (&instance->my_proc_list[0],
+					&instance->my_id);
+				instance->my_proc_list_entries = 1;
+				instance->my_failed_list_entries = 0;
+
+				memb_state_commit_token_create (instance);
+
+				memb_state_commit_enter (instance);
+				return (0);
+		}
 		if (memb_consensus_agreed (instance) &&
 			memb_lowest_in_config (instance)) {
 
