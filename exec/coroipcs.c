@@ -38,6 +38,7 @@
 #define _GNU_SOURCE 1
 #endif
 #include <pthread.h>
+#include <limits.h>
 #include <assert.h>
 #include <pwd.h>
 #include <grp.h>
@@ -254,29 +255,37 @@ memory_map (
 	size_t bytes,
 	void **buf)
 {
-	int fd;
+	int32_t fd;
 	void *addr_orig;
 	void *addr;
-	int res;
+	int32_t res;
 
 	fd = open (path, O_RDWR, 0600);
 
 	unlink (path);
 
+	if (fd == -1) {
+		return (-1);
+	}
+
 	res = ftruncate (fd, bytes);
+	if (res == -1) {
+		goto error_close_unlink;
+	}
 
 	addr_orig = mmap (NULL, bytes, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
 	if (addr_orig == MAP_FAILED) {
-		return (-1);
+		goto error_close_unlink;
 	}
 
 	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
 		MAP_FIXED | MAP_SHARED, fd, 0);
 
 	if (addr != addr_orig) {
-		return (-1);
+		munmap(addr_orig, bytes);
+		goto error_close_unlink;
 	}
 #ifdef COROSYNC_BSD
 	madvise(addr, bytes, MADV_NOSYNC);
@@ -288,6 +297,11 @@ memory_map (
 	}
 	*buf = addr_orig;
 	return (0);
+
+error_close_unlink:
+	close (fd);
+	unlink(path);
+	return -1;
 }
 
 static int
@@ -296,29 +310,37 @@ circular_memory_map (
 	size_t bytes,
 	void **buf)
 {
-	int fd;
+	int32_t fd;
 	void *addr_orig;
 	void *addr;
-	int res;
+	int32_t res;
 
 	fd = open (path, O_RDWR, 0600);
 
 	unlink (path);
 
+	if (fd == -1) {
+		return (-1);
+	}
 	res = ftruncate (fd, bytes);
+	if (res == -1) {
+		goto error_close_unlink;
+	}
 
 	addr_orig = mmap (NULL, bytes << 1, PROT_NONE,
 		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
 	if (addr_orig == MAP_FAILED) {
-		return (-1);
+		munmap(addr_orig, bytes);
+		goto error_close_unlink;
 	}
 
 	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
 		MAP_FIXED | MAP_SHARED, fd, 0);
 
 	if (addr != addr_orig) {
-		return (-1);
+		munmap(addr_orig, bytes);
+		goto error_close_unlink;
 	}
 #ifdef COROSYNC_BSD
 	madvise(addr_orig, bytes, MADV_NOSYNC);
@@ -327,16 +349,28 @@ circular_memory_map (
 	addr = mmap (((char *)addr_orig) + bytes,
                   bytes, PROT_READ | PROT_WRITE,
                   MAP_FIXED | MAP_SHARED, fd, 0);
+	if (addr == MAP_FAILED) {
+		munmap(addr_orig, bytes);
+		munmap(addr, bytes);
+		goto error_close_unlink;
+	}
 #ifdef COROSYNC_BSD
 	madvise(((char *)addr_orig) + bytes, bytes, MADV_NOSYNC);
 #endif
 
 	res = close (fd);
 	if (res) {
+		munmap(addr_orig, bytes);
+		munmap(addr, bytes);
 		return (-1);
 	}
 	*buf = addr_orig;
 	return (0);
+
+error_close_unlink:
+	close (fd);
+	unlink(path);
+	return (-1);
 }
 
 static inline int
@@ -727,6 +761,7 @@ req_setup_send (
 	mar_res_setup_t res_setup;
 	unsigned int res;
 
+	memset (&res_setup, 0, sizeof (res_setup));
 	res_setup.error = error;
 
 retry_send:
@@ -758,7 +793,7 @@ req_setup_recv (
 	int on = 1;
 	struct ucred *cred;
 #endif
-
+	msg_recv.msg_flags = 0;
 	msg_recv.msg_iov = &iov_recv;
 	msg_recv.msg_iovlen = 1;
 	msg_recv.msg_name = 0;
@@ -997,7 +1032,7 @@ static void _corosync_ipc_init(void)
 	if (server_fd == -1) {
 		log_printf (LOGSYS_LEVEL_CRIT, "Cannot create client connections socket.\n");
 		api->fatal_error ("Can't create library listen socket");
-	};
+	}
 
 	res = fcntl (server_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
