@@ -1,3 +1,11 @@
+corosync (1.2.7-1) experimental; urgency=low
+
+  * [1c157d6] New upstream version 1.2.7
+  * [a2453fb] Add status to corosync init script (Closes: #582104) - thanks to
+    Raoul Bhatia for the patch
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 13 Aug 2010 16:32:40 +0200
+
 corosync (1.2.1-1) unstable; urgency=low
 
   * [c254474] Bump standards version
