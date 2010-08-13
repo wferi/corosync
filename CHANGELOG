@@ -1,4 +1,103 @@
 ------------------------------------------------------------------------
+r3008 | sdake | 2010-07-27 14:37:46 -0700 (Tue, 27 Jul 2010) | 6 lines
+
+Merge trunk revision 3007:
+r3007 | sdake | 2010-07-27 14:32:39 -0700 (Tue, 27 Jul 2010) | 2 lines
+
+Change trunk version to 1.2.7.
+
+
+------------------------------------------------------------------------
+r3006 | sdake | 2010-07-27 12:08:29 -0700 (Tue, 27 Jul 2010) | 7 lines
+
+Merge trunk revision 3005:
+r3005 | sdake | 2010-07-27 12:00:37 -0700 (Tue, 27 Jul 2010) | 3 lines
+
+Remove consensus check for two node cluster cases which can have smaller
+consensus values.  Document in man page the behavior of consensus.
+
+
+------------------------------------------------------------------------
+r3004 | asalkeld | 2010-07-21 16:16:41 -0700 (Wed, 21 Jul 2010) | 5 lines
+
+Merge trunk revision 3002:
+r3002 | sdake | 2010-07-22 06:48:40 +1000 (Thu, 22 Jul 2010) | 2 lines
+Fix merge error with revision 3001.
+
+
+------------------------------------------------------------------------
+r3003 | asalkeld | 2010-07-21 16:13:42 -0700 (Wed, 21 Jul 2010) | 6 lines
+
+Merge trunk revision 3001:
+r3001 | sdake | 2010-07-22 03:03:36 +1000 (Thu, 22 Jul 2010) | 3 lines
+Fix problem where flow control could lock up ipc under very heavy load in very
+rare circumstances.
+
+
+------------------------------------------------------------------------
+r3000 | sdake | 2010-07-19 13:20:25 -0700 (Mon, 19 Jul 2010) | 12 lines
+
+Merge trunk revision 2995:
+r2995 | asalkeld | 2010-07-16 21:59:40 -0700 (Fri, 16 Jul 2010) | 9 lines
+
+SYNC: always call sync_aborted() in sync_confchg_fn().
+
+1) sync_callbacks.sync_abort can be null.
+2) sync_processing is set to 0 after syncv1 is done.
+   Then syncv2 processing is down. If we get a config change
+   after syncv1 is down, but before syncv2 is done then it won't
+   get aborted.
+
+
+------------------------------------------------------------------------
+r2999 | sdake | 2010-07-19 13:19:30 -0700 (Mon, 19 Jul 2010) | 6 lines
+
+Merge trunk revision 2991:
+r2991 | asalkeld | 2010-07-15 19:08:54 -0700 (Thu, 15 Jul 2010) | 2 lines
+
+ SYNCV2: reset the my_memb_determine_ring_id in sync_v2_memb_list_abort()
+
+
+------------------------------------------------------------------------
+r2998 | sdake | 2010-07-19 08:29:30 -0700 (Mon, 19 Jul 2010) | 7 lines
+
+Merge trunk revision 2997:
+r2997 | fabbione | 2010-07-18 23:36:48 -0700 (Sun, 18 Jul 2010) | 4 lines
+
+Fix logging_daemon config parser code.
+
+Resolves: rhbz#615203
+
+------------------------------------------------------------------------
+r2989 | sdake | 2010-07-14 11:36:53 -0700 (Wed, 14 Jul 2010) | 8 lines
+
+Merge trunk revision 2988:
+r2988 | sdake | 2010-07-14 11:35:36 -0700 (Wed, 14 Jul 2010) | 4 lines
+
+Remove reset of token timeout on retransmitted token reception.  The timer
+should only be reset when a real token is received or membership protocol
+could run into problems with certain timing parameters.
+
+
+------------------------------------------------------------------------
+r2987 | sdake | 2010-07-07 14:45:01 -0700 (Wed, 07 Jul 2010) | 6 lines
+
+Merge trunk revision 2986:
+r2986 | sdake | 2010-07-07 14:43:15 -0700 (Wed, 07 Jul 2010) | 2 lines
+
+Speed up IPC connection process.
+
+
+------------------------------------------------------------------------
+r2985 | sdake | 2010-07-03 15:00:16 -0700 (Sat, 03 Jul 2010) | 6 lines
+
+Merge trunk revision 2984:
+r2984 | sdake | 2010-07-03 14:54:22 -0700 (Sat, 03 Jul 2010) | 2 lines
+
+Fix fail list fault that occurs in very rare circumstances.
+
+
+------------------------------------------------------------------------
 r2982 | sdake | 2010-06-30 12:47:14 -0700 (Wed, 30 Jun 2010) | 6 lines
 
 Merge trunk revision 2980:
