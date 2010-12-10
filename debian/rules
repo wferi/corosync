@@ -3,13 +3,11 @@
 # Uncomment this to turn on verbose mode.
 # export DH_VERBOSE=1
 
-include /usr/share/quilt/quilt.make
-
 STAMPS_DIR = debian/stamps
 
 export COROSYNC_BUILD=$(if $(findstring debug,$(DEB_BUILD_OPTIONS)),DEBUG,RELEASE)
 
-configure-stamp: patch
+configure-stamp:
 	dh_testdir
 	./configure --prefix=/usr \
 		    --libexecdir=/usr/lib/ \
@@ -21,7 +19,7 @@ configure-stamp: patch
 build: configure-stamp
 	$(MAKE)
 
-clean: unpatch
+clean:
 	dh_testdir
 	-$(MAKE) distclean
 	dh_clean configure-stamp
