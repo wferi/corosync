@@ -6,12 +6,13 @@ AC_PREREQ([2.61])
 
 AC_INIT([corosync],
 	m4_esyscmd([build-aux/git-version-gen .tarball-version]),
-	[openais@lists.osdl.org])
+	[discuss@lists.corosync.org])
 
 AM_INIT_AUTOMAKE([-Wno-portability])
+AM_SILENT_RULES([yes])
 
-AC_CONFIG_SRCDIR([lib/coroipcc.c])
-AC_CONFIG_HEADER([include/corosync/config.h include/corosync/cs_config.h])
+AC_CONFIG_SRCDIR([lib/cpg.c])
+AC_CONFIG_HEADER([include/corosync/config.h])
 
 AC_CANONICAL_HOST
 
@@ -62,6 +63,10 @@ AC_PROG_MAKE_SET
 AC_PROG_RANLIB
 AC_CHECK_PROGS([GROFF], [groff])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
+AC_CHECK_PROGS([AUGTOOL], [augtool])
+AC_CHECK_PROGS([DOT], [dot])
+AC_CHECK_PROGS([DOXYGEN], [doxygen])
+AC_CHECK_PROGS([AWK], [awk])
 
 # Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])
@@ -69,6 +74,14 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([socket], [socket])
 AC_CHECK_LIB([nsl], [t_open])
 AC_CHECK_LIB([rt], [sched_getscheduler])
+PKG_CHECK_MODULES([LIBQB], [libqb])
+AC_CHECK_LIB([qb], [qb_log_thread_priority_set], \
+	     have_qb_log_thread_priority_set="yes", \
+	     have_qb_log_thread_priority_set="no")
+if test "x${have_qb_log_thread_priority_set}" = xyes; then
+	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], 1, [have qb_log_thread_priority_set])
+fi
+PKG_CHECK_MODULES([nss],[nss])
 
 # Checks for header files.
 AC_FUNC_ALLOCA
@@ -78,7 +91,7 @@ AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h \
 		  stdlib.h string.h sys/ioctl.h sys/param.h sys/socket.h \
 		  sys/time.h syslog.h unistd.h sys/types.h getopt.h malloc.h \
-		  sys/sockio.h net/if_var.h])
+		  sys/sockio.h utmpx.h ifaddrs.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -113,20 +126,23 @@ AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
 		getcwd getpeerucred getpeereid gettimeofday inet_ntoa memmove \
 		memset mkdir scandir select socket strcasecmp strchr strdup \
 		strerror strrchr strspn strstr pthread_setschedparam \
-		sched_get_priority_max sched_setscheduler])
+		sched_get_priority_max sched_setscheduler getifaddrs])
 
 AC_CONFIG_FILES([Makefile
 		 exec/Makefile
 		 include/Makefile
 		 init/Makefile
-		 lcr/Makefile
 		 lib/Makefile
+		 common_lib/Makefile
 		 man/Makefile
 		 pkgconfig/Makefile
-		 services/Makefile
 		 test/Makefile
+		 cts/Makefile
+		 cts/agents/Makefile
+		 cts/CTSvars.py
 		 tools/Makefile
-		 conf/Makefile])
+		 conf/Makefile
+                 Doxyfile])
 
 ### Local business
 
@@ -165,9 +181,9 @@ LIB_MSG_RESULT(m4_shift(m4_shift($@)))dnl
 
 ## helper for CC stuff
 cc_supports_flag() {
-	local CFLAGS="$@"
+	local CPPFLAGS="$CPPFLAGS $@"
 	AC_MSG_CHECKING([whether $CC supports "$@"])
-	AC_COMPILE_IFELSE([AC_LANG_SOURCE([int main(){return 0;}])] ,
+	AC_PREPROC_IFELSE([AC_LANG_PROGRAM([])],
 			  [RC=0; AC_MSG_RESULT([yes])],
 			  [RC=1; AC_MSG_RESULT([no])])
 	return $RC
@@ -193,52 +209,46 @@ LINT_FLAGS="-weak -unrecog +posixlib +ignoresigns -fcnuse \
 	-badflag -D__gnuc_va_list=va_list -D__attribute\(x\)="
 
 # default libraries SONAME
-SOMAJOR="4"
+SOMAJOR="5"
 SOMINOR="0"
 SOMICRO="0"
 SONAME="${SOMAJOR}.${SOMINOR}.${SOMICRO}"
 
 # specific libraries SONAME
 LIB_SONAME_IMPORT([cfg])
-LIB_SONAME_IMPORT([confdb])
 LIB_SONAME_IMPORT([cpg])
-LIB_SONAME_IMPORT([evs])
-LIB_SONAME_IMPORT([pload])
 LIB_SONAME_IMPORT([quorum])
 LIB_SONAME_IMPORT([sam])
 LIB_SONAME_IMPORT([votequorum])
+LIB_SONAME_IMPORT([cmap])
 
 # local options
 AC_ARG_ENABLE([ansi],
-	[  --enable-ansi           : force to build with ANSI standards. ],
+	[  --enable-ansi                   : force to build with ANSI standards. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([fatal-warnings],
-	[  --enable-fatal-warnings : enable fatal warnings. ],
+	[  --enable-fatal-warnings         : enable fatal warnings. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([debug],
-	[ --enable-debug          : enable debug build. ],
+	[  --enable-debug                  : enable debug build. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([user-flags],
-	[  --enable-user-flags     : rely on user environment. ],
+	[  --enable-user-flags             : rely on user environment. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([coverage],
-	[  --enable-coverage       : coverage analysis of the codebase. ],
+	[  --enable-coverage               : coverage analysis of the codebase. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([small-memory-footprint],
 	[  --enable-small-memory-footprint : Use small message queues and small messages sizes. ],
 	[ default="no" ])
 
-AC_ARG_ENABLE([nss],
-	[  --enable-nss            : Network Security Services encryption. ],,
-	[ enable_nss="yes" ])
-
 AC_ARG_ENABLE([dbus],
-	[  --enable-dbus                    : dbus events. ],,
+	[  --enable-dbus                   : dbus events. ],,
 	[ enable_dbus="no" ])
 
 AC_ARG_ENABLE([testagents],
@@ -246,34 +256,49 @@ AC_ARG_ENABLE([testagents],
 	[ default="no" ])
 
 AC_ARG_ENABLE([rdma],
-	[  --enable-rdma           : Infiniband RDMA transport support ],,
+	[  --enable-rdma                   : Infiniband RDMA transport support ],,
 	[ enable_rdma="no" ])
 AM_CONDITIONAL(BUILD_RDMA, test x$enable_rdma = xyes)
+
+AC_ARG_ENABLE([monitoring],
+	[  --enable-monitoring             : resource monitoring ],,
+	[ default="no" ])
+AM_CONDITIONAL(BUILD_MONITORING, test x$enable_monitoring = xyes)
+
+AC_ARG_ENABLE([watchdog],
+	[  --enable-watchdog               : Watchdog support ],,
+	[ default="no" ])
+AM_CONDITIONAL(BUILD_WATCHDOG, test x$enable_watchdog = xyes)
+
+AC_ARG_ENABLE([augeas],
+	[  --enable-augeas                 : Install the augeas lens for corosync.conf ],,
+	[ enable_augeas="no" ])
+AM_CONDITIONAL(INSTALL_AUGEAS, test x$enable_augeas = xyes)
+
+AC_ARG_ENABLE([systemd],
+	      [  --enable-systemd                : Install systemd service files],,
+	[ enable_systemd="no" ])
+AM_CONDITIONAL(INSTALL_SYSTEMD, test x$enable_systemd = xyes)
 
 AC_ARG_WITH([initddir],
 	[  --with-initddir=DIR     : path to init script directory. ],
 	[ INITDDIR="$withval" ],
 	[ INITDDIR="$sysconfdir/init.d" ])
 
-AC_ARG_WITH([lcrso-dir],
-	[  --with-lcrso-dir=DIR    : corosync lcrso files. ],
-	[ LCRSODIR="$withval" ],
-	[ LCRSODIR="$libexecdir/lcrso" ])
-
-AC_ARG_WITH([socket-dir],
-	[  --with-socket-dir=DIR   : corosync socket dir. ],
-	[ SOCKETDIR="$withval" ],
-	[ SOCKETDIR="$localstatedir/run" ])
-
 AC_ARG_ENABLE([snmp],
-       [  --enable-snmp           : SNMP protocol support ],
+       [  --enable-snmp                   : SNMP protocol support ],
        [ default="no" ])
+
+AC_ARG_ENABLE([xmlconf],
+       [  --enable-xmlconf                : XML configuration support ],,
+       [ enable_xmlconf="no" ])
+AM_CONDITIONAL(INSTALL_XMLCONF, test x$enable_xmlconf = xyes)
 
 # OS detection
 # THIS SECTION MUST DIE!
 CP=cp
-CP_ARGS="-a"
 OS_LDL="-ldl"
+have_linux="no"
 case "$host_os" in
 	*linux*)
 		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
@@ -283,6 +308,7 @@ case "$host_os" in
 		OS_LDFLAGS=""
 		OS_DYFLAGS="-rdynamic"
 		DARWIN_OPTS=""
+		have_linux="yes"
 	;;
 	darwin*)
 		AC_DEFINE_UNQUOTED([COROSYNC_DARWIN], [1],
@@ -320,11 +346,6 @@ case "$host_os" in
 				AC_DEFINE_UNQUOTED([COROSYNC_FREEBSD_GE_8], [1],
 					   [Compiling for FreeBSD >= 8 platform])
 			;;
-			*netbsd*)
-				AC_DEFINE_UNQUOTED([_SEM_SEMUN_UNDEFINED], [1],
-					   [The semun structure is undefined])
-				CP_ARGS="-RpP"
-			;;
 		esac
 	;;
 	*solaris*)
@@ -348,7 +369,6 @@ case "$host_os" in
 esac
 
 AC_SUBST(CP)
-AC_SUBST(CP_ARGS)
 # *FLAGS handling goes here
 
 ENV_CFLAGS="$CFLAGS"
@@ -369,13 +389,6 @@ if test "x${GCC}" = xyes; then
 	GDB_FLAGS="-ggdb3"
 else
 	GDB_FLAGS="-g"
-fi
-
-# Look for libnss
-if test "x${enable_nss}" = xyes; then
-	PKG_CHECK_MODULES([nss],[nss])
-	AC_DEFINE_UNQUOTED([HAVE_LIBNSS], 1, [have libnss])
-	PACKAGE_FEATURES="$PACKAGE_FEATURES nss"
 fi
 
 # Look for dbus-1
@@ -423,6 +436,12 @@ fi
 
 if test "x${enable_augeas}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES augeas"
+fi
+if test "x${enable_systemd}" = xyes; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES systemd"
+fi
+if test "x${enable_xmlconf}" = xyes; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES xmlconf"
 fi
 
 if test "x${enable_snmp}" = xyes; then
@@ -476,7 +495,6 @@ else
        enable_snmp=0
 fi
 AC_SUBST([SNMPLIBS])
-AC_SUBST([SNMP_LCRSO])
 AM_CONDITIONAL(BUILD_SNMP, test "${enable_snmp}" = "1")
 
 # extra warnings
@@ -561,19 +579,18 @@ LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
 
 # substitute what we need:
 AC_SUBST([INITDDIR])
-AC_SUBST([LCRSODIR])
-AC_SUBST([SOCKETDIR])
 
 AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
 AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
-AC_SUBST([COVERAGE_LCRSO_EXTRA_LDFLAGS])
 AC_SUBST([OS_DYFLAGS])
 
 AC_SUBST([OS_LDL])
+AM_CONDITIONAL(INSTALL_TESTAGENTS, test -n "${enable_testagents}")
 AM_CONDITIONAL(INSTALL_MIB, test "${enable_snmp}" = "1")
 AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "1")
+AM_CONDITIONAL(AUGTOOL, test -n "${AUGTOOL}")
 AC_SUBST([NSS_LDFLAGS])
 
 AM_CONDITIONAL(BUILD_DARWIN, test -n "${DARWIN_OPTS}")
@@ -585,8 +602,6 @@ AM_CONDITIONAL(BUILD_HTML_DOCS, test -n "${GROFF}")
 
 AC_SUBST([LINT_FLAGS])
 
-AC_DEFINE_UNQUOTED([LCRSODIR], "$(eval echo ${LCRSODIR})", [LCRSO directory])
-AC_DEFINE_UNQUOTED([SOCKETDIR], "$(eval echo ${SOCKETDIR})", [Socket directory])
 AC_DEFINE_UNQUOTED([LOCALSTATEDIR], "$(eval echo ${localstatedir})", [localstate directory])
 
 COROSYSCONFDIR=${sysconfdir}/corosync
@@ -611,8 +626,6 @@ AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
 AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
-AC_MSG_RESULT([  LCRSO                    = ${LCRSODIR}])
-AC_MSG_RESULT([  SOCKETDIR                = ${SOCKETDIR}])
 AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])
 AC_MSG_RESULT([])
 AC_MSG_RESULT([$PACKAGE build info:])

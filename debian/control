@@ -4,14 +4,14 @@ Priority: optional
 Maintainer: Debian HA Maintainers <debian-ha-maintainers@lists.alioth.debian.org>
 Uploaders: Martin Loschwitz <madkiss@debian.org>, Guido Günther <agx@sigxcpu.org>
 Standards-Version: 3.9.3
-Build-Depends: debhelper (>> 5), dh-autoreconf, libnss3-dev, pkg-config, groff
+Build-Depends: debhelper (>> 5), libnss3-dev, pkg-config, groff, libqb-dev, librdmacm-dev, libibverbs-dev, libxml2-dev, libaugeas-dev, zlib1g-dev, chrpath
 Vcs-Git: git://git.debian.org/debian-ha/corosync.git
 Vcs-Browser: http://git.debian.org/?p=debian-ha/corosync.git;a=summary
 
 Package: corosync
 Section: admin
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base (>= 3.0-6), libcfg4 (= ${binary:Version}), libconfdb4 (= ${binary:Version}), libcoroipcc4 (= ${binary:Version}), libcoroipcs4 (= ${binary:Version}), libcpg4 (= ${binary:Version}), libevs4 (= ${binary:Version}), liblogsys4 (= ${binary:Version}), libpload4 (= ${binary:Version}), libquorum4 (= ${binary:Version}), libsam4 (= ${binary:Version}), libtotem-pg4 (= ${binary:Version}), libvotequorum4 (= ${binary:Version}), adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base (>= 3.0-6), libcfg6 (= ${binary:Version}), libcmap4 (= ${binary:Version}), libcorosync-common4 (= ${binary:Version}), libcpg4 (= ${binary:Version}), libquorum5 (= ${binary:Version}), libsam4 (= ${binary:Version}), libtotem-pg5 (= ${binary:Version}), libvotequorum5 (= ${binary:Version}), adduser
 Conflicts: openais (<< 0.85), openais-legacy (<< 1.0.0)
 Description: Standards-based cluster framework (daemon and modules)
  The corosync project is a project to implement a production quality
@@ -31,7 +31,7 @@ Package: corosync-dbg
 Section: debug
 Priority: extra
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcfg4 (= ${binary:Version}), libconfdb4 (= ${binary:Version}), libcoroipcc4 (= ${binary:Version}), libcoroipcs4 (= ${binary:Version}), libcpg4 (= ${binary:Version}), libevs4 (= ${binary:Version}), liblogsys4 (= ${binary:Version}), libpload4 (= ${binary:Version}), libquorum4 (= ${binary:Version}), libsam4 (= ${binary:Version}), libtotem-pg4 (= ${binary:Version}), libvotequorum4 (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcfg6 (= ${binary:Version}), libcmap4 (= ${binary:Version}), libcorosync-common4 (= ${binary:Version}), libcpg4 (= ${binary:Version}), libquorum5 (= ${binary:Version}), libsam4 (= ${binary:Version}), libtotem-pg5 (= ${binary:Version}), libvotequorum5 (= ${binary:Version})
 Description: Standards-based cluster framework (debugging symbols)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
@@ -47,11 +47,11 @@ Description: Standards-based cluster framework (debugging symbols)
  This package contains the debug information.
 
 Package: corosync-dev
-Section: libdevel
+Section: oldlibs 
+Priority: extra
 Architecture: any 
-Depends: libcfg-dev (= ${binary:Version}), libconfdb-dev (= ${binary:Version}), libcoroipcc-dev (= ${binary:Version}), libcoroipcs-dev (= ${binary:Version}), libcpg-dev (= ${binary:Version}), libevs-dev (= ${binary:Version}), liblogsys-dev (= ${binary:Version}), libpload-dev (= ${binary:Version}), libquorum-dev (= ${binary:Version}), libsam-dev (= ${binary:Version}), libtotem-pg-dev (= ${binary:Version}), libvotequorum-dev (= ${binary:Version}), ${misc:Depends}
-Conflicts: libopenais-dev (<< 0.85), libopenais-legacy-dev (<< 1.0.0)
-Description: Standards-based cluster framework (generic devel files)
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcorosync-common-dev (= ${binary:Version})
+Description: Standards-based cluster framework (transitional package)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
  required by openais. The project implements cutting edge research
@@ -63,15 +63,14 @@ Description: Standards-based cluster framework (generic devel files)
  which are used to develop applications that maintain service during
  faults.
  .
- This package contains Corosync development files that do not belong
- to one of the other corosync packages. It also contains the manpages
- for the numerous functions provided by the Corosync libraries.
+ This package exists for historical reasons to assure a smooth upgrade
+ from further versions to the libcorosync-common-dev package.
 
 Package: libcorosync4
 Section: oldlibs
 Priority: extra
 Architecture: all
-Depends: ${misc:Depends}, libcfg4, libconfdb4, libcoroipcc4, libcoroipcs4, libcpg4, libevs4, liblogsys4, libpload4, libquorum4, libsam4, libtotem-pg4, libvotequorum4
+Depends: ${misc:Depends}, libcfg6, libcmap4, libcorosync-common4, libcpg4, libquorum5, libsam4, libtotem-pg5, libvotequorum5
 Conflicts: libopenais2 (<< 0.85)
 Description: Standards-based cluster framework (transitional package)
  The corosync project is a project to implement a production quality
@@ -92,7 +91,7 @@ Package: libcorosync-dev
 Section: oldlibs
 Priority: extra
 Architecture: all
-Depends: ${misc:Depends}, libcfg-dev, libconfdb-dev, libcoroipcc-dev, libcoroipcs-dev, libcpg-dev, libevs-dev, liblogsys-dev, libpload-dev, libquorum-dev, libsam-dev, libtotem-pg-dev, libvotequorum-dev, corosync-dev, ${misc:Depends}
+Depends: ${misc:Depends}, libcmap-dev, libcorosync-common-dev, libcpg-dev, libquorum-dev, libsam-dev, libtotem-pg-dev, libvotequorum-dev
 Conflicts: libopenais-dev (<< 0.85), libopenais-legacy-dev (<< 1.0.0)
 Description: Standards-based cluster framework (transitional package)
  The corosync project is a project to implement a production quality
@@ -109,12 +108,12 @@ Description: Standards-based cluster framework (transitional package)
  This package used to contain the Corosync development files and 
  remains as a transitional package to pull the real files in.
 
-Package: libcfg4
+Package: libcfg6
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1)
-Conflicts: libcorosync4 (<= 1.4.2-1)
+Replaces: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
 Description: Standards-based cluster framework, Cfg library
  Corosync is a project to implement a production quality "Revised BSD" 
  licensed implementation of all core functionalities required by openais. 
@@ -129,13 +128,13 @@ Description: Standards-based cluster framework, Cfg library
  This package contains the Cfg library, which is a library included in
  Corosync.
 
-Package: libconfdb4
+Package: libcmap4
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1)
-Conflicts: libcorosync4 (<= 1.4.2-1)
-Description: Standards-based cluster framework, Confdb library
+Replaces: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Description: Standards-based cluster framework, Cmap library
  Corosync is a project to implement a production quality "Revised BSD" 
  licensed implementation of all core functionalities required by openais. 
  The project implements cutting edge research on virtual synchrony to 
@@ -146,16 +145,16 @@ Description: Standards-based cluster framework, Confdb library
  which are used to develop applications that maintain service during
  faults.
  .
- This package contains the Confdb library, which is a library included 
+ This package contains the Cmap library, which is a library included 
  in Corosync.
 
-Package: libcoroipcc4
+Package: libcorosync-common4
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1)
-Conflicts: libcorosync4 (<= 1.4.2-1)
-Description: Standards-based cluster framework, Coroipcc library
+Replaces: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Description: Standards-based cluster framework, common library
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
  The project implements cutting edge research on virtual synchrony to
@@ -166,35 +165,15 @@ Description: Standards-based cluster framework, Coroipcc library
  which are used to develop applications that maintain service during
  faults.
  .
- This package contains the Coroipcc library, which is a library included 
- in Corosync.
-
-Package: libcoroipcs4
-Section: libs
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1)
-Conflicts: libcorosync4 (<= 1.4.2-1)
-Description: Standards-based cluster framework, Coroipcs library
- Corosync is a project to implement a production quality "Revised BSD"
- licensed implementation of all core functionalities required by openais.
- The project implements cutting edge research on virtual synchrony to
- provide 100% correct operation in the face of failures or partitionable
- networks with excellent performance characteristics.
- .
- The Application Interface Specification is a software API and policies
- which are used to develop applications that maintain service during
- faults.
- .
- This package contains the Coroipcs library, which is a library included 
- in Corosync.
+ This package contains the common corosync library, which is a library 
+ included in Corosync.
 
 Package: libcpg4
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1)
-Conflicts: libcorosync4 (<= 1.4.2-1)
+Replaces: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
 Description: Standards-based cluster framework, Cpg library
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
@@ -206,75 +185,15 @@ Description: Standards-based cluster framework, Cpg library
  which are used to develop applications that maintain service during
  faults.
  .
- This package contains the Cpg library, which is a library included 
+ This package contains the Cpg library, which is a library included
  in Corosync.
 
-Package: libevs4
+Package: libquorum5
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1)
-Conflicts: libcorosync4 (<= 1.4.2-1)
-Description: Standards-based cluster framework, Evs library
- Corosync is a project to implement a production quality "Revised BSD"
- licensed implementation of all core functionalities required by openais.
- The project implements cutting edge research on virtual synchrony to
- provide 100% correct operation in the face of failures or partitionable
- networks with excellent performance characteristics.
- .
- The Application Interface Specification is a software API and policies
- which are used to develop applications that maintain service during
- faults.
- .
- This package contains the Evs library, which is a library included 
- in Corosync.
-
-Package: liblogsys4
-Section: libs
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1)
-Conflicts: libcorosync4 (<= 1.4.2-1)
-Description: Standards-based cluster framework, Logsys library
- Corosync is a project to implement a production quality "Revised BSD"
- licensed implementation of all core functionalities required by openais.
- The project implements cutting edge research on virtual synchrony to
- provide 100% correct operation in the face of failures or partitionable
- networks with excellent performance characteristics.
- .
- The Application Interface Specification is a software API and policies
- which are used to develop applications that maintain service during
- faults.
- .
- This package contains the Logsys library, which is a library included 
- in Corosync.
-
-Package: libpload4
-Section: libs
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1)
-Conflicts: libcorosync4 (<= 1.4.2-1)
-Description: Standards-based cluster framework, Pload library
- Corosync is a project to implement a production quality "Revised BSD"
- licensed implementation of all core functionalities required by openais.
- The project implements cutting edge research on virtual synchrony to
- provide 100% correct operation in the face of failures or partitionable
- networks with excellent performance characteristics.
- .
- The Application Interface Specification is a software API and policies
- which are used to develop applications that maintain service during
- faults.
- .
- This package contains the Pload library, which is a library included
- in Corosync.
-
-Package: libquorum4
-Section: libs
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1)
-Conflicts: libcorosync4 (<= 1.4.2-1)
+Replaces: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
 Description: Standards-based cluster framework, Quorum library
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
@@ -293,8 +212,8 @@ Package: libsam4
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1)
-Conflicts: libcorosync4 (<= 1.4.2-1)
+Replaces: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
 Description: Standards-based cluster framework, Sam library
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
@@ -309,12 +228,12 @@ Description: Standards-based cluster framework, Sam library
  This package contains the Sam library, which is a library included
  in Corosync.
 
-Package: libtotem-pg4
+Package: libtotem-pg5
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1)
-Conflicts: libcorosync4 (<= 1.4.2-1)
+Replaces: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
 Description: Standards-based cluster framework, Totem library
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
@@ -329,12 +248,12 @@ Description: Standards-based cluster framework, Totem library
  This package contains the Totem library, which is a library included
  in Corosync.
 
-Package: libvotequorum4
+Package: libvotequorum5
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1)
-Conflicts: libcorosync4 (<= 1.4.2-1)
+Replaces: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
 Description: Standards-based cluster framework, Votequorum library
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
@@ -352,9 +271,9 @@ Description: Standards-based cluster framework, Votequorum library
 Package: libcfg-dev
 Section: libdevel 
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcfg4 (= ${binary:Version})
-Replaces: libcorosync-dev (<= 1.4.2-1)
-Conflicts: libcorosync-dev (<= 1.4.2-1)
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Replaces: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
 Description: Standards-based cluster framework, Cfg devel files
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
@@ -366,16 +285,16 @@ Description: Standards-based cluster framework, Cfg devel files
  which are used to develop applications that maintain service during
  faults.
  .
- This package contains the Cfg library, which is a library included in
- Corosync.
+ This package contains the devel files of Cfg, a library which is part
+ of Corosync.
 
-Package: libconfdb-dev
+Package: libcmap-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libconfdb4 (= ${binary:Version})
-Replaces: libcorosync-dev (<= 1.4.2-1)
-Conflicts: libcorosync-dev (<= 1.4.2-1)
-Description: Standards-based cluster framework, Confdb devel files
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Replaces: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Description: Standards-based cluster framework, Cmap devel files
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
  The project implements cutting edge research on virtual synchrony to
@@ -386,16 +305,16 @@ Description: Standards-based cluster framework, Confdb devel files
  which are used to develop applications that maintain service during
  faults.
  .
- This package contains the Confdb library, which is a library included in
- Corosync.
+ This package contains the devel files of Cmap, a library which is part 
+ of Corosync.
 
-Package: libcoroipcc-dev
+Package: libcorosync-common-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcoroipcc4 (= ${binary:Version})
-Replaces: libcorosync-dev (<= 1.4.2-1)
-Conflicts: libcorosync-dev (<= 1.4.2-1)
-Description: Standards-based cluster framework, CoroIPCC devel files
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Replaces: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Description: Standards-based cluster framework, common devel files
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
  The project implements cutting edge research on virtual synchrony to
@@ -406,35 +325,14 @@ Description: Standards-based cluster framework, CoroIPCC devel files
  which are used to develop applications that maintain service during
  faults.
  .
- This package contains the CoroIPCC library, which is a library included 
- in Corosync.
-
-Package: libcoroipcs-dev
-Section: libdevel
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcoroipcs4 (= ${binary:Version})
-Replaces: libcorosync-dev (<= 1.4.2-1)
-Conflicts: libcorosync-dev (<= 1.4.2-1)
-Description: Standards-based cluster framework, CoroIPCS devel files
- Corosync is a project to implement a production quality "Revised BSD"
- licensed implementation of all core functionalities required by openais.
- The project implements cutting edge research on virtual synchrony to
- provide 100% correct operation in the face of failures or partitionable
- networks with excellent performance characteristics.
- .
- The Application Interface Specification is a software API and policies
- which are used to develop applications that maintain service during
- faults.
- .
- This package contains the CoroIPCS library, which is a library included 
- in Corosync.
+ This package contains the devel files of corosync's common library.
 
 Package: libcpg-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcpg4 (= ${binary:Version})
-Replaces: libcorosync-dev (<= 1.4.2-1)
-Conflicts: libcorosync-dev (<= 1.4.2-1)
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Replaces: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
 Description: Standards-based cluster framework, Cpg devel files
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
@@ -446,75 +344,15 @@ Description: Standards-based cluster framework, Cpg devel files
  which are used to develop applications that maintain service during
  faults.
  .
- This package contains the Cpg library, which is a library included
- in Corosync.
-
-Package: libevs-dev
-Section: libdevel
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libevs4 (= ${binary:Version})
-Replaces: libcorosync-dev (<= 1.4.2-1)
-Conflicts: libcorosync-dev (<= 1.4.2-1)
-Description: Standards-based cluster framework, Evs devel files
- Corosync is a project to implement a production quality "Revised BSD"
- licensed implementation of all core functionalities required by openais.
- The project implements cutting edge research on virtual synchrony to
- provide 100% correct operation in the face of failures or partitionable
- networks with excellent performance characteristics.
- .
- The Application Interface Specification is a software API and policies
- which are used to develop applications that maintain service during
- faults.
- .
- This package contains the Evs library, which is a library included
- in Corosync.
-
-Package: liblogsys-dev
-Section: libdevel
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, liblogsys4 (= ${binary:Version})
-Replaces: libcorosync-dev (<= 1.4.2-1)
-Conflicts: libcorosync-dev (<= 1.4.2-1)
-Description: Standards-based cluster framework, Logsys devel files
- Corosync is a project to implement a production quality "Revised BSD"
- licensed implementation of all core functionalities required by openais.
- The project implements cutting edge research on virtual synchrony to
- provide 100% correct operation in the face of failures or partitionable
- networks with excellent performance characteristics.
- .
- The Application Interface Specification is a software API and policies
- which are used to develop applications that maintain service during
- faults.
- .
- This package contains the Logsys library, which is a library included
- in Corosync.
-
-Package: libpload-dev
-Section: libdevel
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libpload4 (= ${binary:Version})
-Replaces: libcorosync-dev (<= 1.4.2-1)
-Conflicts: libcorosync-dev (<= 1.4.2-1)
-Description: Standards-based cluster framework, Pload devel files
- Corosync is a project to implement a production quality "Revised BSD"
- licensed implementation of all core functionalities required by openais.
- The project implements cutting edge research on virtual synchrony to
- provide 100% correct operation in the face of failures or partitionable
- networks with excellent performance characteristics.
- .
- The Application Interface Specification is a software API and policies
- which are used to develop applications that maintain service during
- faults.
- .
- This package contains the Pload library, which is a library included
- in Corosync.
+ This package contains the devel files of Cpg, a library which is part
+ of Corosync.
 
 Package: libquorum-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libquorum4 (= ${binary:Version})
-Replaces: libcorosync-dev (<= 1.4.2-1)
-Conflicts: libcorosync-dev (<= 1.4.2-1)
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Replaces: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
 Description: Standards-based cluster framework, Quorum devel files
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
@@ -526,15 +364,15 @@ Description: Standards-based cluster framework, Quorum devel files
  which are used to develop applications that maintain service during
  faults.
  .
- This package contains the Quorum library, which is a library included
- in Corosync.
+ This package contains the devel files of Quorum, a library which is part
+ of Corosync.
 
 Package: libsam-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libsam4 (= ${binary:Version})
-Replaces: libcorosync-dev (<= 1.4.2-1)
-Conflicts: libcorosync-dev (<= 1.4.2-1)
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Replaces: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
 Description: Standards-based cluster framework, Sam devel files
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
@@ -546,15 +384,15 @@ Description: Standards-based cluster framework, Sam devel files
  which are used to develop applications that maintain service during
  faults.
  .
- This package contains the Sam library, which is a library included
- in Corosync.
+ This package contains the devel files of Sam, a library which is part
+ of Corosync.
 
 Package: libtotem-pg-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libtotem-pg4 (= ${binary:Version})
-Replaces: libcorosync-dev (<= 1.4.2-1)
-Conflicts: libcorosync-dev (<= 1.4.2-1)
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Replaces: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
 Description: Standards-based cluster framework, Totem devel files
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
@@ -566,15 +404,15 @@ Description: Standards-based cluster framework, Totem devel files
  which are used to develop applications that maintain service during
  faults.
  .
- This package contains the Totem library, which is a library included
- in Corosync.
+ This package contains the devel files of Totem-PG, a library which is 
+ part of Corosync.
 
 Package: libvotequorum-dev
 Section: libdevel
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libvotequorum4 (= ${binary:Version})
-Replaces: libcorosync-dev (<= 1.4.2-1)
-Conflicts: libcorosync-dev (<= 1.4.2-1)
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Replaces: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Conflicts: libcorosync-dev (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
 Description: Standards-based cluster framework, VoteQuorum devel files
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.
@@ -586,5 +424,5 @@ Description: Standards-based cluster framework, VoteQuorum devel files
  which are used to develop applications that maintain service during
  faults.
  .
- This package contains the VoteQuorum library, which is a library 
- included in Corosync.
+ This package contains the devel files of Votequorum, a library which is 
+ part of Corosync.

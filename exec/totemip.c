@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2007, 2009 Red Hat, Inc.
+ * Copyright (c) 2005-2011 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -50,9 +50,7 @@
 #if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 #include <sys/sockio.h>
 #include <net/if.h>
-#ifdef HAVE_NET_IF_VAR_H
 #include <net/if_var.h>
-#endif
 #include <netinet/in_var.h>
 #include <netinet/in.h>
 #include <ifaddrs.h>
@@ -68,6 +66,10 @@
 #include <net/if.h>
 #include <asm/types.h>
 #include <linux/rtnetlink.h>
+#endif
+
+#ifdef HAVE_GETIFADDRS
+#include <ifaddrs.h>
 #endif
 
 #include <corosync/totem/totemip.h>
@@ -337,176 +339,189 @@ int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
 	return ret;
 }
 
-/*
- * On Solaris, man if_tcp describes this method
- */
-#if defined(COROSYNC_SOLARIS)
-int totemip_iface_check(struct totem_ip_address *bindnet,
-	struct totem_ip_address *boundto,
-	int *interface_up,
-	int *interface_num,
-	int mask_high_bit)
+#if defined(HAVE_GETIFADDRS)
+int totemip_getifaddrs(struct list_head *addrs)
 {
-	struct sockaddr_storage bindnet_ss;
-	struct sockaddr_in *bindnet_sin = (struct sockaddr_in *)&bindnet_ss;
-        struct sockaddr_in *sockaddr_in;
-        int id_fd;
-        struct lifconf lifconf;
-	struct lifreq *lifreq;
-        int numreqs = 0;
-        int i;
-        in_addr_t mask_addr;
-	int res = -1;
-	int addrlen;
-
-	totemip_totemip_to_sockaddr_convert (bindnet,
-		0, &bindnet_ss, &addrlen);
-
-	*interface_up = 0;
-	id_fd = socket (AF_INET, SOCK_STREAM, 0);
-	lifconf.lifc_family = AF_UNSPEC;
-	lifconf.lifc_flags = 0;
-	lifconf.lifc_buf = NULL;
-	lifconf.lifc_len = 0;
-	do {
-		numreqs += 32;
-		lifconf.lifc_len = sizeof (struct lifreq) * numreqs;
-		lifconf.lifc_buf = (void *)realloc(lifconf.lifc_buf, lifconf.lifc_len);
-		res = ioctl (id_fd, SIOCGLIFCONF, &lifconf);
-		if (res < 0) {
-			close (id_fd);
-			return -1;
-		}
-	} while (lifconf.lifc_len == sizeof (struct lifconf) * numreqs);
-	res = -1;
-
-	lifreq = (struct lifreq *)lifconf.lifc_buf;
-	/*
-	* Find interface address to bind to
-	*/
-	for (i = 0; i < lifconf.lifc_len / sizeof (struct lifreq); i++) {
-		sockaddr_in = (struct sockaddr_in *)&lifreq[i].lifr_addr;
-		mask_addr = inet_addr ("255.255.255.0");
-
-		if ((sockaddr_in->sin_family == AF_INET) &&
-			(sockaddr_in->sin_addr.s_addr & mask_addr) ==
-			(bindnet_sin->sin_addr.s_addr & mask_addr)) {
-
-			res = i;
-
-			/*
-			 * Setup boundto output
-			 */
-			totemip_sockaddr_to_totemip_convert((struct sockaddr_storage *)sockaddr_in, boundto);
-			boundto->nodeid = sockaddr_in->sin_addr.s_addr;
-#if __BYTE_ORDER == __BIG_ENDIAN
-			boundto->nodeid = swab32 (boundto->nodeid);
-#endif
-
-			if (ioctl(id_fd, SIOCGLIFFLAGS, &lifreq[i]) < 0) {
-				printf ("couldn't do ioctl\n");
-			}
-
-			*interface_up = lifreq[i].lifr_flags & IFF_UP;
-
-			if (ioctl(id_fd, SIOCGLIFINDEX, &lifreq[i]) < 0) {
-				printf ("couldn't do ioctl\n");
-			}
-			*interface_num = lifreq[i].lifr_index;
-
-
-			break;
-		}
-	}
-	free (lifconf.lifc_buf);
-	close (id_fd);
-
-	return (res);
-}
-#endif
-
-#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
-int totemip_iface_check(struct totem_ip_address *bindnet,
-	struct totem_ip_address *boundto,
-	int *interface_up,
-	int *interface_num,
-	int mask_high_bit)
-{
-#define NEXT_IFR(a)	((struct ifreq *)((u_char *)&(a)->ifr_addr +\
-	((a)->ifr_addr.sa_len ? (a)->ifr_addr.sa_len : sizeof((a)->ifr_addr))))
-
-	struct sockaddr_in *intf_addr_mask;
-	struct sockaddr_storage bindnet_ss;
-	struct sockaddr_in *intf_addr_sin;
-	struct sockaddr_in *bindnet_sin = (struct sockaddr_in *)&bindnet_ss;
 	struct ifaddrs *ifap, *ifa;
-	int res = -1;
-	int addrlen;
-
-	*interface_up = 0;
-	*interface_num = 0;
-
-	totemip_totemip_to_sockaddr_convert(bindnet,
-		0, &bindnet_ss, &addrlen);
+	struct totem_ip_if_address *if_addr;
 
 	if (getifaddrs(&ifap) != 0)
-		return -1;
+		return (-1);
+
+	list_init(addrs);
 
 	for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
-		intf_addr_sin	= (struct sockaddr_in *)ifa->ifa_addr;
-		intf_addr_mask	= (struct sockaddr_in *)ifa->ifa_netmask;
+		if (ifa->ifa_addr == NULL || ifa->ifa_netmask == NULL)
+			continue ;
 
-		if (intf_addr_sin->sin_family != AF_INET)
-			continue;
+		if ((ifa->ifa_addr->sa_family != AF_INET && ifa->ifa_addr->sa_family != AF_INET6) ||
+		    (ifa->ifa_netmask->sa_family != AF_INET && ifa->ifa_netmask->sa_family != AF_INET6))
+			continue ;
 
-		if ( bindnet_sin->sin_family == AF_INET &&
-			 (intf_addr_sin->sin_addr.s_addr & intf_addr_mask->sin_addr.s_addr) ==
-			 (bindnet_sin->sin_addr.s_addr & intf_addr_mask->sin_addr.s_addr)) {
-
-			totemip_copy(boundto, bindnet);
-			memcpy(boundto->addr, &intf_addr_sin->sin_addr, sizeof(intf_addr_sin->sin_addr));
-
-			/* Get interface infos
-			 */
-			*interface_up = ifa->ifa_flags & IFF_UP;
-			*interface_num = if_nametoindex(ifa->ifa_name);
-
-			/*
-			 * Handle case, when nodeid is set to 0 or not set.
-			 */
-			if (bindnet->family == AF_INET && bindnet->nodeid == 0) {
-				unsigned int nodeid = 0;
-				memcpy (&nodeid, boundto->addr, sizeof (int));
-#if _BYTE_ORDER == _BIG_ENDIAN
-				nodeid = swab32 (nodeid);
-#endif
-				/*
-				 * Mask 32nd bit off to workaround bugs in other peoples code
-				 * (if configuration requests it).
-				 */
-				if (mask_high_bit) {
-					nodeid &= 0x7FFFFFFF;
-				}
-				boundto->nodeid = nodeid;
-			}
-			res = 0;
-			break; /* for */
+		if_addr = malloc(sizeof(struct totem_ip_if_address));
+		if (if_addr == NULL) {
+			goto error_free_ifaddrs;
 		}
+
+		list_init(&if_addr->list);
+
+		memset(if_addr, 0, sizeof(struct totem_ip_if_address));
+
+		if_addr->interface_up = ifa->ifa_flags & IFF_UP;
+		if_addr->interface_num = if_nametoindex(ifa->ifa_name);
+		if_addr->name = strdup(ifa->ifa_name);
+		if (if_addr->name == NULL) {
+			goto error_free_addr;
+		}
+
+		if (totemip_sockaddr_to_totemip_convert((const struct sockaddr_storage *)ifa->ifa_addr,
+		    &if_addr->ip_addr) == -1) {
+			goto error_free_addr_name;
+		}
+
+		if (totemip_sockaddr_to_totemip_convert((const struct sockaddr_storage *)ifa->ifa_netmask,
+		    &if_addr->mask_addr) == -1) {
+			goto error_free_addr_name;
+		}
+
+		list_add(&if_addr->list, addrs);
 	}
 
 	freeifaddrs(ifap);
 
-	return (res);
-}
-#elif defined(COROSYNC_LINUX)
+	return (0);
 
-static void parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int len)
+error_free_addr_name:
+	free(if_addr->name);
+
+error_free_addr:
+	free(if_addr);
+
+error_free_ifaddrs:
+	totemip_freeifaddrs(addrs);
+	freeifaddrs(ifap);
+	return (-1);
+}
+#elif defined(SOLARIS)
+/*
+ * On Solaris, man if_tcp describes this method
+ */
+int totemip_getifaddrs(struct list_head *addrs)
 {
-        while (RTA_OK(rta, len)) {
-                if (rta->rta_type <= max)
-                        tb[rta->rta_type] = rta;
-                rta = RTA_NEXT(rta,len);
-        }
+	int id_fd;
+	int numreqs;
+	int res;
+	struct lifconf lifconf;
+	struct lifreq *lifreq;
+	int i, j;
+	struct totem_ip_if_address *if_addr;
+	short family;
+
+	list_init(addrs);
+
+	for (family = 0; family < 2; family++) {
+		numreqs = 0;
+		res = -1;
+
+		lifconf.lifc_family = (family == 0 ? AF_INET : AF_INET6);
+		id_fd = socket (lifconf.lifc_family, SOCK_STREAM, 0);
+		lifconf.lifc_flags = 0;
+		lifconf.lifc_buf = NULL;
+		lifconf.lifc_len = 0;
+		do {
+			numreqs += 32;
+			lifconf.lifc_len = sizeof (struct lifreq) * numreqs;
+			lifconf.lifc_buf = (void *)realloc(lifconf.lifc_buf, lifconf.lifc_len);
+			res = ioctl (id_fd, SIOCGLIFCONF, &lifconf);
+			if (res < 0) {
+				close (id_fd);
+			}
+		} while (res >= 0 && lifconf.lifc_len == sizeof (struct lifconf) * numreqs);
+
+		if (res < 0)
+			continue ;
+
+		lifreq = (struct lifreq *)lifconf.lifc_buf;
+		for (i = 0; i < lifconf.lifc_len / sizeof (struct lifreq); i++) {
+			if (ioctl(id_fd, SIOCGLIFADDR, &lifreq[i]) < 0)
+				continue ;
+
+			if (lifreq[i].lifr_addr.ss_family != AF_INET && lifreq[i].lifr_addr.ss_family != AF_INET6)
+				continue ;
+
+			if_addr = malloc(sizeof(struct totem_ip_if_address));
+			if (if_addr == NULL) {
+				goto error_free_ifaddrs;
+			}
+
+			memset(if_addr, 0, sizeof(struct totem_ip_if_address));
+
+			if_addr->name = strdup(lifreq[i].lifr_name);
+			if (if_addr->name == NULL) {
+				goto error_free_addr;
+			}
+
+			if (totemip_sockaddr_to_totemip_convert(&lifreq[i].lifr_addr, &if_addr->ip_addr) == -1) {
+				goto error_free_addr_name;
+			}
+
+			if (ioctl(id_fd, SIOCGLIFSUBNET, &lifreq[i]) < 0)
+				continue ;
+
+			/*
+			 * lifreq doesn't contain mask address. But It length of prefix in bits,
+			 * so we can generate mask.
+			 */
+			memset(&if_addr->mask_addr, 0, sizeof(if_addr->mask_addr));
+			if_addr->mask_addr.family = if_addr->ip_addr.family;
+			for (j = 0; j < lifreq[i].lifr_addrlen; j++) {
+				if_addr->mask_addr.addr[j / 8] |= 1 << (7 - (j % 8));
+			}
+			if (ioctl(id_fd, SIOCGLIFFLAGS, &lifreq[i]) >= 0) {
+				if_addr->interface_up = lifreq[i].lifr_flags & IFF_UP;
+			}
+			if (ioctl(id_fd, SIOCGLIFINDEX, &lifreq[i]) >= 0) {
+				if_addr->interface_num = lifreq[i].lifr_index;
+			}
+
+			list_add(&if_addr->list, addrs);
+		}
+
+		free (lifconf.lifc_buf);
+		close (id_fd);
+	}
+
+	return (0);
+
+error_free_addr_name:
+	free(if_addr->name);
+
+error_free_addr:
+	free(if_addr);
+
+error_free_ifaddrs:
+	totemip_freeifaddrs(addrs);
+	free (lifconf.lifc_buf);
+	close (id_fd);
+
+	return (-1);
+}
+#endif /* HAVE_GETIFADDRS */
+
+void totemip_freeifaddrs(struct list_head *addrs)
+{
+	struct totem_ip_if_address *if_addr;
+	struct list_head *list;
+
+	for (list = addrs->next; list != addrs;) {
+		if_addr = list_entry(list, struct totem_ip_if_address, list);
+		list = list->next;
+
+		free(if_addr->name);
+		list_del(&if_addr->list);
+	        free(if_addr);
+	}
+	list_init(addrs);
 }
 
 int totemip_iface_check(struct totem_ip_address *bindnet,
@@ -515,180 +530,73 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			int *interface_num,
 			int mask_high_bit)
 {
-	int fd;
+	struct list_head addrs;
+	struct list_head *list;
+	struct totem_ip_if_address *if_addr;
+	struct totem_ip_address bn_netaddr, if_netaddr;
+	socklen_t addr_len;
+	socklen_t si;
 	int res = -1;
-	struct {
-                struct nlmsghdr nlh;
-                struct rtgenmsg g;
-        } req;
-        struct sockaddr_nl nladdr;
-	struct totem_ip_address ipaddr;
-	static char rcvbuf[NETLINK_BUFSIZE];
-	int exact_match_found = 0;
-	int net_match_found = 0;
 
 	*interface_up = 0;
 	*interface_num = 0;
-	memset(&ipaddr, 0, sizeof(ipaddr));
 
-	/* Make sure we preserve these */
-	ipaddr.family = bindnet->family;
-	ipaddr.nodeid = bindnet->nodeid;
-
-	/* Ask netlink for a list of interface addresses */
-	fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
-	if (fd <0)
-		return -1;
-
-        setsockopt(fd,SOL_SOCKET,SO_RCVBUF,&rcvbuf,sizeof(rcvbuf));
-
-        memset(&nladdr, 0, sizeof(nladdr));
-        nladdr.nl_family = AF_NETLINK;
-
-        memset(&req, 0, sizeof(req));
-        req.nlh.nlmsg_len = sizeof(req);
-        req.nlh.nlmsg_type = RTM_GETADDR;
-        req.nlh.nlmsg_flags = NLM_F_ROOT|NLM_F_MATCH|NLM_F_REQUEST;
-        req.nlh.nlmsg_pid = 0;
-        req.nlh.nlmsg_seq = 1;
-        req.g.rtgen_family = bindnet->family;
-
-        if (sendto(fd, (void *)&req, sizeof(req), 0,
-		   (struct sockaddr*)&nladdr, sizeof(nladdr)) < 0)  {
-		close(fd);
-		return -1;
+	if (totemip_getifaddrs(&addrs) == -1) {
+		return (-1);
 	}
 
-	/* Look through the return buffer for our address */
-	while (1)
-	{
-		int status;
-		struct nlmsghdr *h;
-		struct iovec iov = { rcvbuf, sizeof(rcvbuf) };
-		struct msghdr msg = {
-			(void*)&nladdr, sizeof(nladdr),
-			&iov,   1,
-			NULL,   0,
-			0
-		};
+	for (list = addrs.next; list != &addrs; list = list->next) {
+		if_addr = list_entry(list, struct totem_ip_if_address, list);
 
-		status = recvmsg(fd, &msg, 0);
-		if (!status) {
-			close(fd);
-			return -1;
-		}
+		if (bindnet->family != if_addr->ip_addr.family)
+			continue ;
 
-		h = (struct nlmsghdr *)rcvbuf;
-		if (h->nlmsg_type == NLMSG_DONE)
+		addr_len = 0;
+
+		switch (bindnet->family) {
+		case AF_INET:
+			addr_len = sizeof(struct in_addr);
 			break;
-
-		if (h->nlmsg_type == NLMSG_ERROR) {
-			close(fd);
-			return -1;
+		case AF_INET6:
+			addr_len = sizeof(struct in6_addr);
+			break;
 		}
 
-		while (NLMSG_OK(h, status)) {
-			if (h->nlmsg_type == RTM_NEWADDR) {
-				struct ifaddrmsg *ifa = NLMSG_DATA(h);
-				struct rtattr *tb[IFA_MAX+1];
-				int len = h->nlmsg_len - NLMSG_LENGTH(sizeof(*ifa));
-				int found_if = 0;
+		if (addr_len == 0)
+			continue ;
 
-				memset(tb, 0, sizeof(tb));
+		totemip_copy(&bn_netaddr, bindnet);
+		totemip_copy(&if_netaddr, &if_addr->ip_addr);
 
-				parse_rtattr(tb, IFA_MAX, IFA_RTA(ifa), len);
+		for (si = 0; si < addr_len; si++) {
+			bn_netaddr.addr[si] = bn_netaddr.addr[si] & if_addr->mask_addr.addr[si];
+			if_netaddr.addr[si] = if_netaddr.addr[si] & if_addr->mask_addr.addr[si];
+		}
 
-				if (ifa->ifa_family == AF_INET6 && tb[IFA_ADDRESS]) {
-					memcpy(ipaddr.addr, RTA_DATA(tb[IFA_ADDRESS]), TOTEMIP_ADDRLEN);
-					if (totemip_equal(&ipaddr, bindnet)) {
-						found_if = 1;
-						exact_match_found = 1;
-					}
-				}
-				if (tb[IFA_LOCAL]) {
-					memcpy(ipaddr.addr, RTA_DATA(tb[IFA_LOCAL]), TOTEMIP_ADDRLEN);
-					if (totemip_equal(&ipaddr, bindnet)) {
-						found_if = 1;
-						exact_match_found = 1;
-					}
-				}
+		if (totemip_equal(&bn_netaddr, &if_netaddr)) {
+			totemip_copy(boundto, &if_addr->ip_addr);
+			boundto->nodeid = bindnet->nodeid;
+			*interface_up = if_addr->interface_up;
+			*interface_num = if_addr->interface_num;
 
-				/* If the address we have is an IPv4 network address, then
-				   substitute the actual IP address of this interface */
-				if (!found_if && !net_match_found && tb[IFA_LOCAL] && ifa->ifa_family == AF_INET) {
-					uint32_t network;
-					uint32_t addr;
-					uint32_t netmask = htonl(~((1<<(32-ifa->ifa_prefixlen))-1));
-
-					memcpy(&network, RTA_DATA(tb[IFA_LOCAL]), sizeof(uint32_t));
-					memcpy(&addr, bindnet->addr, sizeof(uint32_t));
-
-					if ((addr & netmask) == (network & netmask)) {
-						memcpy(ipaddr.addr, RTA_DATA(tb[IFA_ADDRESS]), TOTEMIP_ADDRLEN);
-						found_if = 1;
-					}
-				}
-
-				if (found_if) {
-					/*
-					 * Mask 32nd bit off to workaround bugs in other peoples code
-					 * (if configuration requests it).
-					 */
-					if (ipaddr.family == AF_INET && ipaddr.nodeid == 0) {
-						unsigned int nodeid = 0;
-						memcpy (&nodeid, ipaddr.addr, sizeof (int));
+			if (boundto->family == AF_INET && boundto->nodeid == 0) {
+				unsigned int nodeid = 0;
+				memcpy (&nodeid, boundto->addr, sizeof (int));
 #if __BYTE_ORDER == __BIG_ENDIAN
-                                                nodeid = swab32 (nodeid);
+                                nodeid = swab32 (nodeid);
 #endif
-						if (mask_high_bit) {
-							nodeid &= 0x7FFFFFFF;
-						}
-						ipaddr.nodeid = nodeid;
-					}
-					totemip_copy (boundto, &ipaddr);
-					*interface_num = ifa->ifa_index;
-
-					net_match_found = 1;
-
-					if (exact_match_found) {
-						goto finished;
-					}
+				if (mask_high_bit) {
+					nodeid &= 0x7FFFFFFF;
 				}
+				boundto->nodeid = nodeid;
 			}
-			h = NLMSG_NEXT(h, status);
+
+			res = 0;
+			goto finished;
 		}
 	}
+
 finished:
-	close(fd);
-	if (net_match_found) {
-		/*
-		 * Found it - check I/F is UP
-		 */
-		struct ifreq ifr;
-		int ioctl_fd; /* Can't do ioctls on netlink FDs */
-
-		ioctl_fd = socket(AF_INET, SOCK_STREAM, 0);
-		if (ioctl_fd < 0) {
-			return -1;
-		}
-		memset(&ifr, 0, sizeof(ifr));
-		ifr.ifr_ifindex = *interface_num;
-
-		/* SIOCGIFFLAGS needs an interface name */
-		res = ioctl(ioctl_fd, SIOCGIFNAME, &ifr);
-		res = ioctl(ioctl_fd, SIOCGIFFLAGS, &ifr);
-		close(ioctl_fd);
-		if (res) {
-			return (-1);
-		}
-
-		if (ifr.ifr_flags & IFF_UP)
-			*interface_up = 1;
-
-		res = 0;
-	} else {
-		res = -1;
-	}
-	return res;
+	totemip_freeifaddrs(&addrs);
+	return (res);
 }
-#endif /* COROSYNC_LINUX */

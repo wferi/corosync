@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
  * Copyright (c) 2004 Open Source Development Lab
- * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
+ * Copyright (c) 2006-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -46,8 +46,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
-#include <corosync/engine/logsys.h>
-#include <corosync/coroipc_types.h>
+#include <corosync/logsys.h>
 #include "util.h"
 
 LOGSYS_DECLARE_SUBSYS ("MAIN");
@@ -59,24 +58,14 @@ struct service_names {
 
 static struct service_names servicenames[] =
 {
-	{ "EVS", EVS_SERVICE },
-	{ "CLM", CLM_SERVICE },
-	{ "AMF", AMF_SERVICE },
-	{ "CKPT", CKPT_SERVICE },
-	{ "EVT", EVT_SERVICE },
-	{ "LCK", LCK_SERVICE },
-	{ "MSG", MSG_SERVICE },
 	{ "CFG", CFG_SERVICE },
 	{ "CPG", CPG_SERVICE },
-	{ "CMAN", CMAN_SERVICE },
-	{ "PCMK", PCMK_SERVICE },
-	{ "CONFDB", CONFDB_SERVICE },
 	{ "QUORUM", QUORUM_SERVICE },
 	{ "PLOAD", PLOAD_SERVICE },
-	{ "TMR", TMR_SERVICE },
 	{ "VOTEQUORUM", VOTEQUORUM_SERVICE },
-	{ "NTF", NTF_SERVICE },
-	{ "AMF", AMF_V2_SERVICE },
+	{ "MON", MON_SERVICE },
+	{ "WD", WD_SERVICE },
+	{ "CMAP", CMAP_SERVICE },
 	{ NULL, -1 }
 };
 
@@ -132,15 +121,19 @@ void _corosync_out_of_memory_error (void)
 }
 
 void _corosync_exit_error (
-	enum e_ais_done err, const char *file, unsigned int line)  __attribute__((noreturn));
+	enum e_corosync_done err, const char *file, unsigned int line)  __attribute__((noreturn));
 
 void _corosync_exit_error (
-	enum e_ais_done err, const char *file, unsigned int line)
+	enum e_corosync_done err, const char *file, unsigned int line)
 {
-	log_printf (LOGSYS_LEVEL_ERROR, "Corosync Cluster Engine exiting "
-		"with status %d at %s:%u.\n", err, file, line);
-
-	logsys_atexit ();
+	if (err == COROSYNC_DONE_EXIT) {
+		log_printf (LOGSYS_LEVEL_NOTICE,
+			"Corosync Cluster Engine exiting normally");
+	} else {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Cluster Engine exiting "
+			"with status %d at %s:%u.", err, file, line);
+	}
+	logsys_system_fini ();
 	exit (err);
 }
 

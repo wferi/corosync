@@ -74,18 +74,15 @@ DIST_COMMON = $(noinst_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/lib/libcfg.verso \
-	$(top_srcdir)/lib/libconfdb.verso \
-	$(top_srcdir)/lib/libcpg.verso $(top_srcdir)/lib/libevs.verso \
-	$(top_srcdir)/lib/libpload.verso \
+	$(top_srcdir)/lib/libcpg.verso \
 	$(top_srcdir)/lib/libquorum.verso \
 	$(top_srcdir)/lib/libsam.verso \
 	$(top_srcdir)/lib/libvotequorum.verso \
-	$(top_srcdir)/configure.ac
+	$(top_srcdir)/lib/libcmap.verso $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = $(top_builddir)/include/corosync/config.h \
-	$(top_builddir)/include/corosync/cs_config.h
+CONFIG_HEADER = $(top_builddir)/include/corosync/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -113,36 +110,35 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(sbindir)"
 LIBRARIES = $(lib_LIBRARIES)
 AR = ar
 ARFLAGS = cru
-libcoroipcs_a_AR = $(AR) $(ARFLAGS)
-libcoroipcs_a_LIBADD =
-am__objects_1 = coroipcs.$(OBJEXT)
-am_libcoroipcs_a_OBJECTS = $(am__objects_1)
-libcoroipcs_a_OBJECTS = $(am_libcoroipcs_a_OBJECTS)
-liblogsys_a_AR = $(AR) $(ARFLAGS)
-liblogsys_a_LIBADD =
-am__objects_2 = wthread.$(OBJEXT) logsys.$(OBJEXT)
-am_liblogsys_a_OBJECTS = $(am__objects_2)
-liblogsys_a_OBJECTS = $(am_liblogsys_a_OBJECTS)
+AM_V_AR = $(am__v_AR_$(V))
+am__v_AR_ = $(am__v_AR_$(AM_DEFAULT_VERBOSITY))
+am__v_AR_0 = @echo "  AR    " $@;
+AM_V_at = $(am__v_at_$(V))
+am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
+am__v_at_0 = @
 libtotem_pg_a_AR = $(AR) $(ARFLAGS)
 libtotem_pg_a_LIBADD =
-am__libtotem_pg_a_SOURCES_DIST = coropoll.c totemip.c totemnet.c \
-	totemudp.c totemudpu.c totemrrp.c totemsrp.c totemmrp.c \
-	totempg.c crypto.c wthread.c totemiba.c
-@BUILD_RDMA_TRUE@am__objects_3 = totemiba.$(OBJEXT)
-am__objects_4 = coropoll.$(OBJEXT) totemip.$(OBJEXT) \
-	totemnet.$(OBJEXT) totemudp.$(OBJEXT) totemudpu.$(OBJEXT) \
-	totemrrp.$(OBJEXT) totemsrp.$(OBJEXT) totemmrp.$(OBJEXT) \
-	totempg.$(OBJEXT) crypto.$(OBJEXT) wthread.$(OBJEXT) \
-	$(am__objects_3)
-am_libtotem_pg_a_OBJECTS = $(am__objects_4)
+am__libtotem_pg_a_SOURCES_DIST = totemip.c totemnet.c totemudp.c \
+	totemudpu.c totemrrp.c totemsrp.c totemmrp.c totempg.c \
+	cs_queue.h totemcrypto.c totemiba.c
+@BUILD_RDMA_TRUE@am__objects_1 = totemiba.$(OBJEXT)
+am__objects_2 = totemip.$(OBJEXT) totemnet.$(OBJEXT) \
+	totemudp.$(OBJEXT) totemudpu.$(OBJEXT) totemrrp.$(OBJEXT) \
+	totemsrp.$(OBJEXT) totemmrp.$(OBJEXT) totempg.$(OBJEXT) \
+	totemcrypto.$(OBJEXT) $(am__objects_1)
+am_libtotem_pg_a_OBJECTS = $(am__objects_2)
 libtotem_pg_a_OBJECTS = $(am_libtotem_pg_a_OBJECTS)
 PROGRAMS = $(sbin_PROGRAMS)
-am_corosync_OBJECTS = main.$(OBJEXT) util.$(OBJEXT) sync.$(OBJEXT) \
-	apidef.$(OBJEXT) service.$(OBJEXT) timer.$(OBJEXT) \
-	totemconfig.$(OBJEXT) mainconfig.$(OBJEXT) quorum.$(OBJEXT) \
-	schedwrk.$(OBJEXT) lcr_ifact.$(OBJEXT) evil.$(OBJEXT) \
-	syncv2.$(OBJEXT)
+am_corosync_OBJECTS = vsf_ykd.$(OBJEXT) coroparse.$(OBJEXT) \
+	vsf_quorum.$(OBJEXT) sync.$(OBJEXT) logsys.$(OBJEXT) \
+	cfg.$(OBJEXT) cmap.$(OBJEXT) cpg.$(OBJEXT) mon.$(OBJEXT) \
+	pload.$(OBJEXT) votequorum.$(OBJEXT) wd.$(OBJEXT) \
+	util.$(OBJEXT) schedwrk.$(OBJEXT) main.$(OBJEXT) \
+	apidef.$(OBJEXT) quorum.$(OBJEXT) icmap.$(OBJEXT) \
+	timer.$(OBJEXT) ipc_glue.$(OBJEXT) service.$(OBJEXT) \
+	mainconfig.$(OBJEXT) totemconfig.$(OBJEXT)
 corosync_OBJECTS = $(am_corosync_OBJECTS)
+am__DEPENDENCIES_1 =
 corosync_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(corosync_LDFLAGS) \
 	$(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/include/corosync
@@ -151,12 +147,19 @@ am__depfiles_maybe = depfiles
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+AM_V_CC = $(am__v_CC_$(V))
+am__v_CC_ = $(am__v_CC_$(AM_DEFAULT_VERBOSITY))
+am__v_CC_0 = @echo "  CC    " $@;
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(libcoroipcs_a_SOURCES) $(liblogsys_a_SOURCES) \
-	$(libtotem_pg_a_SOURCES) $(corosync_SOURCES)
-DIST_SOURCES = $(libcoroipcs_a_SOURCES) $(liblogsys_a_SOURCES) \
-	$(am__libtotem_pg_a_SOURCES_DIST) $(corosync_SOURCES)
+AM_V_CCLD = $(am__v_CCLD_$(V))
+am__v_CCLD_ = $(am__v_CCLD_$(AM_DEFAULT_VERBOSITY))
+am__v_CCLD_0 = @echo "  CCLD  " $@;
+AM_V_GEN = $(am__v_GEN_$(V))
+am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
+am__v_GEN_0 = @echo "  GEN   " $@;
+SOURCES = $(libtotem_pg_a_SOURCES) $(corosync_SOURCES)
+DIST_SOURCES = $(am__libtotem_pg_a_SOURCES_DIST) $(corosync_SOURCES)
 HEADERS = $(noinst_HEADERS)
 ETAGS = etags
 CTAGS = ctags
@@ -164,6 +167,8 @@ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
+AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
+AUGTOOL = @AUGTOOL@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -172,25 +177,24 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFG_SONAME = @CFG_SONAME@
 CFLAGS = @CFLAGS@
-CONFDB_SONAME = @CONFDB_SONAME@
+CMAP_SONAME = @CMAP_SONAME@
 COROSYSCONFDIR = @COROSYSCONFDIR@
-COVERAGE_LCRSO_EXTRA_LDFLAGS = @COVERAGE_LCRSO_EXTRA_LDFLAGS@
 CP = @CP@
 CPG_SONAME = @CPG_SONAME@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CP_ARGS = @CP_ARGS@
 CYGPATH_W = @CYGPATH_W@
 DARWIN_OPTS = @DARWIN_OPTS@
 DBUS_CFLAGS = @DBUS_CFLAGS@
 DBUS_LIBS = @DBUS_LIBS@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DOT = @DOT@
+DOXYGEN = @DOXYGEN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
-EVS_SONAME = @EVS_SONAME@
 EXEEXT = @EXEEXT@
 GREP = @GREP@
 GROFF = @GROFF@
@@ -200,9 +204,10 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-LCRSODIR = @LCRSODIR@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
+LIBQB_CFLAGS = @LIBQB_CFLAGS@
+LIBQB_LIBS = @LIBQB_LIBS@
 LIBS = @LIBS@
 LINT_FLAGS = @LINT_FLAGS@
 LN_S = @LN_S@
@@ -222,7 +227,6 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKGCONFIG = @PKGCONFIG@
 PKG_CONFIG = @PKG_CONFIG@
-PLOAD_SONAME = @PLOAD_SONAME@
 QUORUM_SONAME = @QUORUM_SONAME@
 RANLIB = @RANLIB@
 SAM_SONAME = @SAM_SONAME@
@@ -230,8 +234,6 @@ SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SNMPCONFIG = @SNMPCONFIG@
 SNMPLIBS = @SNMPLIBS@
-SNMP_LCRSO = @SNMP_LCRSO@
-SOCKETDIR = @SOCKETDIR@
 SOLARIS_OPTS = @SOLARIS_OPTS@
 SOMAJOR = @SOMAJOR@
 SOMICRO = @SOMICRO@
@@ -300,38 +302,30 @@ top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in
 AM_CFLAGS = -fPIC
 INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include $(nss_CFLAGS) $(rdmacm_CFLAGS) $(ibverbs_CFLAGS)
-TOTEM_SRC = coropoll.c totemip.c totemnet.c totemudp.c totemudpu.c \
-	totemrrp.c totemsrp.c totemmrp.c totempg.c crypto.c wthread.c \
+TOTEM_SRC = totemip.c totemnet.c totemudp.c totemudpu.c totemrrp.c \
+	totemsrp.c totemmrp.c totempg.c cs_queue.h totemcrypto.c \
 	$(am__append_1)
-LOGSYS_SRC = wthread.c logsys.c
-COROIPCS_SRC = coroipcs.c
-LCRSO_SRC = objdb.c vsf_ykd.c coroparse.c vsf_quorum.c
-LCRSO_OBJS = $(LCRSO_SRC:%.c=%.o)
-LCRSO = $(LCRSO_SRC:%.c=%.lcrso)
-lib_LIBRARIES = libtotem_pg.a liblogsys.a libcoroipcs.a
+lib_LIBRARIES = libtotem_pg.a
 libtotem_pg_a_SOURCES = $(TOTEM_SRC)
-liblogsys_a_SOURCES = $(LOGSYS_SRC)
-libcoroipcs_a_SOURCES = $(COROIPCS_SRC)
-corosync_SOURCES = main.c util.c sync.c apidef.c service.c \
-			  timer.c totemconfig.c mainconfig.c quorum.c schedwrk.c \
-			  ../lcr/lcr_ifact.c evil.c syncv2.c
+corosync_SOURCES = vsf_ykd.c coroparse.c vsf_quorum.c sync.c \
+			  logsys.c cfg.c cmap.c cpg.c mon.c pload.c \
+			  votequorum.c wd.c util.c schedwrk.c main.c \
+			  apidef.c quorum.c icmap.c timer.c \
+			  ipc_glue.c service.c mainconfig.c totemconfig.c
 
-corosync_LDADD = -ltotem_pg -llogsys -lcoroipcs
-corosync_DEPENDENCIES = libtotem_pg.so.$(SONAME) liblogsys.so.$(SONAME) libcoroipcs.so.$(SONAME)
-corosync_LDFLAGS = $(OS_DYFLAGS) -L./
+corosync_LDADD = -ltotem_pg -lcorosync_common $(LIBQB_LIBS) $(statgrab_LIBS)
+corosync_DEPENDENCIES = libtotem_pg.so.$(SONAME) ../common_lib/libcorosync_common.so
+corosync_LDFLAGS = $(OS_DYFLAGS) -L./ -L../common_lib
 TOTEM_OBJS = $(TOTEM_SRC:%.c=%.o)
-LOGSYS_OBJS = $(LOGSYS_SRC:%.c=%.o)
-COROIPCS_OBJS = $(COROIPCS_SRC:%.c=%.o)
 SHARED_LIBS = $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO = $(SHARED_LIBS:%.so.$(SONAME)=%.so)
 SHARED_LIBS_SO_TWO = $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
-noinst_HEADERS = apidef.h crypto.h mainconfig.h main.h \
-			  quorum.h service.h sync.h timer.h tlist.h \
-			  totemconfig.h totemmrp.h totemnet.h totemudp.h \
-			  totemudpu.h totemiba.h totemrrp.h totemsrp.h util.h \
-			  vsf.h wthread.h schedwrk.h evil.h syncv2.h
+noinst_HEADERS = apidef.h mainconfig.h main.h \
+			  quorum.h service.h timer.h totemconfig.h \
+			  totemmrp.h totemnet.h totemudp.h totemiba.h totemrrp.h \
+			  totemudpu.h totemsrp.h util.h vsf.h schedwrk.h \
+			  sync.h fsm.h votequorum.h vsf_ykd.h totemcrypto.h
 
-EXTRA_DIST = $(LCRSO_SRC)
 all: all-am
 
 .SUFFIXES:
@@ -398,18 +392,10 @@ uninstall-libLIBRARIES:
 
 clean-libLIBRARIES:
 	-test -z "$(lib_LIBRARIES)" || rm -f $(lib_LIBRARIES)
-libcoroipcs.a: $(libcoroipcs_a_OBJECTS) $(libcoroipcs_a_DEPENDENCIES) 
-	-rm -f libcoroipcs.a
-	$(libcoroipcs_a_AR) libcoroipcs.a $(libcoroipcs_a_OBJECTS) $(libcoroipcs_a_LIBADD)
-	$(RANLIB) libcoroipcs.a
-liblogsys.a: $(liblogsys_a_OBJECTS) $(liblogsys_a_DEPENDENCIES) 
-	-rm -f liblogsys.a
-	$(liblogsys_a_AR) liblogsys.a $(liblogsys_a_OBJECTS) $(liblogsys_a_LIBADD)
-	$(RANLIB) liblogsys.a
 libtotem_pg.a: $(libtotem_pg_a_OBJECTS) $(libtotem_pg_a_DEPENDENCIES) 
-	-rm -f libtotem_pg.a
-	$(libtotem_pg_a_AR) libtotem_pg.a $(libtotem_pg_a_OBJECTS) $(libtotem_pg_a_LIBADD)
-	$(RANLIB) libtotem_pg.a
+	$(AM_V_at)-rm -f libtotem_pg.a
+	$(AM_V_AR)$(libtotem_pg_a_AR) libtotem_pg.a $(libtotem_pg_a_OBJECTS) $(libtotem_pg_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libtotem_pg.a
 install-sbinPROGRAMS: $(sbin_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	test -z "$(sbindir)" || $(MKDIR_P) "$(DESTDIR)$(sbindir)"
@@ -449,7 +435,7 @@ clean-sbinPROGRAMS:
 	-test -z "$(sbin_PROGRAMS)" || rm -f $(sbin_PROGRAMS)
 corosync$(EXEEXT): $(corosync_OBJECTS) $(corosync_DEPENDENCIES) 
 	@rm -f corosync$(EXEEXT)
-	$(corosync_LINK) $(corosync_OBJECTS) $(corosync_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(corosync_LINK) $(corosync_OBJECTS) $(corosync_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -458,21 +444,24 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/apidef.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coroipcs.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coropoll.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/crypto.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/evil.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lcr_ifact.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cfg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cmap.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coroparse.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/icmap.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipc_glue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/logsys.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainconfig.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mon.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pload.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/quorum.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/schedwrk.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/service.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sync.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syncv2.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/totemconfig.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/totemcrypto.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/totemiba.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/totemip.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/totemmrp.Po@am__quote@
@@ -483,35 +472,26 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/totemudp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/totemudpu.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wthread.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/votequorum.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsf_quorum.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vsf_ykd.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wd.Po@am__quote@
 
 .c.o:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
-
-lcr_ifact.o: ../lcr/lcr_ifact.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lcr_ifact.o -MD -MP -MF $(DEPDIR)/lcr_ifact.Tpo -c -o lcr_ifact.o `test -f '../lcr/lcr_ifact.c' || echo '$(srcdir)/'`../lcr/lcr_ifact.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/lcr_ifact.Tpo $(DEPDIR)/lcr_ifact.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../lcr/lcr_ifact.c' object='lcr_ifact.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lcr_ifact.o `test -f '../lcr/lcr_ifact.c' || echo '$(srcdir)/'`../lcr/lcr_ifact.c
-
-lcr_ifact.obj: ../lcr/lcr_ifact.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lcr_ifact.obj -MD -MP -MF $(DEPDIR)/lcr_ifact.Tpo -c -o lcr_ifact.obj `if test -f '../lcr/lcr_ifact.c'; then $(CYGPATH_W) '../lcr/lcr_ifact.c'; else $(CYGPATH_W) '$(srcdir)/../lcr/lcr_ifact.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/lcr_ifact.Tpo $(DEPDIR)/lcr_ifact.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../lcr/lcr_ifact.c' object='lcr_ifact.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lcr_ifact.obj `if test -f '../lcr/lcr_ifact.c'; then $(CYGPATH_W) '../lcr/lcr_ifact.c'; else $(CYGPATH_W) '$(srcdir)/../lcr/lcr_ifact.c'; fi`
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
@@ -719,44 +699,15 @@ uninstall-am: uninstall-libLIBRARIES uninstall-local \
 	uninstall-sbinPROGRAMS
 
 
-@BUILD_DARWIN_TRUE@%.lcrso: %.o
-@BUILD_DARWIN_TRUE@	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
-
 @BUILD_DARWIN_TRUE@libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 @BUILD_DARWIN_TRUE@	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(TOTEM_OBJS) -o $@ -lpthread
 @BUILD_DARWIN_TRUE@	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 @BUILD_DARWIN_TRUE@	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
-@BUILD_DARWIN_TRUE@liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
-@BUILD_DARWIN_TRUE@	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(LOGSYS_OBJS) -o $@ -lpthread
-@BUILD_DARWIN_TRUE@	ln -sf liblogsys.so.$(SONAME) liblogsys.so
-@BUILD_DARWIN_TRUE@	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
-
-@BUILD_DARWIN_TRUE@libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
-@BUILD_DARWIN_TRUE@	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(COROIPCS_OBJS) -o $@ -lpthread
-@BUILD_DARWIN_TRUE@	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
-@BUILD_DARWIN_TRUE@	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
-
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@%.lcrso: %.o
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) $(LDFLAGS) -G $^ -o $@
-
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) $(LDFLAGS) -G $(TOTEM_OBJS) -o $@ -lpthread
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
-
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) $(LDFLAGS) -G $(LOGSYS_OBJS) -o $@ -lpthread
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf liblogsys.so.$(SONAME) liblogsys.so
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
-
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) $(LDFLAGS) -G $(COROIPCS_OBJS) -o $@ -lpthread
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
-
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@%.lcrso: %.o
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) $(LDFLAGS) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) -shared -o $@ \
@@ -765,41 +716,23 @@ uninstall-am: uninstall-libLIBRARIES uninstall-local \
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) -shared -o $@ \
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		-Wl,-soname=liblogsys.so.$(SOMAJOR) \
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		$(LDFLAGS) $^ -lpthread
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf liblogsys.so.$(SONAME) liblogsys.so
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
-
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) -shared -o $@ \
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		-Wl,-soname=libcoroipcs.so.$(SOMAJOR) \
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		$(LDFLAGS) $^ -lpthread
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
-
 lint:
 	-splint $(INCLUDES) $(LINT_FLAGS) $(CFLAGS) *.c
 
-all-local: $(LCRSO_OBJS) $(LCRSO) $(SHARED_LIBS)
+all-local: $(SHARED_LIBS)
 	@echo Built corosync Executive
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)
 	$(INSTALL) -m 755 $(SHARED_LIBS) $(DESTDIR)/$(libdir)
-	$(CP) $(CP_ARGS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
-	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
-	$(INSTALL) -m 755 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
+	$(CP) -a $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
 
 uninstall-local:
 	cd $(DESTDIR)/$(libdir) && \
 		rm -f $(SHARED_LIBS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO)
-	cd $(DESTDIR)/$(LCRSODIR) && \
-		rm -f $(LCRSO)
 
 clean-local:
-	rm -f corosync *.o *.lcrso gmon.out *.da *.bb *.bbg *.so*
+	rm -f corosync *.o gmon.out *.da *.bb *.bbg *.so*
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -42,11 +42,6 @@ extern "C" {
 
 typedef uint64_t quorum_handle_t;
 
-typedef struct {
-	uint32_t nodeid;
-	uint32_t state;
-} quorum_node_t;
-
 typedef void (*quorum_notification_fn_t) (
 	quorum_handle_t handle,
 	uint32_t quorate,
@@ -59,30 +54,34 @@ typedef struct {
 	quorum_notification_fn_t quorum_notify_fn;
 } quorum_callbacks_t;
 
+#define QUORUM_FREE	0
+#define QUORUM_SET	1
 
-/*
+/**
  * Create a new quorum connection
  */
 cs_error_t quorum_initialize (
 	quorum_handle_t *handle,
-	quorum_callbacks_t *callbacks);
+	quorum_callbacks_t *callbacks,
+	uint32_t *quorum_type);
 
-/*
+/**
  * Close the quorum handle
  */
 cs_error_t quorum_finalize (
 	quorum_handle_t handle);
 
 
-/*
- * Get a file descriptor on which to poll. quorum_handle_t is NOT a
- * file descriptor and may not be used directly.
+/**
+ * Get a file descriptor on which to poll.
+ *
+ * @note quorum_handle_t is NOT a file descriptor and may not be used directly.
  */
 cs_error_t quorum_fd_get (
 	quorum_handle_t handle,
 	int *fd);
 
-/*
+/**
  * Dispatch messages and configuration changes
  */
 cs_error_t quorum_dispatch (
@@ -90,14 +89,16 @@ cs_error_t quorum_dispatch (
 	cs_dispatch_flags_t dispatch_types);
 
 
-/*
+/**
  * Get quorum information.
  */
 cs_error_t quorum_getquorate (
 	quorum_handle_t handle,
 	int *quorate);
 
-/* Track node and quorum changes */
+/**
+ * Track node and quorum changes
+ */
 cs_error_t quorum_trackstart (
 	quorum_handle_t handle,
 	unsigned int flags );

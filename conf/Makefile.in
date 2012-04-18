@@ -69,20 +69,23 @@ subdir = conf
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/lib/libcfg.verso \
-	$(top_srcdir)/lib/libconfdb.verso \
-	$(top_srcdir)/lib/libcpg.verso $(top_srcdir)/lib/libevs.verso \
-	$(top_srcdir)/lib/libpload.verso \
+	$(top_srcdir)/lib/libcpg.verso \
 	$(top_srcdir)/lib/libquorum.verso \
 	$(top_srcdir)/lib/libsam.verso \
 	$(top_srcdir)/lib/libvotequorum.verso \
-	$(top_srcdir)/configure.ac
+	$(top_srcdir)/lib/libcmap.verso $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = $(top_builddir)/include/corosync/config.h \
-	$(top_builddir)/include/corosync/cs_config.h
+CONFIG_HEADER = $(top_builddir)/include/corosync/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+AM_V_GEN = $(am__v_GEN_$(V))
+am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
+am__v_GEN_0 = @echo "  GEN   " $@;
+AM_V_at = $(am__v_at_$(V))
+am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
+am__v_at_0 = @
 SOURCES =
 DIST_SOURCES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -106,12 +109,20 @@ am__nobase_list = $(am__nobase_strip_setup); \
 am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
-am__installdirs = "$(DESTDIR)$(dbusdir)" "$(DESTDIR)$(mibdir)"
-DATA = $(dbus_DATA) $(mib_DATA)
+am__installdirs = "$(DESTDIR)$(corolensdir)" \
+	"$(DESTDIR)$(corolenstestdir)" "$(DESTDIR)$(corosysconfdir)" \
+	"$(DESTDIR)$(corosysxmlconfdir)" \
+	"$(DESTDIR)$(corosysxmlxsltdir)" "$(DESTDIR)$(dbusdir)" \
+	"$(DESTDIR)$(mibdir)"
+DATA = $(corolens_DATA) $(corolenstest_DATA) $(corosysconf_DATA) \
+	$(corosysxmlconf_DATA) $(corosysxmlxslt_DATA) $(dbus_DATA) \
+	$(mib_DATA)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
+AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
+AUGTOOL = @AUGTOOL@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -120,25 +131,24 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFG_SONAME = @CFG_SONAME@
 CFLAGS = @CFLAGS@
-CONFDB_SONAME = @CONFDB_SONAME@
+CMAP_SONAME = @CMAP_SONAME@
 COROSYSCONFDIR = @COROSYSCONFDIR@
-COVERAGE_LCRSO_EXTRA_LDFLAGS = @COVERAGE_LCRSO_EXTRA_LDFLAGS@
 CP = @CP@
 CPG_SONAME = @CPG_SONAME@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CP_ARGS = @CP_ARGS@
 CYGPATH_W = @CYGPATH_W@
 DARWIN_OPTS = @DARWIN_OPTS@
 DBUS_CFLAGS = @DBUS_CFLAGS@
 DBUS_LIBS = @DBUS_LIBS@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DOT = @DOT@
+DOXYGEN = @DOXYGEN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
-EVS_SONAME = @EVS_SONAME@
 EXEEXT = @EXEEXT@
 GREP = @GREP@
 GROFF = @GROFF@
@@ -148,9 +158,10 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-LCRSODIR = @LCRSODIR@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
+LIBQB_CFLAGS = @LIBQB_CFLAGS@
+LIBQB_LIBS = @LIBQB_LIBS@
 LIBS = @LIBS@
 LINT_FLAGS = @LINT_FLAGS@
 LN_S = @LN_S@
@@ -170,7 +181,6 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKGCONFIG = @PKGCONFIG@
 PKG_CONFIG = @PKG_CONFIG@
-PLOAD_SONAME = @PLOAD_SONAME@
 QUORUM_SONAME = @QUORUM_SONAME@
 RANLIB = @RANLIB@
 SAM_SONAME = @SAM_SONAME@
@@ -178,8 +188,6 @@ SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SNMPCONFIG = @SNMPCONFIG@
 SNMPLIBS = @SNMPLIBS@
-SNMP_LCRSO = @SNMP_LCRSO@
-SOCKETDIR = @SOCKETDIR@
 SOLARIS_OPTS = @SOLARIS_OPTS@
 SOMAJOR = @SOMAJOR@
 SOMICRO = @SOMICRO@
@@ -245,8 +253,27 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-EXTRA_DIST = COROSYNC-MIB.txt corosync-signals.conf
 MAINTAINERCLEANFILES = Makefile.in
+EXTRA_DIST = COROSYNC-MIB.txt corosync-signals.conf \
+			  corosync.conf.example \
+			  corosync.conf.example.udpu \
+			  corosync.xml.example \
+			  xml2conf.xsl \
+			  lenses/corosync.aug \
+			  lenses/tests/test_corosync.aug
+
+corosysconfdir = ${COROSYSCONFDIR}
+corosysconf_DATA = corosync.conf.example \
+			  corosync.conf.example.udpu
+
+@INSTALL_AUGEAS_TRUE@corolensdir = ${datadir}/augeas/lenses
+@INSTALL_AUGEAS_TRUE@corolens_DATA = lenses/corosync.aug
+@INSTALL_AUGEAS_TRUE@corolenstestdir = ${corolensdir}/tests
+@INSTALL_AUGEAS_TRUE@corolenstest_DATA = lenses/tests/test_corosync.aug
+@INSTALL_XMLCONF_TRUE@corosysxmlconfdir = ${COROSYSCONFDIR}
+@INSTALL_XMLCONF_TRUE@corosysxmlconf_DATA = corosync.xml.example
+@INSTALL_XMLCONF_TRUE@corosysxmlxsltdir = ${datadir}/corosync
+@INSTALL_XMLCONF_TRUE@corosysxmlxslt_DATA = xml2conf.xsl
 @INSTALL_MIB_TRUE@mibdir = $(datadir)/snmp/mibs
 @INSTALL_MIB_TRUE@mib_DATA = COROSYNC-MIB.txt
 @INSTALL_DBUSCONF_TRUE@dbusdir = $(sysconfdir)/dbus-1/system.d
@@ -284,6 +311,106 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
+install-corolensDATA: $(corolens_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(corolensdir)" || $(MKDIR_P) "$(DESTDIR)$(corolensdir)"
+	@list='$(corolens_DATA)'; test -n "$(corolensdir)" || list=; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(corolensdir)'"; \
+	  $(INSTALL_DATA) $$files "$(DESTDIR)$(corolensdir)" || exit $$?; \
+	done
+
+uninstall-corolensDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(corolens_DATA)'; test -n "$(corolensdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	test -n "$$files" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(corolensdir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(corolensdir)" && rm -f $$files
+install-corolenstestDATA: $(corolenstest_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(corolenstestdir)" || $(MKDIR_P) "$(DESTDIR)$(corolenstestdir)"
+	@list='$(corolenstest_DATA)'; test -n "$(corolenstestdir)" || list=; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(corolenstestdir)'"; \
+	  $(INSTALL_DATA) $$files "$(DESTDIR)$(corolenstestdir)" || exit $$?; \
+	done
+
+uninstall-corolenstestDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(corolenstest_DATA)'; test -n "$(corolenstestdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	test -n "$$files" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(corolenstestdir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(corolenstestdir)" && rm -f $$files
+install-corosysconfDATA: $(corosysconf_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(corosysconfdir)" || $(MKDIR_P) "$(DESTDIR)$(corosysconfdir)"
+	@list='$(corosysconf_DATA)'; test -n "$(corosysconfdir)" || list=; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(corosysconfdir)'"; \
+	  $(INSTALL_DATA) $$files "$(DESTDIR)$(corosysconfdir)" || exit $$?; \
+	done
+
+uninstall-corosysconfDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(corosysconf_DATA)'; test -n "$(corosysconfdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	test -n "$$files" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(corosysconfdir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(corosysconfdir)" && rm -f $$files
+install-corosysxmlconfDATA: $(corosysxmlconf_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(corosysxmlconfdir)" || $(MKDIR_P) "$(DESTDIR)$(corosysxmlconfdir)"
+	@list='$(corosysxmlconf_DATA)'; test -n "$(corosysxmlconfdir)" || list=; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(corosysxmlconfdir)'"; \
+	  $(INSTALL_DATA) $$files "$(DESTDIR)$(corosysxmlconfdir)" || exit $$?; \
+	done
+
+uninstall-corosysxmlconfDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(corosysxmlconf_DATA)'; test -n "$(corosysxmlconfdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	test -n "$$files" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(corosysxmlconfdir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(corosysxmlconfdir)" && rm -f $$files
+install-corosysxmlxsltDATA: $(corosysxmlxslt_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(corosysxmlxsltdir)" || $(MKDIR_P) "$(DESTDIR)$(corosysxmlxsltdir)"
+	@list='$(corosysxmlxslt_DATA)'; test -n "$(corosysxmlxsltdir)" || list=; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(corosysxmlxsltdir)'"; \
+	  $(INSTALL_DATA) $$files "$(DESTDIR)$(corosysxmlxsltdir)" || exit $$?; \
+	done
+
+uninstall-corosysxmlxsltDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(corosysxmlxslt_DATA)'; test -n "$(corosysxmlxsltdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	test -n "$$files" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(corosysxmlxsltdir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(corosysxmlxsltdir)" && rm -f $$files
 install-dbusDATA: $(dbus_DATA)
 	@$(NORMAL_INSTALL)
 	test -z "$(dbusdir)" || $(MKDIR_P) "$(DESTDIR)$(dbusdir)"
@@ -365,7 +492,7 @@ check-am: all-am
 check: check-am
 all-am: Makefile $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(dbusdir)" "$(DESTDIR)$(mibdir)"; do \
+	for dir in "$(DESTDIR)$(corolensdir)" "$(DESTDIR)$(corolenstestdir)" "$(DESTDIR)$(corosysconfdir)" "$(DESTDIR)$(corosysxmlconfdir)" "$(DESTDIR)$(corosysxmlxsltdir)" "$(DESTDIR)$(dbusdir)" "$(DESTDIR)$(mibdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -414,7 +541,9 @@ info: info-am
 
 info-am:
 
-install-data-am: install-dbusDATA install-mibDATA
+install-data-am: install-corolensDATA install-corolenstestDATA \
+	install-corosysconfDATA install-corosysxmlconfDATA \
+	install-corosysxmlxsltDATA install-dbusDATA install-mibDATA
 
 install-dvi: install-dvi-am
 
@@ -458,20 +587,28 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-dbusDATA uninstall-mibDATA
+uninstall-am: uninstall-corolensDATA uninstall-corolenstestDATA \
+	uninstall-corosysconfDATA uninstall-corosysxmlconfDATA \
+	uninstall-corosysxmlxsltDATA uninstall-dbusDATA \
+	uninstall-mibDATA
 
 .MAKE: install-am install-strip
 
 .PHONY: all all-am check check-am clean clean-generic distclean \
 	distclean-generic distdir dvi dvi-am html html-am info info-am \
-	install install-am install-data install-data-am \
-	install-dbusDATA install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-mibDATA install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-generic pdf \
-	pdf-am ps ps-am uninstall uninstall-am uninstall-dbusDATA \
+	install install-am install-corolensDATA \
+	install-corolenstestDATA install-corosysconfDATA \
+	install-corosysxmlconfDATA install-corosysxmlxsltDATA \
+	install-data install-data-am install-dbusDATA install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-mibDATA install-pdf install-pdf-am install-ps \
+	install-ps-am install-strip installcheck installcheck-am \
+	installdirs maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-generic pdf pdf-am ps ps-am uninstall \
+	uninstall-am uninstall-corolensDATA uninstall-corolenstestDATA \
+	uninstall-corosysconfDATA uninstall-corosysxmlconfDATA \
+	uninstall-corosysxmlxsltDATA uninstall-dbusDATA \
 	uninstall-mibDATA
 
 

@@ -1,154 +1,121 @@
-#!/bin/bash
-
-# Authors:
-#  Angus Salkeld <asalkeld@redhat.com>
-#
-# License: Revised BSD
-
-# chkconfig: - 23 77
-# description: Corosync Dbus and snmp notifier
-# processname: corosync-notifyd
+#! /bin/sh
 #
 ### BEGIN INIT INFO
-# Provides:		corosync-notifyd
-# Required-Start:	corosync
-# Required-Stop:	corosync
-# Default-Start:
-# Default-Stop:
-# Short-Description:	Starts and stops Corosync Notifier.
-# Description:		Starts and stops Corosync Notifier.
+# Provides:          corosync-notifyd
+# Required-Start:    $network $remote_fs $syslog
+# Required-Stop:     $network $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: corosync notifying daemon
 ### END INIT INFO
 
-desc="Corosync Notifier"
-prog="corosync-notifyd"
-OPTIONS="-l"
+# Author: Fabio M. Di Nitto <fabbione@ubuntu.com>
 
-# set secure PATH
-PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/sbin"
+# PATH should only include /usr/* if it runs after the mountnfs.sh script
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+DESC="corosync notifying daemon"
+NAME=corosync-notifyd
+DAEMON=/usr/sbin/$NAME
+DAEMON_ARGS=""
+PIDFILE=/var/run/$NAME.pid
+SCRIPTNAME=/etc/init.d/$NAME
+PIDFILE=/var/run/corosync.pid
+RARUNDIR=/var/run/resource-agents
 
-success()
-{
-	echo -ne "[  OK  ]\r"
-}
+# Exit if the package is not installed
+[ -x "$DAEMON" ] || exit 0
 
-failure()
-{
-	echo -ne "[FAILED]\r"
-}
+# Read configuration variable file if it is present
+[ -r /etc/default/corosync-notifyd ] && . /etc/default/corosync-notifyd
 
-status()
-{
-	pid=$(pidof $1 2>/dev/null)
-	rtrn=$?
-	if [ $rtrn -ne 0 ]; then
-		echo "$1 is stopped"
-	else
-		echo "$1 (pid $pid) is running..."
-	fi
-	return $rtrn
-}
-
-# rpm based distros
-if [ -d /etc/sysconfig ]; then
-	[ -f /etc/init.d/functions ] && . /etc/init.d/functions
-	[ -f /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
-	[ -z "$LOCK_FILE" ] && LOCK_FILE="/var/lock/subsys/$prog"
+if [ "$START" != "yes" ]; then
+	exit 0
 fi
 
-# deb based distros
-if [ -d /etc/default ]; then
-	[ -f /etc/default/$prog ] && . /etc/default/$prog
-	[ -z "$LOCK_FILE" ] && LOCK_FILE="/var/lock/$prog"
-fi
+# Define LSB log_* functions.
+# Depend on lsb-base (>= 3.0-6) to ensure that this file is present.
+. /lib/lsb/init-functions
 
-# The version of __pids_pidof in /etc/init.d/functions calls pidof with -x
-# This means it matches scripts, including this one.
-# Redefine it here so that status (from the same file) works.
-# Otherwise simultaneous calls to stop() will loop forever
-__pids_pidof() {
-        pidof -c -o $$ -o $PPID -o %PPID "$1" || \
-                pidof -c -o $$ -o $PPID -o %PPID "${1##*/}"
-}
-
-start()
+#
+# Function that starts the daemon/service
+#
+do_start()
 {
-	echo -n "Starting $desc ($prog): "
-
-	# most recent distributions use tmpfs for /var/run
-	# to avoid to clean it up on every boot.
-	# they also assume that init scripts will create
-	# required subdirectories for proper operations
-	mkdir -p /var/run
-
-	if status $prog > /dev/null 2>&1; then
-		success
-	else
-		$prog $OPTIONS > /dev/null 2>&1
-
-		# give it time to fail
-		sleep 2
-		if status $prog > /dev/null 2>&1; then
-			touch $LOCK_FILE
-			success
-		else
-			failure
-			rtrn=1
-		fi
-	fi
-	echo
+	# Return
+	#   0 if daemon has been started
+	#   1 if daemon was already running
+	#   2 if daemon could not be started
+	start-stop-daemon --start --quiet --exec $DAEMON --test > /dev/null \
+		|| return 1
+	start-stop-daemon --start --quiet --exec $DAEMON -- $DAEMON_ARGS \
+		|| return 2
+	# Add code here, if necessary, that waits for the process to be ready
+	# to handle requests from services started subsequently which depend
+	# on this one.  As a last resort, sleep for some time.
+	pidof $DAEMON > $PIDFILE
 }
 
-stop()
+#
+# Function that stops the daemon/service
+#
+do_stop()
 {
-	! status $prog > /dev/null 2>&1 && return
-
-	echo -n "Signaling $desc ($prog) to terminate: "
-	kill -TERM $(pidof $prog) > /dev/null 2>&1
-	success
-	echo
-
-	echo -n "Waiting for $prog services to unload:"
-	while status $prog > /dev/null 2>&1; do
-		sleep 1
-		echo -n "."
-	done
-
-	rm -f $LOCK_FILE
-	success
-	echo
+	# Return
+	#   0 if daemon has been stopped
+	#   1 if daemon was already stopped
+	#   2 if daemon could not be stopped
+	#   other if a failure occurred
+	start-stop-daemon --stop --quiet --retry forever/QUIT/1 --pidfile $PIDFILE
+	RETVAL="$?"
+	[ "$RETVAL" = 2 ] && return 2
+	# Many daemons don't delete their pidfiles when they exit.
+	rm -f $PIDFILE
+	return "$RETVAL"
 }
-
-restart()
-{
-	stop
-	start
-}
-
-rtrn=0
 
 case "$1" in
-start)
-	start
-;;
-restart|reload|force-reload)
-	restart
-;;
-condrestart|try-restart)
-	if status $prog > /dev/null 2>&1; then
-		restart
-	fi
-;;
-status)
-	status $prog
-	rtrn=$?
-;;
-stop)
-	stop
-;;
-*)
-	echo "usage: $0 {start|stop|restart|reload|force-reload|condrestart|try-restart|status}"
-	rtrn=2
-;;
+  start)
+	log_daemon_msg "Starting $DESC" "$NAME"
+	do_start
+	case "$?" in
+		0|1) log_end_msg 0 ;;
+		2) log_end_msg 1 ;;
+	esac
+	;;
+  stop)
+	log_daemon_msg "Stopping $DESC" "$NAME"
+	do_stop
+	case "$?" in
+		0|1) log_end_msg 0 ;;
+		2) log_end_msg 1 ;;
+	esac
+	;;
+  restart|force-reload)
+	log_daemon_msg "Restarting $DESC" "$NAME"
+	do_stop
+	case "$?" in
+	  0|1)
+		do_start
+		case "$?" in
+			0) log_end_msg 0 ;;
+			1) log_end_msg 1 ;; # Old process is still running
+			*) log_end_msg 1 ;; # Failed to start
+		esac
+		;;
+	  *)
+	  	# Failed to stop
+		log_end_msg 1
+		;;
+	esac
+	;;
+  status|monitor)
+	status_of_proc -p $PIDFILE $DAEMON $NAME && exit 0 || exit $?
+	;;
+  *)
+	#echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
+	echo "Usage: $SCRIPTNAME {start|stop|restart|force-reload}" >&2
+	exit 3
+	;;
 esac
 
-exit $rtrn
+:

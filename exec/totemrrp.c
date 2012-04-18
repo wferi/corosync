@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2009 Red Hat, Inc.
+ * Copyright (c) 2006-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -60,11 +60,11 @@
 
 #include <corosync/sq.h>
 #include <corosync/list.h>
-#include <corosync/hdb.h>
 #include <corosync/swab.h>
-#include <corosync/totem/coropoll.h>
+#include <qb/qbdefs.h>
+#include <qb/qbloop.h>
 #define LOGSYS_UTILS_ONLY 1
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 
 #include "totemnet.h"
 #include "totemrrp.h"
@@ -86,8 +86,8 @@ struct passive_instance {
 	unsigned int *mcast_recv_count;
 	unsigned char token[15000];
 	unsigned int token_len;
-        poll_timer_handle timer_expired_token;
-        poll_timer_handle timer_problem_decrementer;
+        qb_loop_timer_handle timer_expired_token;
+        qb_loop_timer_handle timer_problem_decrementer;
 	void *totemrrp_context;
 	unsigned int token_xmit_iface;
 	unsigned int msg_xmit_iface;
@@ -101,8 +101,8 @@ struct active_instance {
 	unsigned char token[15000];
 	unsigned int token_len;
 	unsigned int last_token_seq;
-        poll_timer_handle timer_expired_token;
-        poll_timer_handle timer_problem_decrementer;
+        qb_loop_timer_handle timer_expired_token;
+        qb_loop_timer_handle timer_problem_decrementer;
 	void *totemrrp_context;
 };
 
@@ -181,7 +181,7 @@ struct rrp_algo {
 };
 
 struct totemrrp_instance {
-	hdb_handle_t poll_handle;
+	qb_loop_t *poll_handle;
 
 	struct totem_interface *interfaces;
 
@@ -227,11 +227,12 @@ struct totemrrp_instance {
 	int totemrrp_subsys_id;
 
 	void (*totemrrp_log_printf) (
-		unsigned int rec_ident,
+		int level,
+		int subsys,
 		const char *function,
 		const char *file,
 		int line,
-		const char *format, ...)__attribute__((format(printf, 5, 6)));
+		const char *format, ...)__attribute__((format(printf, 6, 7)));
 
 	void **net_handles;
 
@@ -247,8 +248,13 @@ struct totemrrp_instance {
 
 	void *deliver_fn_context[INTERFACE_MAX];
 
-	poll_timer_handle timer_active_test_ring_timeout[INTERFACE_MAX];
+	qb_loop_timer_handle timer_active_test_ring_timeout[INTERFACE_MAX];
+
+	totemrrp_stats_t stats;
 };
+
+static void stats_set_interface_faulty(struct totemrrp_instance *rrp_instance,
+		unsigned int iface_no, int is_faulty);
 
 /*
  * None Replication Forward Declerations
@@ -588,15 +594,19 @@ struct rrp_algo *rrp_algos[] = {
 
 #define RRP_ALGOS_COUNT 3
 
-#define log_printf(level, format, args...)				\
-do {									\
-	rrp_instance->totemrrp_log_printf (				\
-		LOGSYS_ENCODE_RECID(level,				\
-				    rrp_instance->totemrrp_subsys_id,	\
-				    LOGSYS_RECID_LOG),			\
-		__FUNCTION__, __FILE__, __LINE__,			\
-		format, ##args);					\
+#define log_printf(level, format, args...)			\
+do {								\
+	rrp_instance->totemrrp_log_printf (			\
+		level, rrp_instance->totemrrp_subsys_id,	\
+		__FUNCTION__, __FILE__, __LINE__,		\
+		format, ##args);				\
 } while (0);
+
+static void stats_set_interface_faulty(struct totemrrp_instance *rrp_instance,
+		unsigned int iface_no, int is_faulty)
+{
+	rrp_instance->stats.faulty[iface_no] = (is_faulty ? 1 : 0);
+}
 
 static void test_active_msg_endian_convert(const struct message_header *in, struct message_header *out)
 {
@@ -631,8 +641,9 @@ static void timer_function_test_ring_timeout (void *context)
 		totemnet_token_send (
 			rrp_instance->net_handles[iface_no],
 			&msg, sizeof (struct message_header));
-		poll_timer_add (rrp_instance->poll_handle,
-			rrp_instance->totem_config->rrp_autorecovery_check_timeout,
+		qb_loop_timer_add (rrp_instance->poll_handle,
+			QB_LOOP_MED,
+			rrp_instance->totem_config->rrp_autorecovery_check_timeout*QB_TIME_NS_IN_MSEC,
 			(void *)deliver_fn_context,
 			timer_function_test_ring_timeout,
 			&rrp_instance->timer_active_test_ring_timeout[iface_no]);
@@ -775,6 +786,7 @@ void *passive_instance_initialize (
 	int interface_count)
 {
 	struct passive_instance *instance;
+	int i;
 
 	instance = malloc (sizeof (struct passive_instance));
 	if (instance == 0) {
@@ -789,6 +801,10 @@ void *passive_instance_initialize (
 		goto error_exit;
 	}
 	memset (instance->faulty, 0, sizeof (int) * interface_count);
+
+	for (i = 0; i < interface_count; i++) {
+		stats_set_interface_faulty (rrp_instance, i, 0);
+	}
 
 	instance->token_recv_count = malloc (sizeof (int) * interface_count);
 	if (instance->token_recv_count == 0) {
@@ -837,9 +853,10 @@ static void timer_function_passive_problem_decrementer (void *context)
 static void passive_timer_expired_token_start (
 	struct passive_instance *passive_instance)
 {
-        poll_timer_add (
+        qb_loop_timer_add (
 		passive_instance->rrp_instance->poll_handle,
-		passive_instance->rrp_instance->totem_config->rrp_token_expired_timeout,
+		QB_LOOP_MED,
+		passive_instance->rrp_instance->totem_config->rrp_token_expired_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)passive_instance,
 		timer_function_passive_token_expired,
 		&passive_instance->timer_expired_token);
@@ -848,7 +865,7 @@ static void passive_timer_expired_token_start (
 static void passive_timer_expired_token_cancel (
 	struct passive_instance *passive_instance)
 {
-        poll_timer_delete (
+        qb_loop_timer_del (
 		passive_instance->rrp_instance->poll_handle,
 		passive_instance->timer_expired_token);
 }
@@ -857,9 +874,10 @@ static void passive_timer_expired_token_cancel (
 static void passive_timer_problem_decrementer_start (
 	struct passive_instance *passive_instance)
 {
-        poll_timer_add (
+        qb_loop_timer_add (
+		QB_LOOP_MED,
 		passive_instance->rrp_instance->poll_handle,
-		passive_instance->rrp_instance->totem_config->rrp_problem_count_timeout,
+		passive_instance->rrp_instance->totem_config->rrp_problem_count_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)passive_instance,
 		timer_function_passive_problem_decrementer,
 		&passive_instance->timer_problem_decrementer);
@@ -868,7 +886,7 @@ static void passive_timer_problem_decrementer_start (
 static void passive_timer_problem_decrementer_cancel (
 	struct passive_instance *passive_instance)
 {
-        poll_timer_delete (
+        qb_loop_timer_del (
 		passive_instance->rrp_instance->poll_handle,
 		passive_instance->timer_problem_decrementer);
 }
@@ -964,11 +982,15 @@ static void passive_monitor (
 		if ((passive_instance->faulty[i] == 0) &&
 		    (max - recv_count[i] > threshold)) {
 			passive_instance->faulty[i] = 1;
-			poll_timer_add (rrp_instance->poll_handle,
-				rrp_instance->totem_config->rrp_autorecovery_check_timeout,
+
+			qb_loop_timer_add (rrp_instance->poll_handle,
+				QB_LOOP_MED,
+				rrp_instance->totem_config->rrp_autorecovery_check_timeout*QB_TIME_NS_IN_MSEC,
 				rrp_instance->deliver_fn_context[i],
 				timer_function_test_ring_timeout,
 				&rrp_instance->timer_active_test_ring_timeout[i]);
+
+			stats_set_interface_faulty (rrp_instance, i, passive_instance->faulty[i]);
 
 			sprintf (rrp_instance->status[i],
 				"Marking ringid %u interface %s FAULTY",
@@ -1203,6 +1225,7 @@ static void passive_ring_reenable (
 	unsigned int iface_no)
 {
 	struct passive_instance *rrp_algo_instance = (struct passive_instance *)instance->rrp_algo_instance;
+	int i;
 
 	memset (rrp_algo_instance->mcast_recv_count, 0, sizeof (unsigned int) *
 		instance->interface_count);
@@ -1212,8 +1235,12 @@ static void passive_ring_reenable (
 	if (iface_no == instance->interface_count) {
 		memset (rrp_algo_instance->faulty, 0, sizeof (unsigned int) *
 			instance->interface_count);
+		for (i = 0; i < instance->interface_count; i++) {
+			stats_set_interface_faulty (instance, i, 0);
+		}
 	} else {
 		rrp_algo_instance->faulty[iface_no] = 0;
+		stats_set_interface_faulty (instance, iface_no, 0);
 	}
 }
 
@@ -1225,6 +1252,7 @@ void *active_instance_initialize (
 	int interface_count)
 {
 	struct active_instance *instance;
+	int i;
 
 	instance = malloc (sizeof (struct active_instance));
 	if (instance == 0) {
@@ -1239,6 +1267,10 @@ void *active_instance_initialize (
 		goto error_exit;
 	}
 	memset (instance->faulty, 0, sizeof (unsigned int) * interface_count);
+
+	for (i = 0; i < interface_count; i++) {
+		stats_set_interface_faulty (rrp_instance, i, 0);
+	}
 
 	instance->last_token_recv = malloc (sizeof (int) * interface_count);
 	if (instance->last_token_recv == 0) {
@@ -1330,14 +1362,18 @@ static void timer_function_active_token_expired (void *context)
 		}
 	}
 	for (i = 0; i < rrp_instance->interface_count; i++) {
-		if (active_instance->counter_problems[i] >= rrp_instance->totem_config->rrp_problem_count_threshold)
-		{
+		if (active_instance->counter_problems[i] >= rrp_instance->totem_config->rrp_problem_count_threshold &&
+		    active_instance->faulty[i] == 0) {
 			active_instance->faulty[i] = 1;
-			poll_timer_add (rrp_instance->poll_handle,
-				rrp_instance->totem_config->rrp_autorecovery_check_timeout,
+
+			qb_loop_timer_add (rrp_instance->poll_handle,
+				QB_LOOP_MED,
+				rrp_instance->totem_config->rrp_autorecovery_check_timeout*QB_TIME_NS_IN_MSEC,
 				rrp_instance->deliver_fn_context[i],
 				timer_function_test_ring_timeout,
 				&rrp_instance->timer_active_test_ring_timeout[i]);
+
+			stats_set_interface_faulty (rrp_instance, i, active_instance->faulty[i]);
 
 			sprintf (rrp_instance->status[i],
 				"Marking seqid %d ringid %u interface %s FAULTY",
@@ -1361,9 +1397,10 @@ static void timer_function_active_token_expired (void *context)
 static void active_timer_expired_token_start (
 	struct active_instance *active_instance)
 {
-        poll_timer_add (
+        qb_loop_timer_add (
 		active_instance->rrp_instance->poll_handle,
-		active_instance->rrp_instance->totem_config->rrp_token_expired_timeout,
+		QB_LOOP_MED,
+		active_instance->rrp_instance->totem_config->rrp_token_expired_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)active_instance,
 		timer_function_active_token_expired,
 		&active_instance->timer_expired_token);
@@ -1372,7 +1409,7 @@ static void active_timer_expired_token_start (
 static void active_timer_expired_token_cancel (
 	struct active_instance *active_instance)
 {
-        poll_timer_delete (
+        qb_loop_timer_del (
 		active_instance->rrp_instance->poll_handle,
 		active_instance->timer_expired_token);
 }
@@ -1380,9 +1417,10 @@ static void active_timer_expired_token_cancel (
 static void active_timer_problem_decrementer_start (
 	struct active_instance *active_instance)
 {
-        poll_timer_add (
+        qb_loop_timer_add (
 		active_instance->rrp_instance->poll_handle,
-		active_instance->rrp_instance->totem_config->rrp_problem_count_timeout,
+		QB_LOOP_MED,
+		active_instance->rrp_instance->totem_config->rrp_problem_count_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)active_instance,
 		timer_function_active_problem_decrementer,
 		&active_instance->timer_problem_decrementer);
@@ -1391,7 +1429,7 @@ static void active_timer_problem_decrementer_start (
 static void active_timer_problem_decrementer_cancel (
 	struct active_instance *active_instance)
 {
-        poll_timer_delete (
+        qb_loop_timer_del (
 		active_instance->rrp_instance->poll_handle,
 		active_instance->timer_problem_decrementer);
 }
@@ -1615,6 +1653,7 @@ static void active_ring_reenable (
 	unsigned int iface_no)
 {
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
+	int i;
 
 	if (iface_no == instance->interface_count) {
 		memset (rrp_algo_instance->last_token_recv, 0, sizeof (unsigned int) *
@@ -1623,10 +1662,16 @@ static void active_ring_reenable (
 			instance->interface_count);
 		memset (rrp_algo_instance->counter_problems, 0, sizeof (unsigned int) *
 			instance->interface_count);
+
+		for (i = 0; i < instance->interface_count; i++) {
+			stats_set_interface_faulty (instance, i, 0);
+		}
 	} else {
 		rrp_algo_instance->last_token_recv[iface_no] = 0;
 		rrp_algo_instance->faulty[iface_no] = 0;
 		rrp_algo_instance->counter_problems[iface_no] = 0;
+
+		stats_set_interface_faulty (instance, iface_no, 0);
 	}
 }
 
@@ -1685,7 +1730,7 @@ void rrp_deliver_fn (
 	if (hdr->type == MESSAGE_TYPE_RING_TEST_ACTIVE) {
 		log_printf (
 			rrp_instance->totemrrp_log_level_debug,
-			"received message requesting test of ring now active\n");
+			"received message requesting test of ring now active");
 
 		if (hdr->endian_detector != ENDIAN_LOCAL) {
 			test_active_msg_endian_convert(hdr, &tmp_msg);
@@ -1715,7 +1760,7 @@ void rrp_deliver_fn (
 	if (hdr->type == MESSAGE_TYPE_RING_TEST_ACTIVATE) {
 		log_printf (
 			rrp_instance->totemrrp_log_level_notice,
-			"Automatically recovered ring %d\n", hdr->ring_number);
+			"Automatically recovered ring %d", hdr->ring_number);
 
 		if (hdr->endian_detector != ENDIAN_LOCAL) {
 			test_active_msg_endian_convert(hdr, &tmp_msg);
@@ -1775,7 +1820,8 @@ int totemrrp_finalize (
 	for (i = 0; i < instance->interface_count; i++) {
 		totemnet_finalize (instance->net_handles[i]);
 	}
-
+	free (instance->net_handles);
+	free (instance);
 	return (0);
 }
 
@@ -1795,7 +1841,7 @@ static void rrp_target_set_completed (void *context)
  * Create an instance
  */
 int totemrrp_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	void **rrp_context,
 	struct totem_config *totem_config,
 	totemsrp_stats_t *stats,
@@ -1832,6 +1878,11 @@ int totemrrp_initialize (
 	totemrrp_instance_initialize (instance);
 
 	instance->totem_config = totem_config;
+	stats->rrp = &instance->stats;
+	if (totem_config->interface_count > 1) {
+		instance->stats.interface_count = totem_config->interface_count;
+		instance->stats.faulty = calloc(instance->stats.interface_count, sizeof(uint8_t));
+	}
 
 	res = totemrrp_algorithm_set (
 		instance->totem_config,
@@ -1873,6 +1924,7 @@ int totemrrp_initialize (
 
 	instance->poll_handle = poll_handle;
 
+
 	for (i = 0; i < totem_config->interface_count; i++) {
 		struct deliver_fn_context *deliver_fn_context;
 
@@ -1887,7 +1939,6 @@ int totemrrp_initialize (
 			poll_handle,
 			&instance->net_handles[i],
 			totem_config,
-			stats,
 			i,
 			(void *)deliver_fn_context,
 			rrp_deliver_fn,
@@ -1903,6 +1954,20 @@ int totemrrp_initialize (
 error_destroy:
 	free (instance);
 	return (res);
+}
+
+void *totemrrp_buffer_alloc (void *rrp_context)
+{
+	struct totemrrp_instance *instance = rrp_context;
+	assert (instance != NULL);
+	return totemnet_buffer_alloc (instance->net_handles[0]);
+}
+
+void totemrrp_buffer_release (void *rrp_context, void *ptr)
+{
+	struct totemrrp_instance *instance = rrp_context;
+	assert (instance != NULL);
+	totemnet_buffer_release (instance->net_handles[0], ptr);
 }
 
 int totemrrp_processor_count_set (
@@ -2015,12 +2080,13 @@ int totemrrp_ifaces_get (
 
 int totemrrp_crypto_set (
 	void *rrp_context,
-	unsigned int type)
+	const char *cipher_type,
+	const char *hash_type)
 {
 	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	int res;
 
-	res = totemnet_crypto_set(instance->net_handles[0], type);
+	res = totemnet_crypto_set(instance->net_handles[0], cipher_type, hash_type);
 
 	return (res);
 }

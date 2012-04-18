@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2009 Red Hat, Inc.
+ * Copyright (c) 2006-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -35,24 +35,26 @@
 
 #include <config.h>
 
+#include <assert.h>
+
 #ifdef HAVE_RDMA
 #include <totemiba.h>
 #endif
 #include <totemudp.h>
 #include <totemudpu.h>
 #include <totemnet.h>
+#include <qb/qbloop.h>
 
 #define LOGSYS_UTILS_ONLY 1
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 
 struct transport {
 	const char *name;
 	
 	int (*initialize) (
-		hdb_handle_t poll_handle,
+		qb_loop_t *loop_pt,
 		void **transport_instance,
 		struct totem_config *totem_config,
-		totemsrp_stats_t *stats,
 		int interface_no,
 		void *context,
 
@@ -67,6 +69,10 @@ struct transport {
 
 		void (*target_set_completed) (
 			void *context));
+
+	void *(*buffer_alloc) (void);
+
+	void (*buffer_release) (void *ptr);
 
 	int (*processor_count_set) (
 		void *transport_context,
@@ -110,7 +116,8 @@ struct transport {
 
 	int (*crypto_set) (
 		void *transport_context,
-		unsigned int type);
+		const char *cipher_type,
+		const char *hash_type);
 
 	int (*recv_mcast_empty) (
 		void *transport_context);
@@ -128,6 +135,8 @@ struct transport transport_entries[] = {
 	{
 		.name = "UDP/IP Multicast",
 		.initialize = totemudp_initialize,
+		.buffer_alloc = totemudp_buffer_alloc,
+		.buffer_release = totemudp_buffer_release,
 		.processor_count_set = totemudp_processor_count_set,
 		.token_send = totemudp_token_send,
 		.mcast_flush_send = totemudp_mcast_flush_send,
@@ -146,6 +155,8 @@ struct transport transport_entries[] = {
 	{
 		.name = "UDP/IP Unicast",
 		.initialize = totemudpu_initialize,
+		.buffer_alloc = totemudpu_buffer_alloc,
+		.buffer_release = totemudpu_buffer_release,
 		.processor_count_set = totemudpu_processor_count_set,
 		.token_send = totemudpu_token_send,
 		.mcast_flush_send = totemudpu_mcast_flush_send,
@@ -167,6 +178,8 @@ struct transport transport_entries[] = {
 	{
 		.name = "Infiniband/IP",
 		.initialize = totemiba_initialize,
+		.buffer_alloc = totemiba_buffer_alloc,
+		.buffer_release = totemiba_buffer_release,
 		.processor_count_set = totemiba_processor_count_set,
 		.token_send = totemiba_token_send,
 		.mcast_flush_send = totemiba_mcast_flush_send,
@@ -192,12 +205,13 @@ struct totemnet_instance {
 	struct transport *transport;
 
         void (*totemnet_log_printf) (
-                unsigned int rec_ident,
+                int level,
+		int subsys,
                 const char *function,
                 const char *file,
                 int line,
                 const char *format,
-                ...)__attribute__((format(printf, 5, 6)));
+                ...)__attribute__((format(printf, 6, 7)));
 
         int totemnet_subsys_id;
 };
@@ -205,9 +219,8 @@ struct totemnet_instance {
 #define log_printf(level, format, args...)				\
 do {									\
 	instance->totemnet_log_printf (					\
-		LOGSYS_ENCODE_RECID(level,				\
+		level,							\
 		instance->totemnet_subsys_id,				\
-		LOGSYS_RECID_LOG),					\
 		__FUNCTION__, __FILE__, __LINE__,			\
 		(const char *)format, ##args);				\
 } while (0);
@@ -225,19 +238,21 @@ static void totemnet_instance_initialize (
 	transport = config->transport_number;
 
 	log_printf (LOGSYS_LEVEL_NOTICE,
-		"Initializing transport (%s).\n", transport_entries[transport].name);
+		"Initializing transport (%s).", transport_entries[transport].name);
 
 	instance->transport = &transport_entries[transport];
 }
 
 int totemnet_crypto_set (
 	void *net_context,
-	 unsigned int type)
+	const char *cipher_type,
+	const char *hash_type)
 {
 	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	int res = 0;
 
-	res = instance->transport->crypto_set (instance->transport_context, type);
+	res = instance->transport->crypto_set (instance->transport_context,
+	    cipher_type, hash_type);
 
 	return res;
 }
@@ -254,10 +269,9 @@ int totemnet_finalize (
 }
 
 int totemnet_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *loop_pt,
 	void **net_context,
 	struct totem_config *totem_config,
-	totemsrp_stats_t *stats,
 	int interface_no,
 	void *context,
 
@@ -282,8 +296,8 @@ int totemnet_initialize (
 	}
 	totemnet_instance_initialize (instance, totem_config);
 
-	res = instance->transport->initialize (poll_handle,
-		&instance->transport_context, totem_config, stats,
+	res = instance->transport->initialize (loop_pt,
+		&instance->transport_context, totem_config,
 		interface_no, context, deliver_fn, iface_change_fn, target_set_completed);
 
 	if (res == -1) {
@@ -296,6 +310,22 @@ int totemnet_initialize (
 error_destroy:
 	free (instance);
 	return (-1);
+}
+
+void *totemnet_buffer_alloc (void *net_context)
+{
+	struct totemnet_instance *instance = net_context;
+	assert (instance != NULL);
+	assert (instance->transport != NULL);
+	return instance->transport->buffer_alloc();
+}
+
+void totemnet_buffer_release (void *net_context, void *ptr)
+{
+	struct totemnet_instance *instance = net_context;
+	assert (instance != NULL);
+	assert (instance->transport != NULL);
+	instance->transport->buffer_release (ptr);
 }
 
 int totemnet_processor_count_set (

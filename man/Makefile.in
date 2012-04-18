@@ -16,7 +16,7 @@
 @SET_MAKE@
 
 # Copyright (c) 2004 MontaVista Software, Inc.
-# Copyright (c) 2009 Red Hat, Inc.
+# Copyright (c) 2009, 2012 Red Hat, Inc.
 #
 # Authors: Steven Dake (sdake@redhat.com)
 #          Fabio M. Di Nitto (fdinitto@redhat.com)
@@ -67,25 +67,29 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@INSTALL_XMLCONF_TRUE@am__append_1 = $(xml_man)
 subdir = man
 DIST_COMMON = $(dist_man_MANS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/lib/libcfg.verso \
-	$(top_srcdir)/lib/libconfdb.verso \
-	$(top_srcdir)/lib/libcpg.verso $(top_srcdir)/lib/libevs.verso \
-	$(top_srcdir)/lib/libpload.verso \
+	$(top_srcdir)/lib/libcpg.verso \
 	$(top_srcdir)/lib/libquorum.verso \
 	$(top_srcdir)/lib/libsam.verso \
 	$(top_srcdir)/lib/libvotequorum.verso \
-	$(top_srcdir)/configure.ac
+	$(top_srcdir)/lib/libcmap.verso $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = $(top_builddir)/include/corosync/config.h \
-	$(top_builddir)/include/corosync/cs_config.h
+CONFIG_HEADER = $(top_builddir)/include/corosync/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+AM_V_GEN = $(am__v_GEN_$(V))
+am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
+am__v_GEN_0 = @echo "  GEN   " $@;
+AM_V_at = $(am__v_at_$(V))
+am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
+am__v_at_0 = @
 SOURCES =
 DIST_SOURCES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -115,11 +119,13 @@ am__installdirs = "$(DESTDIR)$(man3dir)" "$(DESTDIR)$(man5dir)" \
 man5dir = $(mandir)/man5
 man8dir = $(mandir)/man8
 NROFF = nroff
-MANS = $(dist_man_MANS)
+MANS = $(dist_man_MANS) $(man_MANS)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
+AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
+AUGTOOL = @AUGTOOL@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -128,25 +134,24 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFG_SONAME = @CFG_SONAME@
 CFLAGS = @CFLAGS@
-CONFDB_SONAME = @CONFDB_SONAME@
+CMAP_SONAME = @CMAP_SONAME@
 COROSYSCONFDIR = @COROSYSCONFDIR@
-COVERAGE_LCRSO_EXTRA_LDFLAGS = @COVERAGE_LCRSO_EXTRA_LDFLAGS@
 CP = @CP@
 CPG_SONAME = @CPG_SONAME@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CP_ARGS = @CP_ARGS@
 CYGPATH_W = @CYGPATH_W@
 DARWIN_OPTS = @DARWIN_OPTS@
 DBUS_CFLAGS = @DBUS_CFLAGS@
 DBUS_LIBS = @DBUS_LIBS@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DOT = @DOT@
+DOXYGEN = @DOXYGEN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
-EVS_SONAME = @EVS_SONAME@
 EXEEXT = @EXEEXT@
 GREP = @GREP@
 GROFF = @GROFF@
@@ -156,9 +161,10 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-LCRSODIR = @LCRSODIR@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
+LIBQB_CFLAGS = @LIBQB_CFLAGS@
+LIBQB_LIBS = @LIBQB_LIBS@
 LIBS = @LIBS@
 LINT_FLAGS = @LINT_FLAGS@
 LN_S = @LN_S@
@@ -178,7 +184,6 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKGCONFIG = @PKGCONFIG@
 PKG_CONFIG = @PKG_CONFIG@
-PLOAD_SONAME = @PLOAD_SONAME@
 QUORUM_SONAME = @QUORUM_SONAME@
 RANLIB = @RANLIB@
 SAM_SONAME = @SAM_SONAME@
@@ -186,8 +191,6 @@ SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SNMPCONFIG = @SNMPCONFIG@
 SNMPLIBS = @SNMPLIBS@
-SNMP_LCRSO = @SNMP_LCRSO@
-SOCKETDIR = @SOCKETDIR@
 SOLARIS_OPTS = @SOLARIS_OPTS@
 SOMAJOR = @SOMAJOR@
 SOMICRO = @SOMICRO@
@@ -254,98 +257,91 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in
-EXTRA_DIST = index.html
-dist_man_MANS = \
-	corosync.conf.5 \
-	confdb_overview.8 \
-	corosync.8 \
-	corosync-objctl.8 \
-	corosync-blackbox.8 \
-	corosync-keygen.8 \
-	corosync-cfgtool.8 \
-	corosync-cpgtool.8 \
-	corosync-fplay.8 \
-	corosync-pload.8 \
-	corosync-notifyd.8 \
-	corosync-quorumtool.8 \
-	corosync_overview.8 \
-	cpg_overview.8 \
-	evs_overview.8 \
-	logsys_overview.8 \
-	votequorum_overview.8 \
-	coroipc_overview.8 \
-	confdb_dispatch.3 \
-	confdb_fd_get.3 \
-	confdb_finalize.3 \
-	confdb_initialize.3 \
-	confdb_key_create.3 \
-	confdb_key_delete.3 \
-	confdb_key_get.3 \
-	confdb_key_iter.3 \
-	confdb_key_iter_start.3 \
-	confdb_key_replace.3 \
-	confdb_object_create.3 \
-	confdb_object_destroy.3 \
-	confdb_object_find.3 \
-	confdb_object_find_start.3 \
-	confdb_object_iter.3 \
-	confdb_object_iter_start.3 \
-	confdb_object_parent_get.3 \
-	confdb_context_get.3 \
-	confdb_context_set.3 \
-	confdb_keys.8 \
-	cpg_context_get.3 \
-	cpg_context_set.3 \
-	cpg_dispatch.3 \
-	cpg_fd_get.3 \
-	cpg_finalize.3 \
-	cpg_initialize.3 \
-	cpg_join.3 \
-	cpg_leave.3 \
-	cpg_local_get.3 \
-	cpg_mcast_joined.3 \
-	cpg_model_initialize.3 \
-	cpg_zcb_mcast_joined.3 \
-	cpg_zcb_alloc.3 \
-	cpg_zcb_free.3 \
-	cpg_membership_get.3 \
-	evs_dispatch.3 \
-	evs_fd_get.3 \
-	evs_finalize.3 \
-	evs_initialize.3 \
-	evs_join.3 \
-	evs_leave.3 \
-	evs_mcast_groups.3 \
-	evs_mcast_joined.3 \
-	evs_membership_get.3 \
-	evs_context_get.3 \
-	evs_context_set.3 \
-	votequorum_dispatch.3 \
-	votequorum_fd_get.3 \
-	votequorum_context_get.3 \
-	votequorum_context_set.3 \
-	votequorum_finalize.3 \
-	votequorum_getinfo.3 \
-	votequorum_initialize.3 \
-	votequorum_leaving.3 \
-	votequorum_qdisk_getinfo.3 \
-	votequorum_qdisk_poll.3 \
-	votequorum_qdisk_register.3 \
-	votequorum_qdisk_unregister.3 \
-	votequorum_setexpected.3 \
-	votequorum_setvotes.3 \
-	sam_finalize.3 \
-	sam_hc_callback_register.3 \
-	sam_hc_send.3 \
-	sam_initialize.3 \
-	sam_overview.8 \
-	sam_register.3 \
-	sam_start.3 \
-	sam_stop.3 \
-	sam_warn_signal_set.3
+xml_man = corosync-xmlproc.8 \
+			  corosync.xml.5
 
-@BUILD_HTML_DOCS_TRUE@HTML_DOCS = $(dist_man_MANS:%=%.html)
-@BUILD_HTML_DOCS_TRUE@INDEX_HTML = index.html
+INDEX_HTML = index.html
+autogen_man = cpg_context_get.3 \
+			  cpg_context_set.3 \
+			  cpg_dispatch.3 \
+			  cpg_fd_get.3 \
+			  cpg_finalize.3 \
+			  cpg_initialize.3 \
+			  cpg_join.3 \
+			  cpg_leave.3 \
+			  cpg_local_get.3 \
+			  cpg_mcast_joined.3 \
+			  cpg_model_initialize.3 \
+			  cpg_zcb_mcast_joined.3 \
+			  cpg_zcb_alloc.3 \
+			  cpg_zcb_free.3 \
+			  cpg_membership_get.3 \
+			  cpg_iteration_finalize.3 \
+			  cpg_iteration_initialize.3 \
+			  cpg_iteration_next.3 \
+			  quorum_initialize.3 \
+			  quorum_finalize.3 \
+			  quorum_fd_get.3 \
+			  quorum_dispatch.3 \
+			  quorum_context_get.3 \
+			  quorum_context_set.3 \
+			  quorum_getquorate.3 \
+			  quorum_trackstart.3 \
+			  quorum_trackstop.3 \
+			  votequorum_dispatch.3 \
+			  votequorum_fd_get.3 \
+			  votequorum_context_get.3 \
+			  votequorum_context_set.3 \
+			  votequorum_finalize.3 \
+			  votequorum_getinfo.3 \
+			  votequorum_initialize.3 \
+			  votequorum_setexpected.3 \
+			  votequorum_setvotes.3 \
+			  votequorum_trackstart.3 \
+			  votequorum_trackstop.3 \
+			  sam_data_getsize.3 \
+			  sam_data_restore.3 \
+			  sam_data_store.3 \
+			  sam_finalize.3 \
+			  sam_hc_callback_register.3 \
+			  sam_hc_send.3 \
+			  sam_initialize.3 \
+			  sam_mark_failed.3 \
+			  sam_register.3 \
+			  sam_start.3 \
+			  sam_stop.3 \
+			  sam_warn_signal_set.3 \
+			  cmap_context_get.3 \
+			  cmap_dec.3 \
+			  cmap_iter_init.3 \
+			  cmap_get.3 \
+			  cmap_inc.3 \
+			  cmap_set.3 \
+			  cmap_iter_next.3 \
+			  cmap_delete.3 \
+			  cmap_iter_finalize.3 \
+			  cmap_finalize.3 \
+			  cmap_dispatch.3  \
+			  cmap_initialize.3 \
+			  cmap_track_add.3 \
+			  cmap_context_set.3 \
+			  cmap_fd_get.3 \
+			  cmap_track_delete.3
+
+autogen_common = ipc_common.sh.errors
+EXTRA_DIST = $(INDEX_HTML) \
+			  $(xml_man) \
+			  $(autogen_man:%=%.in) \
+			  $(autogen_common)
+
+man_MANS = $(autogen_man)
+dist_man_MANS = corosync.conf.5 votequorum.5 corosync.8 \
+	corosync-cmapctl.8 corosync-blackbox.8 corosync-keygen.8 \
+	corosync-cfgtool.8 corosync-cpgtool.8 corosync-fplay.8 \
+	corosync-notifyd.8 corosync-quorumtool.8 corosync_overview.8 \
+	cpg_overview.8 quorum_overview.8 votequorum_overview.8 \
+	sam_overview.8 cmap_overview.8 $(am__append_1)
+HTML_DOCS = $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
 all: all-am
 
 .SUFFIXES:
@@ -379,12 +375,12 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
-install-man3: $(dist_man_MANS)
+install-man3: $(dist_man_MANS) $(man_MANS)
 	@$(NORMAL_INSTALL)
 	test -z "$(man3dir)" || $(MKDIR_P) "$(DESTDIR)$(man3dir)"
 	@list=''; test -n "$(man3dir)" || exit 0; \
 	{ for i in $$list; do echo "$$i"; done; \
-	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
 	  sed -n '/\.3[a-z]*$$/p'; \
 	} | while read p; do \
 	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
@@ -410,19 +406,19 @@ uninstall-man3:
 	@$(NORMAL_UNINSTALL)
 	@list=''; test -n "$(man3dir)" || exit 0; \
 	files=`{ for i in $$list; do echo "$$i"; done; \
-	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
 	  sed -n '/\.3[a-z]*$$/p'; \
 	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^3][0-9a-z]*$$,3,;x' \
 	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
 	test -z "$$files" || { \
 	  echo " ( cd '$(DESTDIR)$(man3dir)' && rm -f" $$files ")"; \
 	  cd "$(DESTDIR)$(man3dir)" && rm -f $$files; }
-install-man5: $(dist_man_MANS)
+install-man5: $(dist_man_MANS) $(man_MANS)
 	@$(NORMAL_INSTALL)
 	test -z "$(man5dir)" || $(MKDIR_P) "$(DESTDIR)$(man5dir)"
 	@list=''; test -n "$(man5dir)" || exit 0; \
 	{ for i in $$list; do echo "$$i"; done; \
-	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
 	  sed -n '/\.5[a-z]*$$/p'; \
 	} | while read p; do \
 	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
@@ -448,19 +444,19 @@ uninstall-man5:
 	@$(NORMAL_UNINSTALL)
 	@list=''; test -n "$(man5dir)" || exit 0; \
 	files=`{ for i in $$list; do echo "$$i"; done; \
-	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
 	  sed -n '/\.5[a-z]*$$/p'; \
 	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^5][0-9a-z]*$$,5,;x' \
 	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
 	test -z "$$files" || { \
 	  echo " ( cd '$(DESTDIR)$(man5dir)' && rm -f" $$files ")"; \
 	  cd "$(DESTDIR)$(man5dir)" && rm -f $$files; }
-install-man8: $(dist_man_MANS)
+install-man8: $(dist_man_MANS) $(man_MANS)
 	@$(NORMAL_INSTALL)
 	test -z "$(man8dir)" || $(MKDIR_P) "$(DESTDIR)$(man8dir)"
 	@list=''; test -n "$(man8dir)" || exit 0; \
 	{ for i in $$list; do echo "$$i"; done; \
-	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
 	  sed -n '/\.8[a-z]*$$/p'; \
 	} | while read p; do \
 	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
@@ -486,7 +482,7 @@ uninstall-man8:
 	@$(NORMAL_UNINSTALL)
 	@list=''; test -n "$(man8dir)" || exit 0; \
 	files=`{ for i in $$list; do echo "$$i"; done; \
-	l2='$(dist_man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
 	  sed -n '/\.8[a-z]*$$/p'; \
 	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^8][0-9a-z]*$$,8,;x' \
 	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
@@ -579,7 +575,6 @@ maintainer-clean-generic:
 	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
 @BUILD_HTML_DOCS_FALSE@uninstall-local:
 @BUILD_HTML_DOCS_FALSE@install-data-local:
-@BUILD_HTML_DOCS_FALSE@clean-local:
 clean: clean-am
 
 clean-am: clean-generic clean-local mostlyclean-am
@@ -664,6 +659,19 @@ uninstall-man: uninstall-man3 uninstall-man5 uninstall-man8
 	uninstall-man uninstall-man3 uninstall-man5 uninstall-man8
 
 
+# developer man page generation
+%.3: %.3.in $(autogen_common) $(top_srcdir)/build-aux/genman
+	@echo Generating $@ man page && \
+	rm -f $@-t $@ && \
+	$(top_srcdir)/build-aux/genman \
+		$(srcdir)/$@.in \
+		$(builddir)/$@-t \
+		$(srcdir)/$(autogen_common) && \
+	mv $@-t $@
+
+clean-local:
+	rm -rf $(HTML_DOCS) $(autogen_man)
+
 @BUILD_HTML_DOCS_TRUE@%.html: %
 @BUILD_HTML_DOCS_TRUE@	$(GROFF) -mandoc -Thtml $^ > $@
 
@@ -676,9 +684,6 @@ uninstall-man: uninstall-man3 uninstall-man5 uninstall-man8
 @BUILD_HTML_DOCS_TRUE@	rmdir $(DESTDIR)/${docdir}/html 2> /dev/null || :
 
 @BUILD_HTML_DOCS_TRUE@all-local: $(HTML_DOCS)
-
-@BUILD_HTML_DOCS_TRUE@clean-local:
-@BUILD_HTML_DOCS_TRUE@	rm -rf $(HTML_DOCS)
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

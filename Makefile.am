@@ -33,33 +33,34 @@ SPEC			= $(PACKAGE_NAME).spec
 
 TARFILE			= $(PACKAGE_NAME)-$(VERSION).tar.gz
 
-EXTRA_DIST		= autogen.sh conf/corosync.conf.example $(SPEC).in \
+EXTRA_DIST		= autogen.sh $(SPEC).in \
 			  build-aux/git-version-gen \
 			  build-aux/gitlog-to-changelog \
 			  build-aux/release.mk \
-			  conf/corosync.conf.example.udpu \
+			  build-aux/genman \
 			  .version
 
 AUTOMAKE_OPTIONS	= foreign
 
 MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
-			  autoheader automake autoconf
+			  autoheader automake autoconf test_lense.sh
 
-dist_doc_DATA		= LICENSE INSTALL README.devmap \
-			  README.recovery SECURITY TODO AUTHORS
+dist_doc_DATA		= LICENSE INSTALL README.recovery SECURITY TODO AUTHORS
 
-corosysconfdir		= ${COROSYSCONFDIR}
-
-corosysconf_DATA	= conf/corosync.conf.example \
-			  conf/corosync.conf.example.udpu
-
-SUBDIRS			= include lcr lib exec services tools test pkgconfig \
+SUBDIRS			= include common_lib lib exec tools test cts pkgconfig \
 			  man init conf
 
 coverity:
+	rm -rf cov
+	make clean
 	cov-build --dir=cov make
-	cov-analyze --dir cov
+	cov-analyze --dir cov \
+		    --concurrency \
+		    --all \
+		    --aggressiveness-level high \
+		    --security \
+		    --wait-for-license
 	cov-format-errors --dir cov
 
 install-exec-local:
@@ -67,26 +68,45 @@ install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d
 	$(INSTALL) -d $(DESTDIR)/${localstatedir}/lib/corosync
 	$(INSTALL) -d $(DESTDIR)/${localstatedir}/log/cluster
-	$(INSTALL) -d $(DESTDIR)/${SOCKETDIR}
 
 uninstall-local:
 	rmdir $(DESTDIR)/${COROSYSCONFDIR}/service.d || :;
 	rmdir $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d || :;
 	rmdir $(DESTDIR)/${localstatedir}/lib/corosync || :;
 	rmdir $(DESTDIR)/${localstatedir}/log/cluster || :;
-	rmdir $(DESTDIR)/${SOCKETDIR} || :;
+
+if AUGTOOL
+check_SCRIPTS = test_lense.sh
+TESTS = $(check_SCRIPTS)
+
+test_lense.sh:
+	echo "augparse -I $(srcdir)/conf/lenses/ $(srcdir)/conf/lenses/tests/test_corosync.aug" > $@
+	chmod +x $@
+
+endif
 
 lint:
-	for dir in lcr lib exec services tools test; do make -C $$dir lint; done
+	for dir in lib exec tools test; do make -C $$dir lint; done
 
+.PHONY: doxygen
 doxygen:
-	mkdir -p doc/api && doxygen
+	@if [ "$(DOXYGEN)" = "" ] || [ "$(DOT)" = "" ] ; then \
+		echo "*********************************************" ; \
+		echo "***                                       ***" ; \
+		echo "*** You must install doxygen and graphviz ***" ; \
+		echo "*** to generate the API documentation.    ***" ; \
+		echo "***                                       ***" ; \
+		echo "*********************************************" ; \
+		exit 1 ; \
+	else \
+		mkdir -p doc/api && $(DOXYGEN) ; \
+	fi
 
 dist-clean-local:
-	rm -f autoconf automake autoheader
+	rm -f autoconf automake autoheader test_lense.sh
 
 clean-generic:
-	rm -rf doc/api $(SPEC) $(TARFILE) 
+	rm -rf doc/api $(SPEC) $(TARFILE) test_lense.sh
 
 ## make rpm/srpm section.
 
@@ -143,7 +163,7 @@ srpm: clean
 	$(MAKE) $(SPEC) $(TARFILE)
 	rpmbuild $(RPMBUILDOPTS) --nodeps -bs $(SPEC)
 
-rpm: clean
+rpm: clean _version
 	$(MAKE) $(SPEC) $(TARFILE)
 	rpmbuild $(RPMBUILDOPTS) -ba $(SPEC)
 
@@ -156,7 +176,7 @@ dist-hook: gen-ChangeLog
 	echo $(VERSION) > $(distdir)/.tarball-version
 
 gen_start_date = 2000-01-01
-.PHONY: gen-ChangeLog
+.PHONY: gen-ChangeLog _version
 gen-ChangeLog:
 	if test -d .git; then						\
 		LC_ALL=C $(top_srcdir)/build-aux/gitlog-to-changelog		\
@@ -164,3 +184,7 @@ gen-ChangeLog:
 		rm -f $(distdir)/ChangeLog;				\
 		mv $(distdir)/cl-t $(distdir)/ChangeLog;		\
 	fi
+
+_version:
+	cd $(srcdir) && rm -rf autom4te.cache .version && autoreconf -i
+	$(MAKE) $(AM_MAKEFLAGS) Makefile

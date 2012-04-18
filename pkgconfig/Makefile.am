@@ -32,8 +32,8 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 EXTRA_DIST		= libtemplate.pc.in corosync.pc.in
 
-LIBS	= cfg confdb coroipcc coroipcs cpg evs logsys pload quorum \
-	  totem_pg votequorum sam
+LIBS	= cfg cpg quorum \
+	  totem_pg votequorum sam cmap corosync_common
 
 target_LIBS = $(LIBS:%=lib%.pc)
 
@@ -56,8 +56,6 @@ lib%.pc: libtemplate.pc.in Makefile
 		-e 's#@''PREFIX@#$(exec_prefix)#g' \
 		-e 's#@''LIBDIR@#$(libdir)#g' \
 		-e 's#@''LIBVERSION@#$(VERSION)#g' \
-		-e 's#@''COROLCRSODIR@#$(LCRSODIR)#g' \
-		-e 's#@''COROSOCKETDIR@#$(SOCKETDIR)#g' \
 	    $< > $@-t
 	chmod a-w $@-t
 	mv $@-t $@

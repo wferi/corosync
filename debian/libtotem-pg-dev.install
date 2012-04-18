@@ -1,4 +1,3 @@
-usr/include/corosync/totem/coropoll.h
 usr/include/corosync/totem/totem.h
 usr/include/corosync/totem/totemip.h
 usr/include/corosync/totem/totempg.h

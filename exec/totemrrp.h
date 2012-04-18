@@ -32,27 +32,30 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/**
+ * @file
+ * Totem Network interface - also does encryption/decryption
+ *
+ * depends on poll abstraction, POSIX, IPV4
+ */
+
 #ifndef TOTEMRRP_H_DEFINED
 #define TOTEMRRP_H_DEFINED
 
 #include <sys/types.h>
 #include <sys/socket.h>
-
+#include <qb/qbloop.h>
 #include <corosync/totem/totem.h>
 
 #define TOTEMRRP_NOFLUSH	0
 #define TOTEMRRP_FLUSH		1
 
-/*
- * Totem Network interface - also does encryption/decryption
- * depends on poll abstraction, POSIX, IPV4
- */
-
-/*
+/**
  * Create an instance
  */
 extern int totemrrp_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	void **rrp_context,
 	struct totem_config *totem_config,
 	totemsrp_stats_t *stats,
@@ -79,6 +82,12 @@ extern int totemrrp_initialize (
 		void *context)
 	);
 
+extern void *totemrrp_buffer_alloc (
+	void *rrp_context);
+
+extern void totemrrp_buffer_release (
+	void *rrp_context,
+	void *ptr);
 
 extern int totemrrp_processor_count_set (
 	void *rrp_context,
@@ -121,7 +130,8 @@ extern int totemrrp_ifaces_get (
 
 extern int totemrrp_crypto_set (
 	void *rrp_context,
-	unsigned int type);
+	const char *cipher_type,
+	const char *hash_type);
 
 extern int totemrrp_ring_reenable (
 	void *rrp_context,

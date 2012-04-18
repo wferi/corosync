@@ -98,6 +98,9 @@
 /* Define to 1 if you have the `getcwd' function. */
 #undef HAVE_GETCWD
 
+/* Define to 1 if you have the `getifaddrs' function. */
+#undef HAVE_GETIFADDRS
+
 /* Define to 1 if you have the <getopt.h> header file. */
 #undef HAVE_GETOPT_H
 
@@ -110,6 +113,9 @@
 /* Define to 1 if you have the `gettimeofday' function. */
 #undef HAVE_GETTIMEOFDAY
 
+/* Define to 1 if you have the <ifaddrs.h> header file. */
+#undef HAVE_IFADDRS_H
+
 /* Define to 1 if you have the `inet_ntoa' function. */
 #undef HAVE_INET_NTOA
 
@@ -121,9 +127,6 @@
 
 /* Define to 1 if you have the `nsl' library (-lnsl). */
 #undef HAVE_LIBNSL
-
-/* have libnss */
-#undef HAVE_LIBNSS
 
 /* Define to 1 if you have the `pthread' library (-lpthread). */
 #undef HAVE_LIBPTHREAD
@@ -186,14 +189,14 @@
 /* Define to 1 if you have the `netsnmp_transport_open_client' function. */
 #undef HAVE_NETSNMP_TRANSPORT_OPEN_CLIENT
 
-/* Define to 1 if you have the <net/if_var.h> header file. */
-#undef HAVE_NET_IF_VAR_H
-
 /* Define to 1 if you have the <net-snmp/net-snmp-config.h> header file. */
 #undef HAVE_NET_SNMP_NET_SNMP_CONFIG_H
 
 /* Define to 1 if you have the `pthread_setschedparam' function. */
 #undef HAVE_PTHREAD_SETSCHEDPARAM
+
+/* have qb_log_thread_priority_set */
+#undef HAVE_QB_LOG_THREAD_PRIORITY_SET
 
 /* have rdmacm */
 #undef HAVE_RDMA
@@ -297,6 +300,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Define to 1 if you have the <utmpx.h> header file. */
+#undef HAVE_UTMPX_H
+
 /* Define to 1 if you have the `vfork' function. */
 #undef HAVE_VFORK
 
@@ -323,9 +329,6 @@
 
 /* Define to 1 if `vfork' works. */
 #undef HAVE_WORKING_VFORK
-
-/* LCRSO directory */
-#undef LCRSODIR
 
 /* localstate directory */
 #undef LOCALSTATEDIR
@@ -374,9 +377,6 @@
 
 /* Define to the type of arg 5 for `select'. */
 #undef SELECT_TYPE_ARG5
-
-/* Socket directory */
-#undef SOCKETDIR
 
 /* If using the C implementation of alloca, define if you know the
    direction of stack growth for your system; otherwise it will be

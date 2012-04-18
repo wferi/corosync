@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Red Hat, Inc.
+ * Copyright (c) 2008-2011 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -40,33 +40,40 @@
 enum req_quorum_types {
 	MESSAGE_REQ_QUORUM_GETQUORATE = 0,
 	MESSAGE_REQ_QUORUM_TRACKSTART,
-	MESSAGE_REQ_QUORUM_TRACKSTOP
+	MESSAGE_REQ_QUORUM_TRACKSTOP,
+	MESSAGE_REQ_QUORUM_GETTYPE
 };
 
 enum res_quorum_types {
 	MESSAGE_RES_QUORUM_GETQUORATE = 0,
 	MESSAGE_RES_QUORUM_TRACKSTART,
 	MESSAGE_RES_QUORUM_TRACKSTOP,
-	MESSAGE_RES_QUORUM_NOTIFICATION
+	MESSAGE_RES_QUORUM_NOTIFICATION,
+	MESSAGE_RES_QUORUM_GETTYPE
 };
 
 struct req_lib_quorum_trackstart {
-        coroipc_request_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int track_flags;
 };
 
 
 struct res_lib_quorum_getquorate {
-        coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t quorate;
 };
 
 struct res_lib_quorum_notification {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_int32_t quorate __attribute__((aligned(8)));
 	mar_uint64_t ring_seq __attribute__((aligned(8)));
 	mar_uint32_t view_list_entries __attribute__((aligned(8)));
 	mar_uint32_t view_list[];
+};
+
+struct res_lib_quorum_gettype {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	mar_uint32_t quorum_type;
 };
 
 #endif

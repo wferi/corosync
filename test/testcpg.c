@@ -51,6 +51,8 @@
 #include <corosync/cpg.h>
 #include <corosync/swab.h>
 
+#include <qb/qblog.h>
+
 static int quit = 0;
 static int show_ip = 0;
 
@@ -141,7 +143,8 @@ static void TotemConfchgCallback (
 {
 	int i;
 
-	printf("\nTotemConfchgCallback: ringid (%u.%"PRIu64")\n", ring_id.nodeid, ring_id.seq);
+	printf ("\nTotemConfchgCallback: ringid (%u.%"PRIu64")\n",
+		ring_id.nodeid, ring_id.seq);
 
 	printf("active processors %lu: ",
 	       (unsigned long int) member_list_entries);
@@ -164,11 +167,36 @@ static void sigintr_handler (int signum) {
 }
 static struct cpg_name group_name;
 
+
+#define cs_repeat_init(counter, max, code) do {    \
+	code;                                 \
+	if (result == CS_ERR_TRY_AGAIN || result == CS_ERR_QUEUE_FULL || result == CS_ERR_LIBRARY) {  \
+		counter++;                    \
+		printf("Retrying operation after %ds\n", counter); \
+		sleep(counter);               \
+	} else {                              \
+		break;                        \
+	}                                     \
+} while (counter < max)
+
+#define cs_repeat(counter, max, code) do {    \
+	code;                                 \
+	if (result == CS_ERR_TRY_AGAIN || result == CS_ERR_QUEUE_FULL) {  \
+		counter++;                    \
+		printf("Retrying operation after %ds\n", counter); \
+		sleep(counter);               \
+	} else {                              \
+		break;                        \
+	}                                     \
+} while (counter < max)
+
+
 int main (int argc, char *argv[]) {
 	cpg_handle_t handle;
 	fd_set read_fds;
 	int select_fd;
 	int result;
+	int retries;
 	const char *options = "i";
 	int opt;
 	unsigned int nodeid;
@@ -176,6 +204,13 @@ int main (int argc, char *argv[]) {
 	struct cpg_address member_list[64];
 	int member_list_entries;
 	int i;
+
+	qb_log_init("testcpg", LOG_USER, LOG_ERR);
+	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_FALSE);
+	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
+			  QB_LOG_FILTER_FILE, "*", LOG_TRACE);
+	qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
+	qb_log_format_set(QB_LOG_STDERR, "[%p] %f %b");
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
@@ -194,27 +229,30 @@ int main (int argc, char *argv[]) {
 		group_name.length = 6;
 	}
 
-	result = cpg_model_initialize (&handle, CPG_MODEL_V1, (cpg_model_data_t *)&model_data, NULL);
+	retries = 0;
+	cs_repeat_init(retries, 30, result = cpg_model_initialize (&handle, CPG_MODEL_V1, (cpg_model_data_t *)&model_data, NULL));
 	if (result != CS_OK) {
 		printf ("Could not initialize Cluster Process Group API instance error %d\n", result);
 		exit (1);
 	}
-	result = cpg_local_get (handle, &nodeid);
+	retries = 0;
+	cs_repeat(retries, 30, result = cpg_local_get(handle, &nodeid));
 	if (result != CS_OK) {
 		printf ("Could not get local node id\n");
 		exit (1);
 	}
-
 	printf ("Local node id is %x\n", nodeid);
-	result = cpg_join(handle, &group_name);
+
+	retries = 0;
+	cs_repeat(retries, 30, result = cpg_join(handle, &group_name));
 	if (result != CS_OK) {
 		printf ("Could not join process group, error %d\n", result);
 		exit (1);
 	}
 
-	sleep (1);
-	result = cpg_membership_get (handle, &group_name,
-		(struct cpg_address *)&member_list, &member_list_entries);
+	retries = 0;
+	cs_repeat(retries, 30, result = cpg_membership_get (handle, &group_name,
+		(struct cpg_address *)&member_list, &member_list_entries));
 	if (result != CS_OK) {
 		printf ("Could not get current membership list %d\n", result);
 		exit (1);
