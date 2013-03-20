@@ -37,19 +37,21 @@ EXTRA_DIST		= autogen.sh $(SPEC).in \
 			  build-aux/git-version-gen \
 			  build-aux/gitlog-to-changelog \
 			  build-aux/release.mk \
-			  build-aux/genman \
 			  .version
 
 AUTOMAKE_OPTIONS	= foreign
 
+ACLOCAL_AMFLAGS		= -I m4
+
 MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
-			  autoheader automake autoconf test_lense.sh
+			  autoheader automake autoconf test_lense.sh \
+			  autoscan.log configure.scan ltmain.sh
 
 dist_doc_DATA		= LICENSE INSTALL README.recovery SECURITY TODO AUTHORS
 
 SUBDIRS			= include common_lib lib exec tools test cts pkgconfig \
-			  man init conf
+			  man init conf qdevices
 
 coverity:
 	rm -rf cov
@@ -118,7 +120,7 @@ $(SPEC): $(SPEC).in
 		rpmver=$$gitver && \
 		alphatag="" && \
 		dirty="" && \
-		numcomm="0"; \
+		numcomm=""; \
 	else \
 		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
 		rpmver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"` && \
@@ -128,25 +130,18 @@ $(SPEC): $(SPEC).in
 		git update-index --refresh > /dev/null 2>&1 || true && \
 		dirty=`git diff-index --name-only HEAD 2>/dev/null`; \
 	fi && \
-	if [ -n "$$dirty" ]; then dirty="dirty"; else dirty=""; fi && \
-	if [ "$$numcomm" = "0" ]; then \
-		sed \
-			-e "s#@version@#$$rpmver#g" \
-			-e "s#%glo.*alpha.*##g" \
-			-e "s#%glo.*numcomm.*##g" \
-			-e "s#@dirty@#$$dirty#g" \
-			-e "s#@date@#$$date#g" \
-		$< > $@-t; \
-	else \
-		sed \
-			-e "s#@version@#$$rpmver#g" \
-			-e "s#@alphatag@#$$alphatag#g" \
-			-e "s#@numcomm@#$$numcomm#g" \
-			-e "s#@dirty@#$$dirty#g" \
-			-e "s#@date@#$$date#g" \
-		$< > $@-t; \
-	fi; \
-	if [ -z "$$dirty" ]; then sed -i -e "s#%glo.*dirty.*##g" $@-t; fi
+	if [ "$$numcomm" = "0" ]; then numcomm=""; fi && \
+	if [ -n "$$numcomm" ]; then numcomm="%global numcomm $$numcomm"; fi && \
+	if [ "$$alphatag" = "$$gitver" ]; then alphatag=""; fi && \
+	if [ -n "$$alphatag" ]; then alphatag="%global alphatag $$alphatag"; fi && \
+	if [ -n "$$dirty" ]; then dirty="%global dirty dirty"; fi && \
+	sed \
+		-e "s#@version@#$$rpmver#g" \
+		-e "s#@ALPHATAG@#$$alphatag#g" \
+		-e "s#@NUMCOMM@#$$numcomm#g" \
+		-e "s#@DIRTY@#$$dirty#g" \
+		-e "s#@date@#$$date#g" \
+	$< > $@-t; \
 	chmod a-w $@-t
 	mv $@-t $@
 
@@ -188,3 +183,6 @@ gen-ChangeLog:
 _version:
 	cd $(srcdir) && rm -rf autom4te.cache .version && autoreconf -i
 	$(MAKE) $(AM_MAKEFLAGS) Makefile
+
+maintainer-clean-local:
+	rm -rf m4

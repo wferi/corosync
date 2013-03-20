@@ -58,6 +58,7 @@
 #include "schedwrk.h"
 #include "quorum.h"
 #include "sync.h"
+#include "main.h"
 
 LOGSYS_DECLARE_SUBSYS ("SYNC");
 
@@ -142,15 +143,11 @@ static size_t my_trans_list_entries = 0;
 
 static int my_processor_list_entries = 0;
 
-static struct service_entry my_service_list[128];
+static struct service_entry my_service_list[SERVICES_COUNT_MAX];
 
 static int my_service_list_entries = 0;
 
 static const struct memb_ring_id sync_ring_id;
-
-static struct service_entry my_initial_service_list[PROCESSOR_COUNT_MAX];
-
-static int my_initial_service_list_entries;
 
 static void (*sync_synchronization_completed) (void);
 
@@ -171,6 +168,10 @@ static struct totempg_group sync_group = {
 
 static void *sync_group_handle;
 
+int (*my_sync_callbacks_retrieve) (
+		int service_id,
+                struct sync_callbacks *callbacks);
+
 int sync_init (
         int (*sync_callbacks_retrieve) (
                 int service_id,
@@ -178,8 +179,6 @@ int sync_init (
         void (*synchronization_completed) (void))
 {
 	unsigned int res;
-	int i;
-	struct sync_callbacks sync_callbacks;
 
 	res = totempg_groups_initialize (
 		&sync_group_handle,
@@ -201,25 +200,8 @@ int sync_init (
 	}
 
 	sync_synchronization_completed = synchronization_completed;
-	for (i = 0; i < 64; i++) {
-		res = sync_callbacks_retrieve (i, &sync_callbacks);
-		if (res == -1) {
-			continue;
-		}
-		if (sync_callbacks.sync_init == NULL) {
-			continue;
-		}
-		my_initial_service_list[my_initial_service_list_entries].state =
-			INIT;
-		my_initial_service_list[my_initial_service_list_entries].service_id = i;
-		strcpy (my_initial_service_list[my_initial_service_list_entries].name,
-			sync_callbacks.name);
-		my_initial_service_list[my_initial_service_list_entries].sync_init = sync_callbacks.sync_init;
-		my_initial_service_list[my_initial_service_list_entries].sync_process = sync_callbacks.sync_process;
-		my_initial_service_list[my_initial_service_list_entries].sync_abort = sync_callbacks.sync_abort;
-		my_initial_service_list[my_initial_service_list_entries].sync_activate = sync_callbacks.sync_activate;
-		my_initial_service_list_entries += 1;
-	}
+	my_sync_callbacks_retrieve = sync_callbacks_retrieve;
+
 	return (0);
 }
 
@@ -249,7 +231,10 @@ static void sync_barrier_handler (unsigned int nodeid, const void *msg)
 		log_printf (LOGSYS_LEVEL_DEBUG, "Committing synchronization for %s",
 			my_service_list[my_processing_idx].name);
 		my_service_list[my_processing_idx].state = ACTIVATE;
-		my_service_list[my_processing_idx].sync_activate ();
+
+		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
+			my_service_list[my_processing_idx].sync_activate ();
+		}
 
 		my_processing_idx += 1;
 		if (my_service_list_entries == my_processing_idx) {
@@ -345,7 +330,7 @@ static void sync_service_build_handler (unsigned int nodeid, const void *msg)
 			my_service_list[my_service_list_entries].service_id =
 				req_exec_service_build_message->service_list[i];
 			sprintf (my_service_list[my_service_list_entries].name,
-				"External Service (id = %d)\n",
+				"Uknown External Service (id = %d)\n",
 				req_exec_service_build_message->service_list[i]);
 			my_service_list[my_service_list_entries].sync_init =
 				dummy_sync_init;
@@ -490,6 +475,8 @@ static void sync_servicelist_build_enter (
 {
 	struct req_exec_service_build_message service_build;
 	int i;
+	int res;
+	struct sync_callbacks sync_callbacks;
 
 	my_state = SYNC_SERVICELIST_BUILD;
 	for (i = 0; i < member_list_entries; i++) {
@@ -504,16 +491,33 @@ static void sync_servicelist_build_enter (
 
 	my_processing_idx = 0;
 
-	memcpy (my_service_list, my_initial_service_list,
-		sizeof (struct service_entry) *
-			my_initial_service_list_entries);
-	my_service_list_entries = my_initial_service_list_entries;
+	memset(my_service_list, 0, sizeof (struct service_entry) * SERVICES_COUNT_MAX);
+	my_service_list_entries = 0;
 
-	for (i = 0; i < my_initial_service_list[i].service_id; i++) {
-		service_build.service_list[i] =
-			my_initial_service_list[i].service_id;
+	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
+		res = my_sync_callbacks_retrieve (i, &sync_callbacks);
+		if (res == -1) {
+			continue;
+		}
+		if (sync_callbacks.sync_init == NULL) {
+			continue;
+		}
+		my_service_list[my_service_list_entries].state = INIT;
+		my_service_list[my_service_list_entries].service_id = i;
+		strcpy (my_service_list[my_service_list_entries].name,
+			sync_callbacks.name);
+		my_service_list[my_service_list_entries].sync_init = sync_callbacks.sync_init;
+		my_service_list[my_service_list_entries].sync_process = sync_callbacks.sync_process;
+		my_service_list[my_service_list_entries].sync_abort = sync_callbacks.sync_abort;
+		my_service_list[my_service_list_entries].sync_activate = sync_callbacks.sync_activate;
+		my_service_list_entries += 1;
 	}
-	service_build.service_list_entries = i;
+
+	for (i = 0; i < my_service_list_entries; i++) {
+		service_build.service_list[i] =
+			my_service_list[i].service_id;
+	}
+	service_build.service_list_entries = my_service_list_entries;
 
 	service_build_message_transmit (&service_build);
 }
@@ -543,14 +547,20 @@ static int schedwrk_processor (const void *context)
 			}
 		}
 
-		my_service_list[my_processing_idx].sync_init (my_trans_list,
-			my_trans_list_entries, my_member_list,
-			my_member_list_entries,
-			&my_ring_id);
+		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
+			my_service_list[my_processing_idx].sync_init (my_trans_list,
+				my_trans_list_entries, my_member_list,
+				my_member_list_entries,
+				&my_ring_id);
+		}
 	}
 	if (my_service_list[my_processing_idx].state == PROCESS) {
 		my_service_list[my_processing_idx].state = PROCESS;
-		res = my_service_list[my_processing_idx].sync_process ();
+		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
+			res = my_service_list[my_processing_idx].sync_process ();
+		} else {
+			res = 0;
+		}
 		if (res == 0) {
 			sync_barrier_enter();
 		} else {
@@ -594,7 +604,9 @@ void sync_abort (void)
 	ENTER();
 	if (my_state == SYNC_PROCESS) {
 		schedwrk_destroy (my_schedwrk_handle);
-		my_service_list[my_processing_idx].sync_abort ();
+		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
+			my_service_list[my_processing_idx].sync_abort ();
+		}
 	}
 
 	/* this will cause any "old" barrier messages from causing

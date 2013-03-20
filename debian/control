@@ -4,14 +4,14 @@ Priority: optional
 Maintainer: Debian HA Maintainers <debian-ha-maintainers@lists.alioth.debian.org>
 Uploaders: Martin Loschwitz <madkiss@debian.org>, Guido Günther <agx@sigxcpu.org>
 Standards-Version: 3.9.3
-Build-Depends: debhelper (>> 5), libnss3-dev, pkg-config, groff, libqb-dev, librdmacm-dev, libibverbs-dev, libxml2-dev, libaugeas-dev, zlib1g-dev, chrpath
+Build-Depends: debhelper (>> 5), libnss3-dev, pkg-config, groff, libqb-dev, librdmacm-dev, libibverbs-dev, libxml2-dev, libaugeas-dev, zlib1g-dev, chrpath, libstatgrab-dev, hardening-wrapper
 Vcs-Git: git://git.debian.org/debian-ha/corosync.git
 Vcs-Browser: http://git.debian.org/?p=debian-ha/corosync.git;a=summary
 
 Package: corosync
 Section: admin
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base (>= 3.0-6), libcfg6 (= ${binary:Version}), libcmap4 (= ${binary:Version}), libcorosync-common4 (= ${binary:Version}), libcpg4 (= ${binary:Version}), libquorum5 (= ${binary:Version}), libsam4 (= ${binary:Version}), libtotem-pg5 (= ${binary:Version}), libvotequorum5 (= ${binary:Version}), adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base (>= 3.0-6), libcfg6 (= ${binary:Version}), libcmap4 (= ${binary:Version}), libcorosync-common4 (= ${binary:Version}), libcpg4 (= ${binary:Version}), libquorum5 (= ${binary:Version}), libsam4 (= ${binary:Version}), libtotem-pg5 (= ${binary:Version}), libvotequorum6 (= ${binary:Version}), adduser
 Conflicts: openais (<< 0.85), openais-legacy (<< 1.0.0)
 Description: Standards-based cluster framework (daemon and modules)
  The corosync project is a project to implement a production quality
@@ -31,7 +31,7 @@ Package: corosync-dbg
 Section: debug
 Priority: extra
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcfg6 (= ${binary:Version}), libcmap4 (= ${binary:Version}), libcorosync-common4 (= ${binary:Version}), libcpg4 (= ${binary:Version}), libquorum5 (= ${binary:Version}), libsam4 (= ${binary:Version}), libtotem-pg5 (= ${binary:Version}), libvotequorum5 (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcfg6 (= ${binary:Version}), libcmap4 (= ${binary:Version}), libcorosync-common4 (= ${binary:Version}), libcpg4 (= ${binary:Version}), libquorum5 (= ${binary:Version}), libsam4 (= ${binary:Version}), libtotem-pg5 (= ${binary:Version}), libvotequorum6 (= ${binary:Version})
 Description: Standards-based cluster framework (debugging symbols)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
@@ -70,7 +70,7 @@ Package: libcorosync4
 Section: oldlibs
 Priority: extra
 Architecture: all
-Depends: ${misc:Depends}, libcfg6, libcmap4, libcorosync-common4, libcpg4, libquorum5, libsam4, libtotem-pg5, libvotequorum5
+Depends: ${misc:Depends}, libcfg6, libcmap4, libcorosync-common4, libcpg4, libquorum5, libsam4, libtotem-pg5, libvotequorum6
 Conflicts: libopenais2 (<< 0.85)
 Description: Standards-based cluster framework (transitional package)
  The corosync project is a project to implement a production quality
@@ -248,12 +248,12 @@ Description: Standards-based cluster framework, Totem library
  This package contains the Totem library, which is a library included
  in Corosync.
 
-Package: libvotequorum5
+Package: libvotequorum6
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Replaces: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
-Conflicts: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1)
+Replaces: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1), libvotequorum5
+Conflicts: libcorosync4 (<= 1.4.2-1), corosync (<< 1.99.9-1), corosync-dev (<< 1.99.9-1), libvotequorum5
 Description: Standards-based cluster framework, Votequorum library
  Corosync is a project to implement a production quality "Revised BSD"
  licensed implementation of all core functionalities required by openais.

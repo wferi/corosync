@@ -55,6 +55,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/poll.h>
+#include <sys/uio.h>
 #include <limits.h>
 
 #include <qb/qbdefs.h>
@@ -171,6 +172,8 @@ struct totemudpu_instance {
 
 	struct totem_config *totem_config;
 
+	totemsrp_stats_t *stats;
+
 	struct totem_ip_address token_target;
 
 	int token_socket;
@@ -186,6 +189,13 @@ static int totemudpu_build_sockets (
 	struct totemudpu_instance *instance,
 	struct totem_ip_address *bindnet_address,
 	struct totem_ip_address *bound_to);
+
+static int totemudpu_create_sending_socket(
+	void *udpu_context,
+	const struct totem_ip_address *member);
+
+int totemudpu_member_list_rebind_ip (
+	void *udpu_context);
 
 static struct totem_ip_address localhost;
 
@@ -269,16 +279,24 @@ static inline void ucast_sendmsg (
 	 */
 	totemip_totemip_to_sockaddr_convert(system_to,
 		instance->totem_interface->ip_port, &sockaddr, &addrlen);
+	memset(&msg_ucast, 0, sizeof(msg_ucast));
 	msg_ucast.msg_name = &sockaddr;
 	msg_ucast.msg_namelen = addrlen;
 	msg_ucast.msg_iov = (void *)&iovec;
 	msg_ucast.msg_iovlen = 1;
-#if !defined(COROSYNC_SOLARIS)
+#ifdef HAVE_MSGHDR_CONTROL
 	msg_ucast.msg_control = 0;
+#endif
+#ifdef HAVE_MSGHDR_CONTROLLEN
 	msg_ucast.msg_controllen = 0;
+#endif
+#ifdef HAVE_MSGHDR_FLAGS
 	msg_ucast.msg_flags = 0;
-#else
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTS
 	msg_ucast.msg_accrights = NULL;
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
 	msg_ucast.msg_accrightslen = 0;
 #endif
 
@@ -325,6 +343,7 @@ static inline void mcast_sendmsg (
 	iovec.iov_base = (void *)buf_out;
 	iovec.iov_len = buf_out_len;
 
+	memset(&msg_mcast, 0, sizeof(msg_mcast));
 	/*
 	 * Build multicast message
 	 */
@@ -342,12 +361,19 @@ static inline void mcast_sendmsg (
 		msg_mcast.msg_namelen = addrlen;
 		msg_mcast.msg_iov = (void *)&iovec;
 		msg_mcast.msg_iovlen = 1;
-	#if !defined(COROSYNC_SOLARIS)
+	#ifdef HAVE_MSGHDR_CONTROL
 		msg_mcast.msg_control = 0;
+	#endif
+	#ifdef HAVE_MSGHDR_CONTROLLEN
 		msg_mcast.msg_controllen = 0;
+	#endif
+	#ifdef HAVE_MSGHDR_FLAGS
 		msg_mcast.msg_flags = 0;
-	#else
+	#endif
+	#ifdef HAVE_MSGHDR_ACCRIGHTS
 		msg_mcast.msg_accrights = NULL;
+	#endif
+	#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
 		msg_mcast.msg_accrightslen = 0;
 	#endif
 
@@ -370,9 +396,9 @@ int totemudpu_finalize (
 	int res = 0;
 
 	if (instance->token_socket > 0) {
-		close (instance->token_socket);
 		qb_loop_poll_del (instance->totemudpu_poll_handle,
 			instance->token_socket);
+		close (instance->token_socket);
 	}
 
 	return (res);
@@ -399,12 +425,19 @@ static int net_deliver_fn (
 	msg_recv.msg_namelen = sizeof (struct sockaddr_storage);
 	msg_recv.msg_iov = iovec;
 	msg_recv.msg_iovlen = 1;
-#if !defined(COROSYNC_SOLARIS)
+#ifdef HAVE_MSGHDR_CONTROL
 	msg_recv.msg_control = 0;
+#endif
+#ifdef HAVE_MSGHDR_CONTROLLEN
 	msg_recv.msg_controllen = 0;
+#endif
+#ifdef HAVE_MSGHDR_FLAGS
 	msg_recv.msg_flags = 0;
-#else
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTS
 	msg_recv.msg_accrights = NULL;
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
 	msg_recv.msg_accrightslen = 0;
 #endif
 
@@ -503,9 +536,9 @@ static void timer_function_netif_check_timeout (
 	}
 
 	if (instance->token_socket > 0) {
-		close (instance->token_socket);
 		qb_loop_poll_del (instance->totemudpu_poll_handle,
 			instance->token_socket);
+		close (instance->token_socket);
 	}
 
 	if (interface_up == 0) {
@@ -679,6 +712,12 @@ static int totemudpu_build_sockets (
 
 	/* We only send out of the token socket */
 	totemudpu_traffic_control_set(instance, instance->token_socket);
+
+	/*
+	 * Rebind all members to new ips
+	 */
+	totemudpu_member_list_rebind_ip(instance);
+
 	return res;
 }
 
@@ -694,6 +733,7 @@ int totemudpu_initialize (
 	qb_loop_t *poll_handle,
 	void **udpu_context,
 	struct totem_config *totem_config,
+	totemsrp_stats_t *stats,
 	int interface_no,
 	void *context,
 
@@ -719,6 +759,8 @@ int totemudpu_initialize (
 	totemudpu_instance_initialize (instance);
 
 	instance->totem_config = totem_config;
+	instance->stats = stats;
+
 	/*
 	* Configure logging
 	*/
@@ -936,12 +978,19 @@ extern int totemudpu_recv_mcast_empty (
 	msg_recv.msg_namelen = sizeof (struct sockaddr_storage);
 	msg_recv.msg_iov = &instance->totemudpu_iov_recv;
 	msg_recv.msg_iovlen = 1;
-#if !defined(COROSYNC_SOLARIS)
+#ifdef HAVE_MSGHDR_CONTROL
 	msg_recv.msg_control = 0;
+#endif
+#ifdef HAVE_MSGHDR_CONTROLLEN
 	msg_recv.msg_controllen = 0;
+#endif
+#ifdef HAVE_MSGHDR_FLAGS
 	msg_recv.msg_flags = 0;
-#else
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTS
 	msg_recv.msg_accrights = NULL;
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
 	msg_recv.msg_accrightslen = 0;
 #endif
 
@@ -962,34 +1011,26 @@ extern int totemudpu_recv_mcast_empty (
 	return (msg_processed);
 }
 
-int totemudpu_member_add (
+static int totemudpu_create_sending_socket(
 	void *udpu_context,
 	const struct totem_ip_address *member)
 {
 	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
-
-	struct totemudpu_member *new_member;
+	int fd;
 	int res;
 	unsigned int sendbuf_size;
 	unsigned int optlen = sizeof (sendbuf_size);
+	struct sockaddr_storage sockaddr;
+	int addrlen;
 
-	new_member = malloc (sizeof (struct totemudpu_member));
-	if (new_member == NULL) {
-		return (-1);
-	}
-	log_printf (LOGSYS_LEVEL_NOTICE, "adding new UDPU member {%s}",
-		totemip_print(member));
-	list_init (&new_member->list);
-	list_add_tail (&new_member->list, &instance->member_list);
-	memcpy (&new_member->member, member, sizeof (struct totem_ip_address));
-	new_member->fd = socket (member->family, SOCK_DGRAM, 0);
-	if (new_member->fd == -1) {
+	fd = socket (member->family, SOCK_DGRAM, 0);
+	if (fd == -1) {
 		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
 			"Could not create socket for new member");
 		return (-1);
 	}
-	totemip_nosigpipe (new_member->fd);
-	res = fcntl (new_member->fd, F_SETFL, O_NONBLOCK);
+	totemip_nosigpipe (fd);
+	res = fcntl (fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
 		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
 			"Could not set non-blocking operation on token socket");
@@ -1001,12 +1042,47 @@ int totemudpu_member_add (
  	 * should be large
  	 */
 	sendbuf_size = MCAST_SOCKET_BUFFER_SIZE;
-	res = setsockopt (new_member->fd, SOL_SOCKET, SO_SNDBUF,
+	res = setsockopt (fd, SOL_SOCKET, SO_SNDBUF,
 		&sendbuf_size, optlen);
 	if (res == -1) {
 		LOGSYS_PERROR (errno, instance->totemudpu_log_level_notice,
 			"Could not set sendbuf size");
 	}
+
+	/*
+	 * Bind to sending interface
+	 */
+	totemip_totemip_to_sockaddr_convert(&instance->my_id, 0, &sockaddr, &addrlen);
+	res = bind (fd, (struct sockaddr *)&sockaddr, addrlen);
+	if (res == -1) {
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
+			"bind token socket failed");
+		return (-1);
+	}
+
+	return (fd);
+
+}
+
+int totemudpu_member_add (
+	void *udpu_context,
+	const struct totem_ip_address *member)
+{
+	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
+
+	struct totemudpu_member *new_member;
+
+	new_member = malloc (sizeof (struct totemudpu_member));
+	if (new_member == NULL) {
+		return (-1);
+	}
+	log_printf (LOGSYS_LEVEL_NOTICE, "adding new UDPU member {%s}",
+		totemip_print(member));
+	list_init (&new_member->list);
+	list_add_tail (&new_member->list, &instance->member_list);
+	memcpy (&new_member->member, member, sizeof (struct totem_ip_address));
+	new_member->fd = totemudpu_create_sending_socket(udpu_context, member);
+
 	return (0);
 }
 
@@ -1057,5 +1133,31 @@ int totemudpu_member_remove (
 	}
 
 	instance = NULL;
+	return (0);
+}
+
+int totemudpu_member_list_rebind_ip (
+	void *udpu_context)
+{
+	struct list_head *list;
+	struct totemudpu_member *member;
+
+	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
+
+	for (list = instance->member_list.next;
+		list != &instance->member_list;
+		list = list->next) {
+
+		member = list_entry (list,
+			struct totemudpu_member,
+			list);
+
+		if (member->fd > 0) {
+			close (member->fd);
+		}
+
+		member->fd = totemudpu_create_sending_socket(udpu_context, &member->member);
+	}
+
 	return (0);
 }

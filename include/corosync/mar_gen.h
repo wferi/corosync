@@ -35,15 +35,13 @@
 #ifndef MAR_GEN_H_DEFINED
 #define MAR_GEN_H_DEFINED
 
-#ifndef COROSYNC_SOLARIS
 #include <stdint.h>
-#else
-#include <sys/types.h>
-#endif
 #include <string.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/swab.h>
+
+#define MAR_ALIGN_UP(addr,size) (((addr)+((size)-1))&(~((size)-1)))
 
 typedef int8_t mar_int8_t;
 typedef int16_t mar_int16_t;
@@ -93,6 +91,28 @@ static inline void swab_mar_uint32_t (mar_uint32_t *to_swab)
 static inline void swab_mar_uint64_t (mar_uint64_t *to_swab)
 {
 	*to_swab = swab64 (*to_swab);
+}
+
+static inline void swabbin(char *data, size_t len)
+{
+	int i;
+	char tmp;
+
+	for (i = 0; i < len / 2; i++) {
+		tmp = data[i];
+		data[i] = data[len - i - 1];
+		data[len - i - 1] = tmp;
+	}
+}
+
+static inline void swabflt(float *flt)
+{
+	swabbin((char *)flt, sizeof(*flt));
+}
+
+static inline void swabdbl(double *dbl)
+{
+	swabbin((char *)dbl, sizeof(*dbl));
 }
 
 typedef struct {

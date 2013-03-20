@@ -211,7 +211,7 @@ static void _cs_cmap_members_key_changed (
 	cs_error_t err;
 	int no_retries;
 
-	if (event != CMAP_TRACK_MODIFY) {
+	if (event != CMAP_TRACK_ADD && event != CMAP_TRACK_MODIFY) {
 		return ;
 	}
 
@@ -394,7 +394,14 @@ static void
 _cs_dbus_auto_flush(void)
 {
 	dbus_connection_ref(db);
-	dbus_connection_read_write(db, 500);
+	while (dbus_connection_get_dispatch_status(db) == DBUS_DISPATCH_DATA_REMAINS) {
+		dbus_connection_dispatch(db);
+	}
+
+	while (dbus_connection_has_messages_to_send(db)) {
+		dbus_connection_flush(db);
+	}
+
 	dbus_connection_unref(db);
 }
 
@@ -956,7 +963,7 @@ _cs_rrp_faulty_event(uint32_t iface_no, const char *state)
 	_cs_local_node_info_get(&nodename, &nodeid);
 
 	for (i = 0; i < num_notifiers; i++) {
-		if (notifiers[i].application_connection_fn) {
+		if (notifiers[i].rrp_faulty_fn) {
 			notifiers[i].rrp_faulty_fn(nodename, nodeid, iface_no, state);
 		}
 	}
@@ -998,7 +1005,7 @@ _cs_cmap_init(void)
 	}
 
 	rc = cmap_track_add(cmap_handle, "runtime.totem.pg.mrp.srp.members.",
-			CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
+			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
 			_cs_cmap_members_key_changed,
 			NULL,
 			&track_handle);

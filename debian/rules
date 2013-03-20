@@ -7,6 +7,9 @@ STAMPS_DIR = debian/stamps
 
 export COROSYNC_BUILD=$(if $(findstring debug,$(DEB_BUILD_OPTIONS)),DEBUG,RELEASE)
 
+# enable hardening
+export DEB_BUILD_HARDENING=1
+
 # needed for rdmacm and ibverbs
 export rdmacm_LIBS=-lrdmacm
 export rdmacm_CFLAGS="-I/usr/include/rdma"

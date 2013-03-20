@@ -74,7 +74,7 @@ static struct syslog_names prioritynames[] =
 	{ NULL, -1 }
 };
 
-#define MAX_FILES_PER_SUBSYS 16
+#define MAX_FILES_PER_SUBSYS 32
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
 #define IPC_LOGSYS_SIZE			8192*64
 #else
@@ -88,7 +88,7 @@ struct logsys_logger {
 	char subsys[LOGSYS_MAX_SUBSYS_NAMELEN];	/* subsystem name */
 	char *logfile;				/* log to file */
 	unsigned int mode;			/* subsystem mode */
-	unsigned int debug;			/* debug on|off */
+	unsigned int debug;			/* debug on|off|trace */
 	int syslog_priority;			/* priority */
 	int logfile_priority;			/* priority to file */
 	int init_status;			/* internal field to handle init queues
@@ -116,6 +116,8 @@ static void _logsys_subsys_filename_add (int32_t s, const char *filename);
 static void logsys_file_format_get(char* file_format, int buf_len);
 
 static char *format_buffer=NULL;
+
+static int logsys_thread_started = 0;
 
 static int _logsys_config_subsys_get_unlocked (const char *subsys)
 {
@@ -149,11 +151,14 @@ static int logsys_config_file_set_unlocked (
 	char file_format[128];
 
 	if (logsys_loggers[subsysid].target_id > 0) {
-		/* TODO close file
-		logsys_filter_apply(subsysid,
-				    QB_LOG_FILTER_REMOVE,
-				    logsys_loggers[subsysid].target_id);
-		*/
+		int32_t f;
+		for (f = 0; f < logsys_loggers[subsysid].file_idx; f++) {
+			qb_log_filter_ctl(logsys_loggers[subsysid].target_id,
+				QB_LOG_FILTER_REMOVE,
+				QB_LOG_FILTER_FILE,
+				logsys_loggers[subsysid].files[f],
+				LOG_TRACE);
+		}
 	}
 
 	logsys_loggers[subsysid].dirty = QB_TRUE;
@@ -164,7 +169,7 @@ static int logsys_config_file_set_unlocked (
 	if (strlen(file) >= PATH_MAX) {
 		snprintf (error_string_response,
 			sizeof(error_string_response),
-			"%s: logfile name exceed maximum system filename lenght\n",
+			"%s: logfile name exceed maximum system filename lenght",
 			logsys_loggers[subsysid].subsys);
 		*error_string = error_string_response;
 		return (-1);
@@ -185,15 +190,24 @@ static int logsys_config_file_set_unlocked (
 	if (logsys_loggers[subsysid].logfile == NULL) {
 		snprintf (error_string_response,
 			sizeof(error_string_response),
-			"Unable to allocate memory for logfile '%s'\n",
+			"Unable to allocate memory for logfile '%s'",
 			file);
 		*error_string = error_string_response;
 		return (-1);
 	}
 
 	if (logsys_loggers[subsysid].target_id > 0) {
-		/* no one else is using this close it */
-		qb_log_file_close(logsys_loggers[subsysid].target_id);
+		int num_using_current = 0;
+		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+			if (logsys_loggers[subsysid].target_id ==
+				logsys_loggers[i].target_id) {
+				num_using_current++;
+			}
+		}
+		if (num_using_current == 1) {
+			/* no one else is using this close it */
+			qb_log_file_close(logsys_loggers[subsysid].target_id);
+		}
 	}
 
 	logsys_loggers[subsysid].target_id = qb_log_file_open(file);
@@ -207,13 +221,21 @@ static int logsys_config_file_set_unlocked (
 		logsys_loggers[subsysid].logfile = NULL;
 		snprintf (error_string_response,
 			sizeof(error_string_response),
-			"Can't open logfile '%s' for reason: %s (%d).\n",
+			"Can't open logfile '%s' for reason: %s (%d)",
 			 file, error_ptr, err);
 		*error_string = error_string_response;
 		return (-1);
 	}
 	logsys_file_format_get(file_format, 128);
 	qb_log_format_set(logsys_loggers[subsysid].target_id, file_format);
+
+	qb_log_ctl(logsys_loggers[subsysid].target_id,
+		   QB_LOG_CONF_ENABLED,
+		   (logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_FILE));
+	if (logsys_thread_started) {
+		qb_log_ctl(logsys_loggers[subsysid].target_id, QB_LOG_CONF_THREADED, QB_TRUE);
+	}
+
 	return (0);
 }
 
@@ -282,12 +304,36 @@ int _logsys_system_setup(
 	/*
 	 * Setup libqb as a subsys
 	 */
-	i = _logsys_subsys_create ("QB", "loop");
-	_logsys_subsys_filename_add (i, "ipc");
-	_logsys_subsys_filename_add (i, "log");
+	i = _logsys_subsys_create ("QB", "array.c");
+	_logsys_subsys_filename_add (i, "log.c");
+	_logsys_subsys_filename_add (i, "log_syslog.c");
+	_logsys_subsys_filename_add (i, "log_blackbox.c");
+	_logsys_subsys_filename_add (i, "log_format.c");
+	_logsys_subsys_filename_add (i, "log_file.c");
+	_logsys_subsys_filename_add (i, "log_dcs.c");
+	_logsys_subsys_filename_add (i, "log_thread.c");
+	_logsys_subsys_filename_add (i, "ipc_shm.c");
+	_logsys_subsys_filename_add (i, "ipcs.c");
+	_logsys_subsys_filename_add (i, "ipc_us.c");
+	_logsys_subsys_filename_add (i, "loop.c");
+	_logsys_subsys_filename_add (i, "loop_poll_epoll.c");
+	_logsys_subsys_filename_add (i, "loop_job.c");
+	_logsys_subsys_filename_add (i, "loop_poll_poll.c");
+	_logsys_subsys_filename_add (i, "loop_poll_kqueue.c");
+	_logsys_subsys_filename_add (i, "loop_timerlist.c");
+	_logsys_subsys_filename_add (i, "loop_poll.c");
+	_logsys_subsys_filename_add (i, "ringbuffer.c");
+	_logsys_subsys_filename_add (i, "ringbuffer_helper.c");
 	_logsys_subsys_filename_add (i, "trie.c");
 	_logsys_subsys_filename_add (i, "map.c");
-	_logsys_subsys_filename_add (i, "ringbuffer");
+	_logsys_subsys_filename_add (i, "skiplist.c");
+	_logsys_subsys_filename_add (i, "rpl_sem.c");
+	_logsys_subsys_filename_add (i, "hdb.c");
+	_logsys_subsys_filename_add (i, "unix.c");
+	/*
+	 * name clash
+	 * _logsys_subsys_filename_add (i, "util.c");
+	 */
 
 	i = LOGSYS_MAX_SUBSYS_COUNT;
 
@@ -298,7 +344,7 @@ int _logsys_system_setup(
 		"%s", mainsystem);
 
 	logsys_loggers[i].mode = mode;
-	logsys_loggers[i].debug = 0;
+	logsys_loggers[i].debug = LOGSYS_DEBUG_OFF;
 	logsys_loggers[i].file_idx = 0;
 	logsys_loggers[i].logfile_priority = syslog_priority;
 	logsys_loggers[i].syslog_priority = syslog_priority;
@@ -574,8 +620,6 @@ int logsys_format_set (const char *format)
 		syslog_format[w] = format_buffer[c];
 		w++;
 	}
-//	printf("normal_format: %s\n", format_buffer);
-//	printf("syslog_format: %s\n", syslog_format);
 	qb_log_format_set(QB_LOG_SYSLOG, syslog_format);
 
 	return ret;
@@ -665,9 +709,19 @@ static void _logsys_config_apply_per_file(int32_t s, const char *filename)
 			QB_LOG_FILTER_FILE, filename, LOG_TRACE);
 	}
 
-	if (logsys_loggers[s].debug) {
-		syslog_priority = LOG_DEBUG;
-		logfile_priority = LOG_DEBUG;
+	if (logsys_loggers[s].debug != LOGSYS_DEBUG_OFF) {
+		switch (logsys_loggers[s].debug) {
+		case LOGSYS_DEBUG_ON:
+			syslog_priority = LOG_DEBUG;
+			logfile_priority = LOG_DEBUG;
+			break;
+		case LOGSYS_DEBUG_TRACE:
+			syslog_priority = LOG_TRACE;
+			logfile_priority = LOG_TRACE;
+			break;
+		default:
+			assert(0);
+		}
 	}
 	qb_log_filter_ctl(QB_LOG_SYSLOG, QB_LOG_FILTER_ADD,
 		QB_LOG_FILTER_FILE, filename,
@@ -688,6 +742,11 @@ static void _logsys_config_apply_per_subsys(int32_t s)
 	int32_t f;
 	for (f = 0; f < logsys_loggers[s].file_idx; f++) {
 		_logsys_config_apply_per_file(s, logsys_loggers[s].files[f]);
+	}
+	if (logsys_loggers[s].target_id > 0) {
+		qb_log_ctl(logsys_loggers[s].target_id,
+			QB_LOG_CONF_ENABLED,
+			(logsys_loggers[s].mode & LOGSYS_MODE_OUTPUT_FILE));
 	}
 	logsys_loggers[s].dirty = QB_FALSE;
 }
@@ -740,4 +799,26 @@ int logsys_priority_id_get (const char *name)
 		}
 	}
 	return (-1);
+}
+
+int logsys_thread_start (void)
+{
+	int i;
+	int err;
+
+	err = qb_log_thread_start();
+	if (err != 0) {
+		return (err);
+	}
+
+	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_THREADED, QB_TRUE);
+	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		if (logsys_loggers[i].target_id > 0) {
+			qb_log_ctl(logsys_loggers[i].target_id, QB_LOG_CONF_THREADED, QB_TRUE);
+		}
+	}
+
+	logsys_thread_started = 1;
+
+	return (0);
 }

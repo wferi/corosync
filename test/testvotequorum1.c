@@ -48,11 +48,14 @@ static votequorum_handle_t g_handle;
 static const char *node_state(int state)
 {
 	switch (state) {
-	case NODESTATE_MEMBER:
+	case VOTEQUORUM_NODESTATE_MEMBER:
 		return "Member";
 		break;
-	case NODESTATE_DEAD:
+	case VOTEQUORUM_NODESTATE_DEAD:
 		return "Dead";
+		break;
+	case VOTEQUORUM_NODESTATE_LEAVING:
+		return "Leaving";
 		break;
 	default:
 		return "UNKNOWN";
@@ -122,12 +125,12 @@ int main(int argc, char *argv[])
 		printf("total votes      %d\n", info.total_votes);
 		printf("quorum           %d\n", info.quorum);
 		printf("flags            ");
-		if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
-		if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
+		if (info.flags & VOTEQUORUM_INFO_TWONODE) printf("2Node ");
+		if (info.flags & VOTEQUORUM_INFO_QUORATE) printf("Quorate ");
 		if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
 		if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
 		if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
-		if (info.flags & VOTEQUORUM_INFO_LEAVE_REMOVE) printf("LeaveRemove ");
+		if (info.flags & VOTEQUORUM_INFO_ALLOW_DOWNSCALE) printf("AllowDownscale ");
 
 		printf("\n");
 	}
@@ -152,12 +155,12 @@ int main(int argc, char *argv[])
 			printf("total votes      %d\n", info.total_votes);
 			printf("votequorum           %d\n", info.quorum);
 			printf("flags            ");
-			if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
-			if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
+			if (info.flags & VOTEQUORUM_INFO_TWONODE) printf("2Node ");
+			if (info.flags & VOTEQUORUM_INFO_QUORATE) printf("Quorate ");
 			if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
 			if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
 			if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
-			if (info.flags & VOTEQUORUM_INFO_LEAVE_REMOVE) printf("LeaveRemove ");
+			if (info.flags & VOTEQUORUM_INFO_ALLOW_DOWNSCALE) printf("AllowDownscale ");
 			printf("\n");
 		}
 	}

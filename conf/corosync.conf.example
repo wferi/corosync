@@ -2,9 +2,10 @@
 totem {
 	version: 2
 
-	# cypto_cipher and crypto_hash: Used for mutual node authentication.
+	# crypto_cipher and crypto_hash: Used for mutual node authentication.
 	# If you choose to enable this, then do remember to create a shared
 	# secret with "corosync-keygen".
+	# enabling crypto_cipher, requires also enabling of crypto_hash.
 	crypto_cipher: none
 	crypto_hash: none
 
@@ -71,4 +72,10 @@ logging {
 		subsys: QUORUM
 		debug: off
 	}
+}
+
+quorum {
+	# Enable and configure quorum subsystem (default: off)
+	# see also corosync.conf.5 and votequorum.5
+	#provider: corosync_votequorum
 }

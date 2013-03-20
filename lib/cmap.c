@@ -39,6 +39,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <errno.h>
 
 #include <corosync/corotypes.h>
@@ -54,6 +55,7 @@
 #include <stdio.h>
 
 struct cmap_inst {
+	int finalize;
 	qb_ipcc_connection_t *c;
 	const void *context;
 };
@@ -65,7 +67,9 @@ struct cmap_track_inst {
 	cmap_track_handle_t track_handle;
 };
 
-DECLARE_HDB_DATABASE(cmap_handle_t_db,NULL);
+static void cmap_inst_free (void *inst);
+
+DECLARE_HDB_DATABASE(cmap_handle_t_db, cmap_inst_free);
 DECLARE_HDB_DATABASE(cmap_track_handle_t_db,NULL);
 
 /*
@@ -99,6 +103,7 @@ cs_error_t cmap_initialize (cmap_handle_t *handle)
 	}
 
 	error = CS_OK;
+	cmap_inst->finalize = 0;
 	cmap_inst->c = qb_ipcc_connect("cmap", IPC_REQUEST_SIZE);
 	if (cmap_inst->c == NULL) {
 		error = qb_to_cs_error(-errno);
@@ -117,6 +122,12 @@ error_no_destroy:
 	return (error);
 }
 
+static void cmap_inst_free (void *inst)
+{
+	struct cmap_inst *cmap_inst = (struct cmap_inst *)inst;
+	qb_ipcc_disconnect(cmap_inst->c);
+}
+
 cs_error_t cmap_finalize(cmap_handle_t handle)
 {
 	struct cmap_inst *cmap_inst;
@@ -129,7 +140,11 @@ cs_error_t cmap_finalize(cmap_handle_t handle)
 		return (error);
 	}
 
-	qb_ipcc_disconnect(cmap_inst->c);
+	if (cmap_inst->finalize) {
+		(void)hdb_handle_put (&cmap_handle_t_db, handle);
+		return (CS_ERR_BAD_HANDLE);
+	}
+	cmap_inst->finalize = 1;
 
 	/*
 	 * Destroy all track instances for given connection
@@ -270,6 +285,13 @@ cs_error_t cmap_dispatch (
 			goto error_put;
 			break;
 		}
+		if (cmap_inst->finalize) {
+			/*
+			 * If the finalize has been called then get out of the dispatch.
+			 */
+			error = CS_ERR_BAD_HANDLE;
+			goto error_put;
+		}
 
 		/*
 		 * Determine if more messages should be processed
@@ -336,8 +358,12 @@ cs_error_t cmap_set (
 	struct req_lib_cmap_set req_lib_cmap_set;
 	struct res_lib_cmap_set res_lib_cmap_set;
 
-	if (key_name == NULL) {
+	if (key_name == NULL || value == NULL) {
 		return (CS_ERR_INVALID_PARAM);
+	}
+
+	if (strlen(key_name) >= CS_MAX_NAME_LENGTH) {
+		return (CS_ERR_NAME_TOO_LONG);
 	}
 
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
@@ -447,6 +473,9 @@ cs_error_t cmap_delete(cmap_handle_t handle, const char *key_name)
 	if (key_name == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
+	if (strlen(key_name) >= CS_MAX_NAME_LENGTH) {
+		return (CS_ERR_NAME_TOO_LONG);
+	}
 
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
 	if (error != CS_OK) {
@@ -494,6 +523,13 @@ cs_error_t cmap_get(
 	size_t res_size;
 
 	if (key_name == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+	if (strlen(key_name) >= CS_MAX_NAME_LENGTH) {
+		return (CS_ERR_NAME_TOO_LONG);
+	}
+
+	if (value != NULL && value_len == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
@@ -545,7 +581,7 @@ cs_error_t cmap_get(
 			*value_len = res_lib_cmap_get->value_len;
 		}
 
-		if (value != NULL) {
+		if (value != NULL && value_len != NULL) {
 			memcpy(value, res_lib_cmap_get->value, res_lib_cmap_get->value_len);
 		}
 	}
@@ -693,6 +729,9 @@ static cs_error_t cmap_adjust_int(cmap_handle_t handle, const char *key_name, in
 	if (key_name == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
+	if (strlen(key_name) >= CS_MAX_NAME_LENGTH) {
+		return (CS_ERR_NAME_TOO_LONG);
+	}
 
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
 	if (error != CS_OK) {
@@ -750,6 +789,10 @@ cs_error_t cmap_iter_init(
 	struct req_lib_cmap_iter_init req_lib_cmap_iter_init;
 	struct res_lib_cmap_iter_init res_lib_cmap_iter_init;
 
+	if (cmap_iter_handle == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
 	if (error != CS_OK) {
 		return (error);
@@ -760,6 +803,9 @@ cs_error_t cmap_iter_init(
 	req_lib_cmap_iter_init.header.id = MESSAGE_REQ_CMAP_ITER_INIT;
 
 	if (prefix) {
+		if (strlen(prefix) >= CS_MAX_NAME_LENGTH) {
+			return (CS_ERR_NAME_TOO_LONG);
+		}
 		memcpy(req_lib_cmap_iter_init.prefix.value, prefix, strlen(prefix));
 		req_lib_cmap_iter_init.prefix.length = strlen(prefix);
 	}
@@ -799,6 +845,10 @@ cs_error_t cmap_iter_next(
 	struct cmap_inst *cmap_inst;
 	struct req_lib_cmap_iter_next req_lib_cmap_iter_next;
 	struct res_lib_cmap_iter_next res_lib_cmap_iter_next;
+
+	if (key_name == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
 
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
 	if (error != CS_OK) {
@@ -896,6 +946,10 @@ cs_error_t cmap_track_add(
 	struct cmap_track_inst *cmap_track_inst;
 	cmap_track_handle_t cmap_track_inst_handle;
 
+	if (cmap_track_handle == NULL || notify_fn == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
 	if (error != CS_OK) {
 		return (error);
@@ -922,6 +976,9 @@ cs_error_t cmap_track_add(
 	req_lib_cmap_track_add.header.id = MESSAGE_REQ_CMAP_TRACK_ADD;
 
 	if (key_name) {
+		if (strlen(key_name) >= CS_MAX_NAME_LENGTH) {
+			return (CS_ERR_NAME_TOO_LONG);
+		}
 		memcpy(req_lib_cmap_track_add.key_name.value, key_name, strlen(key_name));
 		req_lib_cmap_track_add.key_name.length = strlen(key_name);
 	}

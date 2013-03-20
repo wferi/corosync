@@ -42,29 +42,35 @@
 #include <corosync/corotypes.h>
 #include <corosync/votequorum.h>
 
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 static votequorum_handle_t handle;
 
 static void print_info(int ok_to_fail)
 {
-	struct votequorum_qdevice_info qinfo;
+	struct votequorum_info info;
 	int err;
 
-	if ( (err=votequorum_qdevice_getinfo(handle, VOTEQUORUM_NODEID_QDEVICE, &qinfo)) != CS_OK)
-		fprintf(stderr, "votequorum_qdevice_getinfo error %d: %s\n", err, ok_to_fail?"OK":"FAILED");
+	if ( (err=votequorum_getinfo(handle, VOTEQUORUM_QDEVICE_NODEID, &info)) != CS_OK)
+		fprintf(stderr, "votequorum_getinfo error %d: %s\n", err, ok_to_fail?"OK":"FAILED");
 	else {
-		printf("qdevice votes  %d\n", qinfo.votes);
-		printf("state        %d\n", qinfo.state);
-		printf("name         %s\n", qinfo.name);
+		printf("name           %s\n", info.qdevice_name);
+		printf("qdevice votes  %d\n", info.qdevice_votes);
+		if (info.flags & VOTEQUORUM_INFO_QDEVICE_ALIVE) {
+			printf("alive\n");
+		}
+		if (info.flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE) {
+			printf("cast vote\n");
+		}
+		if (info.flags & VOTEQUORUM_INFO_QDEVICE_MASTER_WINS) {
+			printf("master wins\n");
+		}
 		printf("\n");
 	}
 }
-#endif
 
 int main(int argc, char *argv[])
 {
 	int ret = 0;
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
+	int cast_vote = 1, master_wins = 1;
 	int pollcount=0, polltime=1;
 	int err;
 
@@ -81,6 +87,12 @@ int main(int argc, char *argv[])
 	if (argc >= 3 && atoi(argv[2])) {
 		polltime = atoi(argv[2]);
 	}
+	if (argc >= 4) {
+		cast_vote = atoi(argv[3]);
+	}
+	if (argc >= 5) {
+		master_wins = atoi(argv[4]);
+	}
 
 	if (argc >= 2) {
 		if ( (err=votequorum_qdevice_register(handle, "QDEVICE")) != CS_OK) {
@@ -89,9 +101,15 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 
+		if ( (err=votequorum_qdevice_master_wins(handle, "QDEVICE", master_wins)) != CS_OK) {
+			fprintf(stderr, "qdevice_master_wins FAILED: %d\n", err);
+			ret = -1;
+			goto out;
+		}
+
 		while (pollcount--) {
 			print_info(0);
-			if ((err=votequorum_qdevice_poll(handle, "QDEVICE", 1)) != CS_OK) {
+			if ((err=votequorum_qdevice_poll(handle, "QDEVICE", cast_vote)) != CS_OK) {
 				fprintf(stderr, "qdevice poll FAILED: %d\n", err);
 				ret = -1;
 				goto out;
@@ -109,8 +127,5 @@ int main(int argc, char *argv[])
 
 out:
 	votequorum_finalize(handle);
-#else
-	fprintf(stderr, "qdevice support is not built in corosync/votequorum\n");
-#endif
 	return ret;
 }

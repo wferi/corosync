@@ -90,7 +90,8 @@ enum main_cp_cb_data_state {
 	MAIN_CP_CB_DATA_STATE_QDEVICE,
 	MAIN_CP_CB_DATA_STATE_NODELIST,
 	MAIN_CP_CB_DATA_STATE_NODELIST_NODE,
-	MAIN_CP_CB_DATA_STATE_PLOAD
+	MAIN_CP_CB_DATA_STATE_PLOAD,
+	MAIN_CP_CB_DATA_STATE_QB
 };
 
 struct key_value_list_item {
@@ -357,6 +358,29 @@ static int safe_atoi(const char *str, int *res)
 	return (0);
 }
 
+static int str_to_ull(const char *str, unsigned long long int *res)
+{
+	unsigned long long int val;
+	char *endptr;
+
+	errno = 0;
+
+	val = strtoull(str, &endptr, 10);
+	if (errno == ERANGE) {
+		return (-1);
+	}
+
+	if (endptr == str) {
+		return (-1);
+	}
+
+	if (*endptr != '\0') {
+		return (-1);
+	}
+
+	*res = val;
+	return (0);
+}
 
 static int main_config_parser_cb(const char *path,
 			char *key,
@@ -366,6 +390,7 @@ static int main_config_parser_cb(const char *path,
 			void *user_data)
 {
 	int i;
+	unsigned long long int ull;
 	int add_as_string;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 	static char formated_err[256];
@@ -430,6 +455,13 @@ static int main_config_parser_cb(const char *path,
 				icmap_set_uint32(path, i);
 				add_as_string = 0;
 			}
+			if ((strcmp(path, "quorum.device.master_wins") == 0)) {
+				if (safe_atoi(value, &i) != 0) {
+					goto atoi_error;
+				}
+				icmap_set_uint8(path, i);
+				add_as_string = 0;
+			}
 		case MAIN_CP_CB_DATA_STATE_TOTEM:
 			if ((strcmp(path, "totem.version") == 0) ||
 			    (strcmp(path, "totem.nodeid") == 0) ||
@@ -462,9 +494,27 @@ static int main_config_parser_cb(const char *path,
 				icmap_set_uint32(path, i);
 				add_as_string = 0;
 			}
+			if (strcmp(path, "totem.config_version") == 0) {
+				if (str_to_ull(value, &ull) != 0) {
+					goto atoi_error;
+				}
+				icmap_set_uint64(path, ull);
+				add_as_string = 0;
+			}
+			if (strcmp(path, "totem.ip_version") == 0) {
+				if ((strcmp(value, "ipv4") != 0) &&
+				    (strcmp(value, "ipv6") != 0)) {
+					*error_string = "Invalid ip_version type";
+
+					return (0);
+				}
+			}
 			if (strcmp(path, "totem.crypto_type") == 0) {
 				if ((strcmp(value, "nss") != 0) &&
-				    (strcmp(value, "aes256") != 0)) {
+				    (strcmp(value, "aes256") != 0) &&
+				    (strcmp(value, "aes192") != 0) &&
+				    (strcmp(value, "aes128") != 0) &&
+				    (strcmp(value, "3des") != 0)) {
 					*error_string = "Invalid crypto type";
 
 					return (0);
@@ -472,7 +522,10 @@ static int main_config_parser_cb(const char *path,
 			}
 			if (strcmp(path, "totem.crypto_cipher") == 0) {
 				if ((strcmp(value, "none") != 0) &&
-				    (strcmp(value, "aes256") != 0)) {
+				    (strcmp(value, "aes256") != 0) &&
+				    (strcmp(value, "aes192") != 0) &&
+				    (strcmp(value, "aes128") != 0) &&
+				    (strcmp(value, "3des") != 0)) {
 					*error_string = "Invalid cipher type";
 
 					return (0);
@@ -486,6 +539,18 @@ static int main_config_parser_cb(const char *path,
 				    (strcmp(value, "sha384") != 0) &&
 				    (strcmp(value, "sha512") != 0)) {
 					*error_string = "Invalid hash type";
+
+					return (0);
+				}
+			}
+			break;
+
+		case MAIN_CP_CB_DATA_STATE_QB:
+			if (strcmp(path, "qb.ipc_type") == 0) {
+				if ((strcmp(value, "native") != 0) &&
+				    (strcmp(value, "shm") != 0) &&
+				    (strcmp(value, "socket") != 0)) {
+					*error_string = "Invalid qb ipc_type";
 
 					return (0);
 				}
@@ -698,7 +763,9 @@ static int main_config_parser_cb(const char *path,
 		if (strcmp(path, "totem") == 0) {
 			data->state = MAIN_CP_CB_DATA_STATE_TOTEM;
 		};
-
+		if (strcmp(path, "qb") == 0) {
+			data->state = MAIN_CP_CB_DATA_STATE_QB;
+		}
 		if (strcmp(path, "logging.logger_subsys") == 0) {
 			data->state = MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS;
 			list_init(&data->logger_subsys_items_head);
@@ -801,6 +868,9 @@ static int main_config_parser_cb(const char *path,
 			data->state = MAIN_CP_CB_DATA_STATE_TOTEM;
 			break;
 		case MAIN_CP_CB_DATA_STATE_TOTEM:
+			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
+			break;
+		case MAIN_CP_CB_DATA_STATE_QB:
 			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS:
@@ -966,7 +1036,7 @@ static int uidgid_config_parser_cb(const char *path,
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.uid.%u",
 					uid);
 			icmap_set_uint8(key_name, 1);
-		} else if (strcmp(key, "uidgid.gid") == 0) {
+		} else if (strcmp(path, "uidgid.gid") == 0) {
 			gid = gid_determine(value);
 			if (gid == -1) {
 				*error_string = error_string_response;
@@ -1014,7 +1084,7 @@ static int read_uidgid_files_into_icmap(
 	if (dp == NULL)
 		return 0;
 
-	len = offsetof(struct dirent, d_name) + NAME_MAX + 1;
+	len = offsetof(struct dirent, d_name) + FILENAME_MAX + 1;
 
 	entry = malloc(len);
 	if (entry == NULL) {

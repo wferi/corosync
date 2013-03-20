@@ -111,7 +111,7 @@
 
 #include "quorum.h"
 #include "totemsrp.h"
-#include "mainconfig.h"
+#include "logconfig.h"
 #include "totemconfig.h"
 #include "main.h"
 #include "sync.h"
@@ -154,6 +154,8 @@ static corosync_timer_handle_t corosync_stats_timer_handle;
 
 static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
 
+static int ip_version = AF_INET;
+
 qb_loop_t *cs_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
@@ -181,17 +183,40 @@ void corosync_state_dump (void)
 {
 	int i;
 
-	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
+	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
 		if (corosync_service[i] && corosync_service[i]->exec_dump_fn) {
 			corosync_service[i]->exec_dump_fn ();
 		}
 	}
 }
 
+static void corosync_blackbox_write_to_file (void)
+{
+	char fname[PATH_MAX];
+	char time_str[PATH_MAX];
+	struct tm cur_time_tm;
+	time_t cur_time_t;
+
+	cur_time_t = time(NULL);
+	localtime_r(&cur_time_t, &cur_time_tm);
+
+	strftime(time_str, PATH_MAX, "%Y-%m-%dT%H:%M:%S", &cur_time_tm);
+	snprintf(fname, PATH_MAX, "%s/fdata-%s-%lld",
+	    LOCALSTATEDIR "/lib/corosync",
+	    time_str,
+	    (long long int)getpid());
+
+	qb_log_blackbox_write_to_file(fname);
+
+	unlink(LOCALSTATEDIR "/lib/corosync/fdata");
+	symlink(fname, LOCALSTATEDIR "/lib/corosync/fdata");
+}
+
 static void unlink_all_completed (void)
 {
 	api->timer_delete (corosync_stats_timer_handle);
 	qb_loop_stop (corosync_poll_handle);
+	icmap_fini();
 }
 
 void corosync_shutdown_request (void)
@@ -202,7 +227,6 @@ void corosync_shutdown_request (void)
 static int32_t sig_diag_handler (int num, void *data)
 {
 	corosync_state_dump ();
-	qb_log_blackbox_write_to_file(LOCALSTATEDIR "/lib/corosync/fdata");
 	return 0;
 }
 
@@ -215,7 +239,7 @@ static int32_t sig_exit_handler (int num, void *data)
 static void sigsegv_handler (int num)
 {
 	(void)signal (SIGSEGV, SIG_DFL);
-	qb_log_blackbox_write_to_file(LOCALSTATEDIR "/lib/corosync/fdata");
+	corosync_blackbox_write_to_file ();
 	qb_log_fini();
 	raise (SIGSEGV);
 }
@@ -223,7 +247,7 @@ static void sigsegv_handler (int num)
 static void sigabrt_handler (int num)
 {
 	(void)signal (SIGABRT, SIG_DFL);
-	qb_log_blackbox_write_to_file(LOCALSTATEDIR "/lib/corosync/fdata");
+	corosync_blackbox_write_to_file ();
 	qb_log_fini();
 	raise (SIGABRT);
 }
@@ -252,6 +276,11 @@ static void corosync_sync_completed (void)
 	sync_in_process = 0;
 
 	cs_ipcs_sync_state_changed(sync_in_process);
+	cs_ipc_allow_connections(1);
+	/*
+	 * Inform totem to start using new message queue again
+	 */
+	totempg_trans_ack();
 }
 
 static int corosync_sync_callbacks_retrieve (
@@ -260,6 +289,10 @@ static int corosync_sync_callbacks_retrieve (
 {
 	if (corosync_service[service_id] == NULL) {
 		return (-1);
+	}
+
+	if (callbacks == NULL) {
+		return (0);
 	}
 
 	callbacks->name = corosync_service[service_id]->name;
@@ -406,31 +439,23 @@ static void corosync_tty_detach (void)
 
 static void corosync_mlockall (void)
 {
-#if !defined(COROSYNC_BSD) || defined(COROSYNC_FREEBSD_GE_8)
 	int res;
-#endif
 	struct rlimit rlimit;
 
 	rlimit.rlim_cur = RLIM_INFINITY;
 	rlimit.rlim_max = RLIM_INFINITY;
-#ifndef COROSYNC_SOLARIS
-	setrlimit (RLIMIT_MEMLOCK, &rlimit);
-#else
-	setrlimit (RLIMIT_VMEM, &rlimit);
+
+#ifndef RLIMIT_MEMLOCK
+#define RLIMIT_MEMLOCK RLIMIT_VMEM
 #endif
 
-#if defined(COROSYNC_BSD) && !defined(COROSYNC_FREEBSD_GE_8)
-	/* under FreeBSD < 8 a process with locked page cannot call dlopen
-	 * code disabled until FreeBSD bug i386/93396 was solved
-	 */
-	log_printf (LOGSYS_LEVEL_WARNING, "Could not lock memory of service to avoid page faults");
-#else
+	setrlimit (RLIMIT_MEMLOCK, &rlimit);
+
 	res = mlockall (MCL_CURRENT | MCL_FUTURE);
 	if (res == -1) {
 		LOGSYS_PERROR (errno, LOGSYS_LEVEL_WARNING,
 			"Could not lock memory of service to avoid page faults");
 	};
-#endif
 }
 
 
@@ -472,8 +497,23 @@ static void corosync_totem_stats_updater (void *data)
 	icmap_set_uint64("runtime.totem.pg.mrp.srp.consensus_timeouts", stats->mrp->srp->consensus_timeouts);
 	icmap_set_uint64("runtime.totem.pg.mrp.srp.rx_msg_dropped", stats->mrp->srp->rx_msg_dropped);
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.continuous_gather", stats->mrp->srp->continuous_gather);
+	icmap_set_uint32("runtime.totem.pg.mrp.srp.continuous_sendmsg_failures",
+	    stats->mrp->srp->continuous_sendmsg_failures);
+
 	icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure",
 		stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
+
+	if (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ||
+	    stats->mrp->srp->continuous_sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
+		log_printf (LOGSYS_LEVEL_WARNING,
+			"Totem is unable to form a cluster because of an "
+			"operating system or network fault. The most common "
+			"cause of this message is that the local firewall is "
+			"configured improperly.");
+		icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure", 1);
+	} else {
+		icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure", 0);
+	}
 
 	for (i = 0; i < stats->mrp->srp->rrp->interface_count; i++) {
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.rrp.%u.faulty", i);
@@ -554,7 +594,7 @@ static void totem_dynamic_notify(
 	if (remove_old_member) {
 		log_printf(LOGSYS_LEVEL_DEBUG,
 			"removing dynamic member %s for ring %u", (char *)old_val.data, ring_no);
-		if (totemip_parse(&member, (char *)old_val.data, 0) == 0) {
+		if (totemip_parse(&member, (char *)old_val.data, ip_version) == 0) {
 			totempg_member_remove (&member, ring_no);
 		}
 	}
@@ -562,7 +602,7 @@ static void totem_dynamic_notify(
 	if (add_new_member) {
 		log_printf(LOGSYS_LEVEL_DEBUG,
 			"adding dynamic member %s for ring %u", (char *)new_val.data, ring_no);
-		if (totemip_parse(&member, (char *)new_val.data, 0) == 0) {
+		if (totemip_parse(&member, (char *)new_val.data, ip_version) == 0) {
 			totempg_member_add (&member, ring_no);
 		}
 	}
@@ -825,7 +865,7 @@ static void fplay_key_change_notify_fn (
 {
 	if (strcmp(key_name, "runtime.blackbox.dump_flight_data") == 0) {
 		fprintf(stderr,"Writetofile\n");
-		qb_log_blackbox_write_to_file (LOCALSTATEDIR "/lib/corosync/fdata");
+		corosync_blackbox_write_to_file ();
 	}
 	if (strcmp(key_name, "runtime.blackbox.dump_state") == 0) {
 		fprintf(stderr,"statefump\n");
@@ -874,8 +914,10 @@ static void set_icmap_ro_keys_flag (void)
 	icmap_set_ro_access("totem.crypto_cipher", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.crypto_hash", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.secauth", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.ip_version", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.rrp_mode", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.netmtu", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("qb.ipc_type", CS_FALSE, CS_TRUE);
 }
 
 static void main_service_ready (void)
@@ -1042,19 +1084,9 @@ int main (int argc, char **argv, char **envp)
 
 	corosync_mlockall ();
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
-	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
-
-	corosync_poll_handle = qb_loop_create ();
-
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_LOW,
-		SIGUSR2, NULL, sig_diag_handler, NULL);
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGINT, NULL, sig_exit_handler, NULL);
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGQUIT, NULL, sig_exit_handler, NULL);
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGTERM, NULL, sig_exit_handler, NULL);
+	/*
+	 * Other signals are registered later via qb_loop_signal_add
+	 */
 	(void)signal (SIGSEGV, sigsegv_handler);
 	(void)signal (SIGABRT, sigabrt_handler);
 #if MSG_NOSIGNAL != 0
@@ -1078,7 +1110,7 @@ int main (int argc, char **argv, char **envp)
 		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
-	res = corosync_main_config_read (&error_string);
+	res = corosync_log_config_read (&error_string);
 	if (res == -1) {
 		/*
 		 * if we are here, we _must_ flush the logsys queue
@@ -1090,8 +1122,11 @@ int main (int argc, char **argv, char **envp)
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		fprintf(stderr, "%s", error_string);
 		syslog (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
+		corosync_exit_error (COROSYNC_DONE_LOGCONFIGREAD);
 	}
+
+	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
+	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
 
 	/*
 	 * Make sure required directory is present
@@ -1137,6 +1172,8 @@ int main (int argc, char **argv, char **envp)
 		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
+	ip_version = totem_config.ip_version;
+
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem");
 	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
@@ -1144,6 +1181,7 @@ int main (int argc, char **argv, char **envp)
 	totem_config.totem_logging_configuration.log_level_warning = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_notice = LOGSYS_LEVEL_NOTICE;
 	totem_config.totem_logging_configuration.log_level_debug = LOGSYS_LEVEL_DEBUG;
+	totem_config.totem_logging_configuration.log_level_trace = LOGSYS_LEVEL_TRACE;
 	totem_config.totem_logging_configuration.log_printf = _logsys_log_printf;
 	logsys_config_apply();
 
@@ -1153,7 +1191,22 @@ int main (int argc, char **argv, char **envp)
 	if (background) {
 		corosync_tty_detach ();
 	}
-	qb_log_thread_start();
+
+	corosync_poll_handle = qb_loop_create ();
+
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_LOW,
+		SIGUSR2, NULL, sig_diag_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGINT, NULL, sig_exit_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGQUIT, NULL, sig_exit_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGTERM, NULL, sig_exit_handler, NULL);
+
+	if (logsys_thread_start() != 0) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Can't initialize log thread");
+		corosync_exit_error (COROSYNC_DONE_LOGCONFIGREAD);
+	}
 
 	if ((flock_err = corosync_flock (corosync_lock_file, getpid ())) != COROSYNC_DONE_EXIT) {
 		corosync_exit_error (flock_err);

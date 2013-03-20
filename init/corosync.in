@@ -1,26 +1,27 @@
-#!/bin/bash
+#!@BASHPATH@
 
 # Authors:
-#  Angus Salkeld <asalkeld@redhat.com>
+#  Andrew Beekhof <abeekhof@redhat.com>
+#  Fabio M. Di Nitto <fdinitto@redhat.com>
 #
 # License: Revised BSD
 
-# chkconfig: - 23 77
-# description: Corosync Dbus and snmp notifier
-# processname: corosync-notifyd
+# chkconfig: - 20 80
+# description: Corosync Cluster Engine
+# processname: corosync
 #
 ### BEGIN INIT INFO
-# Provides:		corosync-notifyd
-# Required-Start:	$corosync $cman
-# Required-Stop:	$corosync $cman
+# Provides:		corosync
+# Required-Start:	$network $syslog
+# Required-Stop:	$network $syslog
 # Default-Start:
 # Default-Stop:
-# Short-Description:	Starts and stops Corosync Notifier.
-# Description:		Starts and stops Corosync Notifier.
+# Short-Description:	Starts and stops Corosync Cluster Engine.
+# Description:		Starts and stops Corosync Cluster Engine.
 ### END INIT INFO
 
-desc="Corosync Notifier"
-prog="corosync-notifyd"
+desc="Corosync Cluster Engine"
+prog="corosync"
 
 # set secure PATH
 PATH="/sbin:/bin:/usr/sbin:/usr/bin:@SBINDIR@"
@@ -69,9 +70,36 @@ __pids_pidof() {
                 pidof -c -o $$ -o $PPID -o %PPID "${1##*/}"
 }
 
+cluster_disabled_at_boot()
+{
+       if grep -q nocluster /proc/cmdline && \
+          [ "$(tty)" = "/dev/console" ]; then
+               echo -e "not configured to run at boot"
+               failure
+               return 1
+       fi
+       return 0
+}
+
+wait_for_ipc()
+{
+	try=0
+	while [ "$try" -le "20" ]; do
+		if corosync-cfgtool -s > /dev/null 2>&1; then
+			return 0
+		fi
+		sleep 0.5
+		try=$((try + 1))
+	done
+
+	return 1
+}
+
 start()
 {
 	echo -n "Starting $desc ($prog): "
+
+	! cluster_disabled_at_boot && return
 
 	# most recent distributions use tmpfs for @LOCALSTATEDIR@/run
 	# to avoid to clean it up on every boot.
@@ -82,17 +110,14 @@ start()
 	if status $prog > /dev/null 2>&1; then
 		success
 	else
-		$prog $OPTIONS > /dev/null 2>&1
+		$prog > /dev/null 2>&1
 
-		# give it time to fail
-		sleep 2
-		if status $prog > /dev/null 2>&1; then
-			touch $LOCK_FILE
-			success
-		else
+		if ! wait_for_ipc; then
 			failure
 			rtrn=1
 		fi
+		touch $LOCK_FILE
+		success
 	fi
 	echo
 }

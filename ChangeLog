@@ -1,3 +1,1524 @@
+2013-01-14  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	crypto config: update man pages and examples
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	totemconfig: enforce hmac config when crypto is enabled
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2013-01-14  Kazunori INOUE  <inouekazu@intellilink.co.jp>
+
+	log: move Corosync started log messages
+	"Corosync Cluster Engine ... started" message is shown after
+	logsys is full configured.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2013-01-14  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	crypto: drop < 2.3 protocols and onwire compat
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	totemcrypto: fix hmac key initialization
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-12-12  Jan Friesse  <jfriesse@redhat.com>
+
+	Move qb_loop creation after daemonization
+	Creating qb_loop before daemonization is not problem for poll or epoll
+	type loops, but it's problem for kqueue, because kqueue is not shared
+	in child with parent after fork.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-12-06  Jan Friesse  <jfriesse@redhat.com>
+
+	cmap: Handle NULL params in few more functions
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-12-03  Jan Friesse  <jfriesse@redhat.com>
+
+	Add option to specify ip version
+	Default is ipv4.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-11-22  Jan Friesse  <jfriesse@redhat.com>
+
+	Add waiting_trans_ack also to fragmentation layer
+	Patch for support waiting_trans_ack may fail if there is synchronization
+	happening between delivery of fragmented message. In such situation,
+	fragmentation layer is waiting for message with correct number, but it
+	will never arrive.
+
+	Solution is to handle (callback) change of waiting_trans_ack and use
+	different queue.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Handle segfault in backlog_get
+	If instance->memb_state is not OPERATION or RECOVERY, we was passing NULL
+	to cs_queue_used call.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-11-22  Steven Dake  <sdake@redhat.com>
+
+	Fix problem with sync operations under very rare circumstances
+	This patch creates a special message queue for synchronization messages.
+	This prevents a situation in which messages are queued in the
+	new_message_queue but have not yet been originated from corrupting the
+	synchronization process.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-11-22  Jan Friesse  <jfriesse@redhat.com>
+
+	Fix handling of NULL parameters in cmap
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-11-22  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	totemcrypto: implement crypto packet format 2.2 and crypto_compat: config opt
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Update .gitignore files
+	 Untracked files:
+	   (use "git add <file>..." to include in what will be committed)
+
+	       compile
+	       init/corosync
+	       init/corosync-notifyd
+	       test/ploadstart
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-11-21  Evgeny Barskiy  <barskiy@rts.ru>
+
+	corosync to start in infiniband + redundant ring active/passive mode
+	Corosync now works with infiniband transport in any redundant ring mode
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-11-20  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	votequorum: fix handling of expected_votes/votes changes from cmapctl
+	and allow natural selection to take place....
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	quorum-tool: use option to generate machine parsable output
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-11-08  Jan Friesse  <jfriesse@redhat.com>
+
+	Add support for selecting IPC type
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Check successful initialization of IPC
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-11-07  Jan Friesse  <jfriesse@redhat.com>
+
+	Enahnce manpages a little bit
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-11-07  Angus Salkeld  <asalkeld@redhat.com>
+
+	Try reduce the number of sprintf's
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Override the link_all_deplibs=no in ubuntu
+	but allow the user to disable this.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-11-06  Jan Friesse  <jfriesse@gmail.com>
+
+	Merge pull request #2 from dfcluster/master
+	Update corosync man page
+
+2012-11-05  Jan Friesse  <jfriesse@redhat.com>
+
+	If failed_to_recv is set, consensus can be empty
+	If failed_to_recv is set (node detect itself not able to receive
+	message), we can end up with assert, because my_failed_list and
+	my_member_list are same list. This is happening because we are not
+	following specification and we allow to mark node itself as failed.
+	Because if failed_to_recv is set and we reached consensus across nodes,
+	single node membership is created (ignoring both fail list and
+	member_list), we can skip assert.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-11-05  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	quorumtool: add local nodeid to global quorum info section
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	quorumtool: add (local) next to the nodename when displaying node data
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	quorumtool: change default command from -h to -s
+	default run will show status instead of help text
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-10-30  dfcluster  <df.cluster@gmail.com>
+
+	Update man/corosync.conf.5
+
+2012-10-29  Jacek Konieczny  <jajcus@jajcus.net>
+
+	link libtotem_pg to libqb
+	The libtotem_pg library uses symbols from libqb, so it should be
+	explicitely linked with it. This doesn't cause problems for corosync
+	binary itself, as it is linked to both libraries, but can cause
+	problems if anything else links to libtotem_pg.so and automated
+	checkers can show this as a library problem.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Fix dbus configuration install
+	The corosync-signals.conf DBus configuration file was not
+	installed even if DBus support was enabled because of a configure
+	test error.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-10-17  Jan Friesse  <jfriesse@redhat.com>
+
+	Correctly check if service was unloaded
+	my_processing_idx is pointer to received service list, instead of global
+	service number. If we check state of service we should use service_id
+	instead of my_processing_idx.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Define AES_*_KEY_LENGTH if not defined
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-10-16  Andreas Gruninger  <Andreas.Grueninger@lgl.bwl.de>
+
+	Missing space in man/Makefile.am
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-10-15  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	totemcrypto: add support for different encryption methods
+	(backport from nsscrypto kronosnet code)
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-10-11  Jan Friesse  <jfriesse@redhat.com>
+
+	Change specfile URL and Source
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Document config_version option
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-10-10  Jan Friesse  <jfriesse@redhat.com>
+
+	Use systemd-rpm macros in specfile
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-10-09  Jan Friesse  <jfriesse@redhat.com>
+
+	Enhance spec file
+	Weird construct buildtrunk is gone. Instead of that, we use bcond
+	feature. Also buildtrunk is renamed to runautogen, because SVN era is
+	gone.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-10-08  Jan Friesse  <jfriesse@redhat.com>
+
+	Make totemiba compile again
+
+	Return back "Totem is unable to form..." message
+	This patch returns back SUBJ functionality. It rely on fact, that
+	sendmsg will return error, and if such error is returned for long time,
+	it's probably because of firewall.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Move "Totem is unable to form..." message to main
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Use unix socket for local multicast loop
+	Instead of rely on multicast loop functionality of kernel, we now use
+	unix socket created by socketpair to deliver multicast messages to
+	local node. This handles problems with improperly configured local
+	firewall. So if output/input to/from ethernet interface is blocked, node
+	is still able to create single node membership.
+
+	Dark side of the patch is fact, that membership is always created, so
+	"Totem is unable to form a cluster..." will never appear (same applies
+	to continuous_gather key).
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-10-04  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	man page: fix quorum references
+
+2012-10-03  Jan Friesse  <jfriesse@redhat.com>
+
+	Store config_version of other nodes
+	Config version of other nodes is stored in
+	runtime.totem.pg.mrp.srp.members.NODEID.config_version key. Also when
+	local config_version is changed, all nodes are informed.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-10-02  Jan Friesse  <jfriesse@redhat.com>
+
+	Support for check of config version on start
+	Config version is requested from other nodes. If our config version is
+	not 0 and differes from highest config version of other nodes, corosync
+	quits.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Make cmap_mcast_send return correct error code
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Make service_build contain correct number of msgs
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Align items in cmap_mcast_send
+	Aligning function (kernel style magic) MAR_ALIGN_UP is used for
+	aligning of items in req_exec_cmap_mcast message.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Support for flt and dbl in mcast_endian_convert
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Add support for swab float and double
+	This uses general swabbin function which is able to swab every byte in
+	array.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Add support for sending cmap values to wire
+	Function is little more complex, but it is designed to be used in future
+	without big changes.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Parse config_version as 64-bit uint
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-09-27  Jan Friesse  <jfriesse@redhat.com>
+
+	Don't access invalid mem in totemconfig interfaces
+	When ringnumber in config file was set to value bigger or equal to
+	INTERFACE_MAX, we are using this big value as index to totemconfig
+	interfaces array, resulting to access to invalid memory and segfault.
+
+	Instead of that, ringnumber is now checked and proper error message is
+	printed if value is too big.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-09-19  Jan Friesse  <jfriesse@redhat.com>
+
+	Move some totem and cpg messages to trace level
+	Messages which are flow messages, rather then lifecycle are now logged
+	in trace level.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Add support for debug level trace in config file
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-09-12  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	icmap: fix mapping return codes
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
+2012-09-11  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	build: fix indirect linking vs rpath by linking --as-needed
+	libtotem_pg links against libnss/nspr and correctly sets RPATH
+	corosync links against libtotem_pg, but libtool (via .la) enforces
+	an extra layer of linking against libnss/nspr without setting RPATH.
+
+	corosync final binary can't resolve the second linking and fails
+	to load.
+
+	This issue is visible only on NetBSD that enforces a much stricter
+	use of rpath (vs other OS/distros). Using --as-needed avoids that
+	and it's generally safe to use on other OS'es.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2012-09-10  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	build: make secure build optional
+	apparently some versions of gcc accepts the pie/relro bits
+	but fails to produce a working binary (freebsd9)
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
+	build: fix regression with handling fPIC and DPIC
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
+2012-09-07  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	build: add support for relro and bindnow
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: autodetect if compiler support -fPIE and -pie for linking
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: clean AM_CFLAGS and AM_CPPFLAGS usage around
+	also set commont include dirs.
+
+	fPIC and DPIC are automatically detected and added
+	as required by libtool. We don't need to carry it around.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	totemconfig: drop unnecessary includes
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-09-06  Jan Friesse  <jfriesse@redhat.com>
+
+	Remove newline in logsys_config_file_set_unlocked
+	Also remove commented leftover.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Make threaded log work
+	Previous two log releated patches tried to solve few problems with
+	threaded libqb, but introduced regressions when running in daemon mode.
+
+	This patch takes bigger hammer and hopefully solves all problems.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-09-05  Jan Friesse  <jfriesse@redhat.com>
+
+	Ensure qb_log thread is started
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-09-03  Jan Friesse  <jfriesse@redhat.com>
+
+	Ensure no garbage left in msghdr for sendmsg call
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	Use uint8_t in setsockopt when needed
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	OpenBSD getifaddrs returns netmask without sa_family
+	So we relax netmask check and set to same family as ipaddr
+	if needed
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	Add header files when needed
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	Make use of EBADMSG conditional
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2012-08-31  Angus Salkeld  <asalkeld@redhat.com>
+
+	Fix cpg_membership_get()
+	The wrong size was getting set in exec/cpg.c
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-08-30  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	build: drop OS detection
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: bring SOLARIS up to the same standard as other OSes
+	drop all SOLARIS specific ifdefs and replace them with feature checks
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: drop TS_CLASS definition, used nowhere
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: drop COROSYNC_BSD out of configure
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	totemip: clean up headers a lot more
+	getifaddrs is always available if there is freeifaddr.
+
+	all BSD and openindiana have it defined in ifaddr.h.
+
+	drop a bunch of obsoleted headers.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: drop MAP_ANONYMOUS check from configure
+	define it only in case it's not there
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: drop COROSYNC_DARWIN definition
+	not referenced anywhere in the code
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: drop completely linux detection
+	from now on there are no unsupported OS'es...
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: make libstatgrab the facto default for monitoring service
+	drop duplicate code and remove the last COROSYNC_LINUX ifdefs
+	around
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	totemip: add missing include
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: use MADV_NOSYNC only when it's defined
+	so far only FreeBSD defines it.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: make exec/totemip os detection free
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: drop _SEM_SEMUN_UNDEFINED
+	not referenced anywhere in the code
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-30  Jan Friesse  <jfriesse@redhat.com>
+
+	Log: Use threaded mode for syslog and file log
+	Syslog and file log can block, so it's good idea to use libqb threaded
+	mode to prevent it.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Use native IPC mechanism
+	Instead of hardcoded SHM, we should use NATIVE, so libqb is able to find
+	out what is best/availiable mechanism.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Add la, lo and .libs files/directory to gitignore
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-08-30  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	build: fix library version export in ELF header
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-29  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	build: fix spec file creation
+	hopefully once and for all...
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	spec: cleanup spec file to be slightly smarter
+	move all the conditionals in 2 variables to make it easier to read
+	and maintain and fix install of dbus-signal file
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: fix do_snmp conditionals
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-28  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	build: fix make rpm
+	remove .la files from binary rpm
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: cleanup configure.ac for non-linux OS'es
+	libstatgrab ships with pkg-config file. Use it.
+
+	watchdog is implemented only on linux. Error out if necessary.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: drop PATH_MAX definition from dark ages
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: drop redefine of NAME_MAX since nothing references it anylonger
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: drop last reference to OS_CPPFLAGS and use AC EXTENSIONS instead
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: fix build on openindiana 151a
+	openindiana toolchain is rather messy. This is the first cut only
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: remove bashism in cc support check
+	this is required for all systems that don't use bash for /bin/sh
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: drop SOLARIS_OPTS and DARWIN_OPTS
+	SOLARIS was unused
+
+	DARWIN needs verification
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: minor cleanup and final removal of OS_LDFLAGS
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: rework snmp library detection and setting of CFLAGS
+	this allows to drop more OS_* specific bits
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: drop more dlopen leftovers from dinosaur era...
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: make monitoring optional in corosync exec
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: update .gitignore files
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: fix make distcheck
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: make path to bash configurable at build time
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: order library install to make sure libsam can relink against libcmap
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: fix usage of sed and drop build-aux/genman
+	"sed -i" is a GNU specific extention.
+
+	Replace with more portable version and drop completely genman
+	in favour of a make rule.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	test: fix testcpg build on FreeBSD9
+	HOST_NAME_MAX is intentionally NOT defined on BSD.
+
+	Users of HOST_NAME_MAX should be using sysconf or use very
+	conservative values.
+
+	limits.h still defines _POSIX_HOST_NAME_MAX. use that instead.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: respect watchdog conditional when building corosync exec
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	common_lib: make it build on FreeBSD 9 and Mac OS X
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: use libtool for linking
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	build: cleanup configure.ac
+	sort different sections in more logical way and add check for sed
+	plus a few missing headers/functions
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-21  Tim Beale  <tim.beale@alliedtelesis.co.nz>
+
+	Remove redundant default-config code
+	We were checking 'hold_timeout == 0' in 3 different places when setting up
+	the default totem config.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-21  Tim Beale  <tlbeale@gmail.com>
+
+	Remove unused structure
+	Nowhere in the corosync codebase references this structure.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	man: corosync.conf seqno_unchanged_const description incorrect
+	seqno_unchanged_const is used to determine when the rep should hold the
+	token. The merge detection timeout is started after any idle rotation of
+	the token.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-16  Jan Friesse  <jfriesse@redhat.com>
+
+	Make logging of WD and MON service correct
+	MON and WD services are using fsm.h, which calls log function. Such
+	messages were incorrectly logged as SERV (or random service) which made
+	debugging hard.
+
+	Solution is to add callback parameter to fsm functions and do actual
+	logging there.
+
+	Handling of failure states is also done in calback now.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Fix dbus part of corosync-notifyd
+	Function dbus_connection_read_write which causes block for 0.5 sec is
+	replaced by correct dispatching of input and flushing of output buffer.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-08-14  Jan Friesse  <jfriesse@redhat.com>
+
+	example conf: Remove Duplicate "debug" statement
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-08-14  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	build: fix libsam dependencies when using make -j
+	tested on linux (can't verify solaris)
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-13  Jan Pokorny  <jpokorny@redhat.com>
+
+	Example config files: fix a typo
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-09  Jan Friesse  <jfriesse@redhat.com>
+
+	IPC: Call lib function only when it's possible
+	send_ok was incorrectly tested as boolean, even it's errno type
+	variable.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Close sockets after deleting from poll
+	This will remove (non critical) debug message from QB about polling on
+	closed FD.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	cpg: Check input param name_t length
+	IPC is using buffer of CS_MAX_NAME_LENGTH for name. If user calls
+	function with longer string, such string can be passed to service
+	incomplete.
+
+	Solution is to not allow string larger then CS_MAX_NAME_LENGTH
+	and return error.
+
+	Same applies to cpg service.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Handle sync and service unload correctly
+	When sync started and service is unloaded in meantime, it can happen that
+	sync will call sync_* functions on unloaded service.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	service: remove leftovers from mt corosync
+	Multithreaded corosync used to use many ugly workarounds. One of them is
+	shutdown process, where we had to solve problem with two locks. This was
+	solved by scheduling jobs between service exit_fn call and actual
+	service unload. Sadly this can cause to receive message from other node
+	in that meantime causing corosync to segfault on exit.
+
+	Because corosync is now single threaded, we don't need such hacks any
+	longer.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	cmap: Check input param name_t length
+	IPC is using buffer of CS_MAX_NAME_LENGTH for name. If user calls
+	function with longer string, such string can be passed to service
+	incomplete.
+
+	Solution is to not allow string larger then CS_MAX_NAME_LENGTH (what is
+	same as ICMAP_KEYNAME_MAXLEN) and return error.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-08-09  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	quorumtool: fix display when nodenames or reverse lookup is missing
+	when requesting nodename in ring0_addr, and reverse dns lookup
+	is not available, quorumtool output becomes inconsistent.
+
+	quorum {
+	    provider: corosync_votequorum
+	}
+
+	nodelist {
+	        node {
+	                ring0_addr: fedora-master-node1
+	                nodeid: 1
+	        }
+	        node {
+	                ring0_addr: fedora-master-node2
+	                nodeid: 2
+	        }
+	}
+
+	[fabbione@daikengo corosync]$ nslookup fedora-master-node1
+	..
+	Address: 192.168.2.193
+
+	[fabbione@daikengo corosync]$ nslookup 192.168.2.193
+	..
+	** server can't find 193.2.168.192.in-addr.arpa.: NXDOMAIN
+
+	[root@fedora-master-node1 tools]# corosync-quorumtool -s
+	...
+
+	Membership information
+	----------------------
+	    Nodeid      Votes    Qdevice Name
+	         1          1         NR fedora-master-node1.int.fabbione.net
+	         2          1         NR 192.168.2.194
+
+	(similar on the other node)
+
+	With this patch, when nodelist is available, we simply return ring0_addr
+	name for a node, fixing the output to be:
+
+	Membership information
+	----------------------
+	    Nodeid      Votes    Qdevice Name
+	         1          1         NR fedora-master-node1
+	         2          1         NR fedora-master-node2
+
+	that also removes possible inconsistencies between nodename, FQDN
+	and so on, by using what user requested in corosync.conf
+
+	In case ring0_addr is not available or numeric output is requested,
+	behavior remains as before.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-08  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	votequorum: change init/clean up to deal with exit races
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-07  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	quorumtool: make output more meaningful
+	there is really no point to have a per node view of (vote)quorum
+	since all the info are always there.
+
+	drop the -n option for status/display nodes and improve
+	the output to provide a full cluster view at any given time.
+
+	Old format:
+
+	[root@fedora-master-node2 ~]# corosync-quorumtool -s
+	Quorum information
+	------------------
+	Date: Mon Aug 6 10:22:27 2012
+	Quorum provider: corosync_votequorum
+	Nodes: 2
+	Ring ID: 8
+	Quorate: Yes
+
+	Votequorum information
+	----------------------
+	Node ID: 3254954176
+	Node state: Member
+	Node votes: 1
+	Qdevice votes: 1
+	Expected votes: 3
+	Highest expected: 3
+	Total votes: 3
+	Quorum: 2
+	Flags: Quorate Qdevice
+
+	Membership information
+	----------------------
+	Nodeid Votes Name
+	3238176960 1 fedora-master-node1.int.fabbione.net
+	3254954176 1 fedora-master-node2.int.fabbione.net
+	         0 1 QDEVICE (Alive/Voting/NoMasterWins)
+
+	New format:
+
+	[root@fedora-master-node1 tools]# ./corosync-quorumtool -s
+	Quorum information
+	------------------
+	Date:             Mon Aug  6 15:50:03 2012
+	Quorum provider:  corosync_votequorum
+	Nodes:            2
+	Ring ID:          48
+	Quorate:          Yes
+
+	Votequorum information
+	----------------------
+	Expected votes:   3
+	Highest expected: 3
+	Total votes:      3
+	Quorum:           2
+	Flags:            Quorate Qdevice
+
+	Membership information
+	----------------------
+	    Nodeid      Votes    Qdevice Name
+	3238176960          1     A,V,MW fedora-master-node1.int.fabbione.net
+	3254954176          1         NR fedora-master-node2.int.fabbione.net
+	         0          1            QDEVICE
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: make the last QDEVICE define name consistent with everything else
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: bump soname
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: display qdevice votes
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: add missing return call
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: make master_wins check stricter
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: add ENTER/LEAVE for consistency
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: fix library checks on qdevice name and readd qdevice_update
+	for some odd reasons qdevice_update was just gone.. totally...
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: delegate qdevice_master_wins setting to qdevice
+	votequorum has no business to device if master_wins setting is correct or not.
+	only the qdevice can decide and should set the value for votequorum.
+
+	Logic is:
+
+	- user requests master_wins from config
+	- corosync starts
+	- qdevice starts
+	- qdevice reads cmap values / register with votequorum
+	- qdevice decides if the node can support master_wins or not and tells votequorum
+	- at this point votequorum can check if an unquorate node is part of the master_wins
+	  partition
+
+	it is the qdevice responsibility to keep that value up to date in votequorum and the
+	value can be changed at runtime.
+
+	this commit also exchange per node master_wins information to lay down the infrastructure
+	to verify discrepancies in node config for master_wins (coming next on this channel).
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: drop votequorum_qdevice_getinfo and collapse data into getinfo
+	it's really pointless to have basically a duplicated API call
+	to transfer one value and one name.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: external defines should all be prefixed with VOTEQUORUM_
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: drop _FLAG_ from defines
+	those are all info flags.. it's redudant and inconsistent
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: fix define name to match reality
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	qdevice: implement master_wins partition
+	in previous incarnation of qdisk + cman, master_wins was restricted
+	to 2 node only.
+
+	In this new version it is possible to use master_wins for any cluster
+	size.
+
+	Let's assume a 4 node cluster. Each node votes 1, qdevice votes 3.
+
+	node 1 becomes qdevice master
+	node 2/3/4 no
+
+	In case of a split (let's assume 2/2):
+
+	partition 1: {4, 1}
+	partition 2: {1, 1}
+
+	node 2 in partition 1 would normally be unquorate, leaving effectively
+	only node 1 active.
+
+	master_wins allows node 2 to recognize to be part of a quorate partition
+	(since node1 is broadcasting that qdevice is voting) and retain
+	quorum.
+
+	node1 has never lost quorate status since qdevice is voting there.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: fix flag check for qdevice votes propagation
+	and cleanup similar code to make it more readable
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: remove last instance of state and rename it to cast_vote
+	also align naming of vote to cast_vote for info calls
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: several major bug fixes and code cleanup
+	- add a protection check to avoid spurious messages on membership
+	  change
+	- greately simplify processing of nodeinfo, since the only
+	  data that we send for qdevice over nodeinfo is the number of votes
+	- fix a flag check to trigger quorum calculation that would
+	  leave a cluster unquorate under certain conditions
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: move to the new flag structure
+	simplify different code path as checks are simpler, separate
+	ALIVE and CAST_VOTE
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: simplify getinfo data and protect against call against quorum node
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: use REGISTERED flag consistently
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: simply internal qdevice_getinfo function
+	as data are moving around we can drop lots of special cases
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: add qdevice CAST_VOTE status/flag
+	this is a preparation commit for the next changes. right now it is
+	no more than an alias to ALIVE.
+
+	CAST_VOTE is required to support master/slave feature from qdevice.
+
+	Effectively a quorum device can be:
+
+	Not registered / registered (connected to API but nothing else is happening)
+
+	if registered:
+
+	Not alive / alive (quorum device is petting the API via poll and timer is running)
+
+	if alive:
+
+	Not voting (slave) / voting (master)
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: rename NODE_FLAGS_QDEVICE_STATE to NODE_FLAGS_QDEVICE_ALIVE
+	STATE is confusing and overloaded term in votequorum as it's used for nodes
+	and other bits.
+
+	make the name unique and ALIVE means that the qdevice is heartbeating
+	to votequorum.
+
+	improve display of the status in tools and tests.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: rename NODE_FLAGS_QDEVICE to NODE_FLAGS_QDEVICE_REGISTERED
+	make the flag name explicit
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	votequorum: re-enable qdevice api
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	quorum devices: add support to build system
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-08-04  Steven Dake  <sdake@redhat.com>
+
+	Add groff as a BuildRequires to spec file
+	According to Fedora packaging guidelines, groff is not on the list
+	of package exceptions for BuildRequires.  A recent change in the Fedora
+	build system has triggered breakage in building rpm packages and it
+	is likely this package won't build for Fedora 18.
+
+	Reference:
+	http://fedoraproject.org/wiki/Packaging:Guidelines#Exceptions_2
+
+	Reviewed-by: Fabio Di Nitto <fdinitto@redhat.com>
+
+2012-08-02  Jan Friesse  <jfriesse@redhat.com>
+
+	Don't call sync_* funcs for unloaded services
+	When service is unloaded, sync shouldn't call sync_init|process|activate
+	and abort functions. It happens very rare, but in process of unloading
+	all services, totem can recreate membership and bad things can happen
+	(service is unloaded, so there may be access to already freed memory,
+	 ...)
+
+	Solution is to fetch services sync handlers in every time when we are
+	building service list instead of using precreated one.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	Introduce SERVICES_COUNT_MAX macro
+	Sync/service was using maximal number of services in ehter numberic form
+	(magic constant) or inconsistently, this means using
+	SERVICE_HANDLER_MAXIMUM_COUNT which means maximal number of handlers.
+
+	New macro solves this.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2012-07-30  Jan Friesse  <jfriesse@redhat.com>
+
+	cmap_keys: Document few more runtime statistics
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	cts: Delete shm blacbox after corosync kill
+	This makes SHM Audit pass in test CpgCfgChgOnExecCrash.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	cpg: Be more verbose for procjoin message
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2012-07-12  Jan Friesse  <jfriesse@redhat.com>
+
+	cts: Change DC_IDLE pattern
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	cts: Make shm_leak_audit run
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Correctly free state string in wd
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	cts: Change local_start[ing|ed] pattern in CTS
+	Previous pattern is no longer send to syslog. Use first pattern which
+	is.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Support for crypto_ and nodelist in lenses
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-07-11  Jan Friesse  <jfriesse@redhat.com>
+
+	Revert "Free state variable allocated in wd_resource_state_is_ok"
+	This reverts commit 01c63ca17ca5b5a780cff0dd96d7d432b3e980a3.
+
+2012-06-14  Jan Friesse  <jfriesse@redhat.com>
+
+	cpg: Enhance downlist selection algorithm
+	Let's say we have 2 nodes:
+	- node 2 is paused
+	- node 1 create membership (one node)
+	- node 2 is unpaused
+
+	Result is that node 1 downlist is selected, so it means that from node 2
+	point of view, node 1 was never down.
+
+	Patch solves situation by adding additional check for largest previous
+	membership.
+
+	So current tests are:
+	1) largest (previous #nodes - #nodes know to have left)
+	2) (then) largest previous membership
+	3) (and last as a tie-breaker) node with smallest nodeid
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	cpg: Print cpg name to debug informations
+	In downlist and joinlist debug output group was printed in nonsense
+	format of integer to pointer to array.
+
+	Now it's printed by full name.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	cpg: Process join list after downlists
+	let's say following situation will happen:
+	- we have 3 nodes
+	- on wire messages looks like D1,J1,D2,J2,D3,J3 (D is downlist, J is
+	  joinlist)
+	- let's say, D1 and D3 contains node 2
+	- it means that J2 is applied, but right after that, D1 (or D3) is
+	  applied what means, node 2 is again considered down
+
+	It's solved by collecting joinlists and apply them after downlist, so
+	order is:
+	- apply best matching downlist
+	- apply all joinlists
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	cpg: Never choose downlist with localnode
+	Test scenario is follows:
+	- node 1, node 2
+	- node 1 is paused
+	- node 2 sees node 1 dead
+	- node 1 unpaused
+	- node 1 and 2 both choose same dowlist message which includes node 2 ->
+	node 2 is efectivelly disconnected
+
+	Patch includes additional test if left_node is localnode. If so, such
+	downlist is ignored.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2012-06-11  Jerome FLESCH  <jerome.flesch@netasq.com>
+
+	When flushing, discard only memb_join messages
+	Patch solves problem when 1 ring out of 2 went up/down quite often.
+
+	The simplest setup to reproduce bug is following:
+	- 2 VMs, connected by 2 network interfaces
+	- OS: Linux
+	- On one of the VMs, a test program sending some CPG messages (see the
+	  script "test_corosync.sh" joined to this mail for example)
+
+	Here are the Corosync logs we get when we do this setup:
+
+	Jun 06 16:23:40 corosync [TOTEM ] A processor joined or left the
+	membership and a new membership was formed.
+	Jun 06 16:23:40 corosync [CPG   ] chosen downlist: sender r(0)
+	ip(192.168.56.104) r(1) ip(192.168.57.104) ; members(old:1 left:0)
+	Jun 06 16:23:40 corosync [MAIN  ] Completed service synchronization,
+	ready to provide service.
+	Jun 06 16:24:37 corosync [TOTEM ] Marking ringid 1 interface
+	192.168.57.105 FAULTY
+	Jun 06 16:24:38 corosync [TOTEM ] Automatically recovered ring 1
+	Jun 06 16:25:33 corosync [TOTEM ] Marking ringid 1 interface
+	192.168.57.105 FAULTY
+	Jun 06 16:25:34 corosync [TOTEM ] Automatically recovered ring 1
+	Jun 06 16:26:35 corosync [TOTEM ] Marking ringid 1 interface
+	192.168.57.105 FAULTY
+	Jun 06 16:26:36 corosync [TOTEM ] Automatically recovered ring 1
+	(...)
+
+	The second ring goes down about every 2 minutes and automatically back
+	up right after.
+
+	We spent some times looking for the commit that introduced this bug, and
+	it appears it's due the following one:
+	Corosync 1.3.3 -> 1.3.4: e27a58d93d0d3795beb550f87b660c9c04f11386
+	Corosync 1.4.1 -> 1.4.2: be608c050247e5f9c8266b8a0f9803cc0a3dc881
+	Commit message: Ignore memb_join messages during flush operations
+
+	I had a look at this commit, and it seems to me it's dropping too many
+	packets:
+	Because of this commit, while totemrrp_recv_flush() is called, Corosync
+	drops memb_join packets, but also ORF tokens. In the end, it seems that
+	sometimes, we drop so many of them that Corosync marks the ring as
+	faulty.
+
+	To fix that, only memb_join messages are dropped now.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-06-05  Jan Friesse  <jfriesse@redhat.com>
+
+	Store fdata with timestamp and pid in name
+	This should allow easier handling of various blackbox dumps. Original
+	fdata name is now symlink to latest created dump.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Remove corosync-fplay
+	Libqb now ships with qb-blackbox command doing same job as
+	corosync-fplay. It doesn't make sense to maintain two versions of same
+	utility so corosync-fplay can go. corosync-blackbox command now calls
+	directly qb-blackbox.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2012-06-01  Kazunori INOUE  <inouekazu@intellilink.co.jp>
+
+	notifyd: handle addition of a members key to CMAP
+	When new key (totem.pg.mrp.srp.members) was added to CMAP,
+	we would like to receive the trap of this time.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-06-01  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	testcpg: fix build warning
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-05-31  Jan Friesse  <jfriesse@redhat.com>
+
+	totemudpu: Bind sending sockets to bindto address
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2012-05-29  Jan Friesse  <jfriesse@redhat.com>
+
+	snmp MIB: Remove unnecessary comma
+	Thank Hideo Yamauch for pointing this bug.
+
+2012-05-29  Kazunori INOUE  <inouekazu@intellilink.co.jp>
+
+	notifyd snmp: fix a function name
+	This fixes the bug to which snmp trap of rrp_faulty_event is not sent.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-05-29  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	rename mainconfig to logconfig
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	mainconfig: allow mainconfig logic to be used both internally and externally
+	corosync logging configuration logic is rather complex and in order
+	to make it simpler to reuse (at least within corosync/ tree)
+	we need to be able to use both icmap and cmap.
+
+	the patch might seem controversial, but it reduces heaps of code around
+	from qdevices (coming next).
+
+	It might be useful to consider moving this to a common shared library
+	but there aren't enough users yet and a shared lib would force
+	corosync to link with cmap (that we do not want at all costs)
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2012-05-29  Angus Salkeld  <asalkeld@redhat.com>
+
+	LOG: make sure the log target is enabled.
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	LOG: handle closing unused logfiles better
+	This fixes a bug where having a second log file will close
+	the previous one.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	LOG: be more explict about the qb file names
+	else we can get messages been put in the wrong subsys.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	LOG: drop the number of logging subsystems from 64 to 32
+	Currently 14 are used, 64 seems like a waste of memory.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-05-24  Barney Desmond  <barney.desmond@anchor.net.au>
+
+	Correct the description of bindnetaddr config parameter in manpage
+	bindnetaddr has been wrongly described in the past, and did not
+	document that fact that it will also accept exact address matches.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-05-24  Jan Friesse  <jfriesse@redhat.com>
+
+	totemip: Support bind to exact address
+	Logic for binding now works in following way:
+	- Try to find exact match
+	- If not exact match is found, use first found network address
+
+	This allows set concrete IP even if network settings contains two IPs on
+	same network.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	totemip: insert items in correct order
+	list_add_tail is used instead of list_add so ip addresses are inserted
+	in same order as returned by getifaddrs.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2012-05-21  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	init: major cleanup
+	- rename generic.in and notifyd.in to corosync.in and corosync-notifyd.in
+	  (makes build simpler)
+	- fix sysvinit corosync.in sleep time to include a check for when IPC
+	  are ready and drop cman bits (there is no cman with corosync 2.0)
+	- corosync-notifyd.service should always start after corosync.service
+	- corosync.service should always start after network
+	- corosync.service uses init script wrapper
+	- install/ship sysvinit as wrappers for systemd in /usr/share/corosync
+	  when necessary
+	- change the build system to deal with all of the above
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-05-17  Jan Friesse  <jfriesse@redhat.com>
+
+	Include ringid in processor joined log message
+	This should help correlate syslog entires with their blackbox
+	counterparts.
+
+	Reviewed-by: Andrew Beekhof <andrew@beekhof.net>
+
+2012-05-15  Jan Friesse  <jfriesse@redhat.com>
+
+	Update TODO file
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2012-04-26  Dan Clark  <2clarkd@gmail.com>
+
+	Improve testcpg to handle change of node identity
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-04-24  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	icmap: don't leak memory when changing ro/rw status on a key
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	icmap: fix a valgrind errors (pass 1)
+	clean up a lot of allocated blocks at exit.
+	those changes has no runtime effects, but it makes valgrind
+	output a bit more useful by dropping over 700 errors/warnings to skip
+	over every single run.
+
+	there are still a few icmap related valgrind errors but those need
+	some more complex and timeconsuming investigation.
+
+	pre patch:
+
+	==21844== HEAP SUMMARY:
+	==21844==     in use at exit: 1,229,321 bytes in 1,516 blocks
+	==21844==   total heap usage: 7,191 allocs, 5,675 frees, 3,819,853 bytes allocated
+
+	==21844== LEAK SUMMARY:
+	==21844==    definitely lost: 3,617 bytes in 11 blocks
+	==21844==    indirectly lost: 21,960 bytes in 11 blocks
+	==21844==      possibly lost: 1,080,101 bytes in 131 blocks
+	==21844==    still reachable: 123,643 bytes in 1,363 blocks
+	==21844==         suppressed: 0 bytes in 0 blocks
+
+	==21844== ERROR SUMMARY: 136 errors from 136 contexts (suppressed: 0 from 0)
+
+	post patch:
+
+	==25793== HEAP SUMMARY:
+	==25793==     in use at exit: 1,185,870 bytes in 808 blocks
+	==25793==   total heap usage: 9,427 allocs, 8,619 frees, 4,156,841 bytes allocated
+
+	==25793== LEAK SUMMARY:
+	==25793==    definitely lost: 3,697 bytes in 12 blocks
+	==25793==    indirectly lost: 22,248 bytes in 13 blocks
+	==25793==      possibly lost: 1,079,655 bytes in 113 blocks
+	==25793==    still reachable: 80,270 bytes in 670 blocks
+	==25793==         suppressed: 0 bytes in 0 blocks
+
+	==25793== ERROR SUMMARY: 119 errors from 119 contexts (suppressed: 0 from 0)
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-04-20  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	crypto init: release *_slot resource after init
+	Those are only used at init phase and we can free some memory for the system.
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
+2012-04-16  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	ipcs: allow connections only after all services are ready
+	this fixes a rather annoying race condition at startup where a client
+	connects to corosync "too fast" before the service is ready to operate
+	and client gets some random data during initialization phase.
+
+	With this fix, we allow connections to ipc only after the main engine
+	is operational and configured (and after the first totem transition).
+
+	Reviewed-by: Angus Salkeld <asalkeld@redhat.com>
+
+2012-04-10  Jan Friesse  <jfriesse@redhat.com>
+
+	Always allocate totemrrp stats array
+	This prevents segfault when rrp mode is set with only one ring.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Properly parse uidgid files
+	Full path to key is now tested rather then key name only.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2012-04-10  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	build: improve systemd service file handling
+	this solves the issue of having to special case before and after usrmove
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-04-06  Jan Friesse  <jfriesse@redhat.com>
+
+	Remove info pages see also from cmapctl man
+	Corosync doesn't have documentation in info format, so information is
+	corosync-cmapctl was not true.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+	Add man page with CMAP keys created by corosync
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2012-04-05  Angus Salkeld  <asalkeld@redhat.com>
+
+	Check before making a reference to __start___verbose
+
+2012-04-03  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	conf: add quorum section to example config
+	document only the provider option since all the others
+	(votes/expected_votes/etc) are provider specific.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2012-04-03  Angus Salkeld  <asalkeld@redhat.com>
+
+	Only call qb_ipcc_disconnect when the instance is fully dereferenced.
+	Sometimes calling xyz_finilize() within a dispatch would
+	cause a crash because the qb_ipcc_disconnect actually
+	disconnects immediatly and frees it't memory. whereas
+	the corosync structure is reference counted. So this
+	makes use of the reference counting to only call
+	qb_ipcc_disconnect when it is fully dereferenced.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
 2012-03-27  Jan Friesse  <jfriesse@redhat.com>
 
 	Convert udpu example to use nodelist

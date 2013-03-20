@@ -43,6 +43,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 #include <errno.h>
 
 #include <qb/qbdefs.h>
@@ -64,7 +65,9 @@ struct votequorum_inst {
 	votequorum_callbacks_t callbacks;
 };
 
-DECLARE_HDB_DATABASE(votequorum_handle_t_db,NULL);
+static void votequorum_inst_free (void *inst);
+
+DECLARE_HDB_DATABASE(votequorum_handle_t_db, votequorum_inst_free);
 
 cs_error_t votequorum_initialize (
 	votequorum_handle_t *handle,
@@ -83,6 +86,7 @@ cs_error_t votequorum_initialize (
 		goto error_destroy;
 	}
 
+	votequorum_inst->finalize = 0;
 	votequorum_inst->c = qb_ipcc_connect ("votequorum", IPC_REQUEST_SIZE);
 	if (votequorum_inst->c == NULL) {
 		error = qb_to_cs_error(-errno);
@@ -106,6 +110,12 @@ error_no_destroy:
 	return (error);
 }
 
+static void votequorum_inst_free (void *inst)
+{
+	struct votequorum_inst *vq_inst = (struct votequorum_inst *)inst;
+	qb_ipcc_disconnect(vq_inst->c);
+}
+
 cs_error_t votequorum_finalize (
 	votequorum_handle_t handle)
 {
@@ -126,8 +136,6 @@ cs_error_t votequorum_finalize (
 	}
 
 	votequorum_inst->finalize = 1;
-
-	qb_ipcc_disconnect (votequorum_inst->c);
 
 	hdb_handle_destroy (&votequorum_handle_t_db, handle);
 
@@ -181,6 +189,9 @@ cs_error_t votequorum_getinfo (
 	info->total_votes = res_lib_votequorum_getinfo.total_votes;
 	info->quorum = res_lib_votequorum_getinfo.quorum;
 	info->flags = res_lib_votequorum_getinfo.flags;
+	info->qdevice_votes = res_lib_votequorum_getinfo.qdevice_votes;
+	memset(info->qdevice_name, 0, VOTEQUORUM_QDEVICE_MAX_NAME_LEN);
+	strcpy(info->qdevice_name, res_lib_votequorum_getinfo.qdevice_name);
 
 error_exit:
 	hdb_handle_put (&votequorum_handle_t_db, handle);
@@ -521,6 +532,13 @@ cs_error_t votequorum_dispatch (
 			goto error_put;
 			break;
 		}
+		if (votequorum_inst->finalize) {
+			/*
+			 * If the finalize has been called then get out of the dispatch.
+			 */
+			error = CS_ERR_BAD_HANDLE;
+			goto error_put;
+		}
 
 		/*
 		 * Determine if more messages should be processed
@@ -530,14 +548,12 @@ cs_error_t votequorum_dispatch (
 		}
 	} while (cont);
 
-	goto error_put;
 
 error_put:
 	hdb_handle_put (&votequorum_handle_t_db, handle);
 	return (error);
 }
 
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 cs_error_t votequorum_qdevice_register (
 	votequorum_handle_t handle,
 	const char *name)
@@ -548,7 +564,8 @@ cs_error_t votequorum_qdevice_register (
 	struct req_lib_votequorum_qdevice_register req_lib_votequorum_qdevice_register;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	if (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN) {
+	if ((strlen(name) == 0) ||
+	    (strlen(name) >= VOTEQUORUM_QDEVICE_MAX_NAME_LEN)) {
 		return CS_ERR_INVALID_PARAM;
 	}
 
@@ -587,7 +604,7 @@ error_exit:
 cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
 	const char *name,
-	unsigned int state)
+	unsigned int cast_vote)
 {
 	cs_error_t error;
 	struct votequorum_inst *votequorum_inst;
@@ -595,7 +612,8 @@ cs_error_t votequorum_qdevice_poll (
 	struct req_lib_votequorum_qdevice_poll req_lib_votequorum_qdevice_poll;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	if (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN) {
+	if ((strlen(name) == 0) ||
+	    (strlen(name) >= VOTEQUORUM_QDEVICE_MAX_NAME_LEN)) {
 		return CS_ERR_INVALID_PARAM;
 	}
 
@@ -607,10 +625,108 @@ cs_error_t votequorum_qdevice_poll (
 	req_lib_votequorum_qdevice_poll.header.size = sizeof (struct req_lib_votequorum_qdevice_poll);
 	req_lib_votequorum_qdevice_poll.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL;
 	strcpy(req_lib_votequorum_qdevice_poll.name, name);
-	req_lib_votequorum_qdevice_poll.state = state;
+	req_lib_votequorum_qdevice_poll.cast_vote = cast_vote;
 
 	iov.iov_base = (char *)&req_lib_votequorum_qdevice_poll;
 	iov.iov_len = sizeof (struct req_lib_votequorum_qdevice_poll);
+
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
+		&iov,
+		1,
+                &res_lib_votequorum_status,
+		sizeof (struct res_lib_votequorum_status), CS_IPC_TIMEOUT_MS));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_votequorum_status.header.error;
+
+error_exit:
+	hdb_handle_put (&votequorum_handle_t_db, handle);
+
+	return (error);
+}
+
+cs_error_t votequorum_qdevice_master_wins (
+	votequorum_handle_t handle,
+	const char *name,
+	unsigned int allow)
+{
+	cs_error_t error;
+	struct votequorum_inst *votequorum_inst;
+	struct iovec iov;
+	struct req_lib_votequorum_qdevice_master_wins req_lib_votequorum_qdevice_master_wins;
+	struct res_lib_votequorum_status res_lib_votequorum_status;
+
+	if ((strlen(name) == 0) ||
+	    (strlen(name) >= VOTEQUORUM_QDEVICE_MAX_NAME_LEN)) {
+		return CS_ERR_INVALID_PARAM;
+	}
+
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	req_lib_votequorum_qdevice_master_wins.header.size = sizeof (struct req_lib_votequorum_qdevice_master_wins);
+	req_lib_votequorum_qdevice_master_wins.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_MASTER_WINS;
+	strcpy(req_lib_votequorum_qdevice_master_wins.name, name);
+	req_lib_votequorum_qdevice_master_wins.allow = allow;
+
+	iov.iov_base = (char *)&req_lib_votequorum_qdevice_master_wins;
+	iov.iov_len = sizeof (struct req_lib_votequorum_qdevice_master_wins);
+
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
+		&iov,
+		1,
+		&res_lib_votequorum_status,
+		sizeof (struct res_lib_votequorum_status), CS_IPC_TIMEOUT_MS));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_votequorum_status.header.error;
+
+error_exit:
+	hdb_handle_put (&votequorum_handle_t_db, handle);
+
+	return (error);
+}
+
+cs_error_t votequorum_qdevice_update (
+	votequorum_handle_t handle,
+	const char *oldname,
+	const char *newname)
+{
+	cs_error_t error;
+	struct votequorum_inst *votequorum_inst;
+	struct iovec iov;
+	struct req_lib_votequorum_qdevice_update req_lib_votequorum_qdevice_update;
+	struct res_lib_votequorum_status res_lib_votequorum_status;
+
+	if ((strlen(oldname) == 0) ||
+	    (strlen(oldname) >= VOTEQUORUM_QDEVICE_MAX_NAME_LEN) ||
+	    (strlen(newname) == 0) ||
+	    (strlen(newname) >= VOTEQUORUM_QDEVICE_MAX_NAME_LEN)) {
+		return CS_ERR_INVALID_PARAM;
+	}
+
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	req_lib_votequorum_qdevice_update.header.size = sizeof (struct req_lib_votequorum_qdevice_update);
+	req_lib_votequorum_qdevice_update.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_UPDATE;
+	strcpy(req_lib_votequorum_qdevice_update.oldname, oldname);
+	strcpy(req_lib_votequorum_qdevice_update.newname, newname);
+
+	iov.iov_base = (char *)&req_lib_votequorum_qdevice_update;
+	iov.iov_len = sizeof (struct req_lib_votequorum_qdevice_update);
 
         error = qb_to_cs_error(qb_ipcc_sendv_recv (
 		votequorum_inst->c,
@@ -641,7 +757,8 @@ cs_error_t votequorum_qdevice_unregister (
 	struct req_lib_votequorum_qdevice_unregister req_lib_votequorum_qdevice_unregister;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	if (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN) {
+	if ((strlen(name) == 0) ||
+	    (strlen(name) >= VOTEQUORUM_QDEVICE_MAX_NAME_LEN)) {
 		return CS_ERR_INVALID_PARAM;
 	}
 
@@ -675,52 +792,3 @@ error_exit:
 
 	return (error);
 }
-
-cs_error_t votequorum_qdevice_getinfo (
-	votequorum_handle_t handle,
-	unsigned int nodeid,
-	struct votequorum_qdevice_info *qinfo)
-{
-	cs_error_t error;
-	struct votequorum_inst *votequorum_inst;
-	struct iovec iov;
-	struct req_lib_votequorum_qdevice_getinfo req_lib_votequorum_qdevice_getinfo;
-	struct res_lib_votequorum_qdevice_getinfo res_lib_votequorum_qdevice_getinfo;
-
-	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
-	if (error != CS_OK) {
-		return (error);
-	}
-
-	req_lib_votequorum_qdevice_getinfo.header.size = sizeof (struct req_lib_votequorum_qdevice_getinfo);
-	req_lib_votequorum_qdevice_getinfo.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_GETINFO;
-	req_lib_votequorum_qdevice_getinfo.nodeid = nodeid;
-
-	iov.iov_base = (char *)&req_lib_votequorum_qdevice_getinfo;
-	iov.iov_len = sizeof (struct req_lib_votequorum_qdevice_getinfo);
-
-        error = qb_to_cs_error(qb_ipcc_sendv_recv (
-		votequorum_inst->c,
-		&iov,
-		1,
-                &res_lib_votequorum_qdevice_getinfo,
-		sizeof (struct res_lib_votequorum_qdevice_getinfo), CS_IPC_TIMEOUT_MS));
-
-	if (error != CS_OK) {
-		goto error_exit;
-	}
-
-	error = res_lib_votequorum_qdevice_getinfo.header.error;
-
-	qinfo->votes = res_lib_votequorum_qdevice_getinfo.votes;
-	qinfo->state = res_lib_votequorum_qdevice_getinfo.state;
-	strcpy(qinfo->name, res_lib_votequorum_qdevice_getinfo.name);
-
-
-error_exit:
-	hdb_handle_put (&votequorum_handle_t_db, handle);
-
-	return (error);
-}
-#endif
-

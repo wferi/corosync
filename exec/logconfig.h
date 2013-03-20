@@ -32,12 +32,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef MAINCONFIG_H_DEFINED
-#define MAINCONFIG_H_DEFINED
+#ifndef LOGCONFIG_H_DEFINED
+#define LOGCONFIG_H_DEFINED
 
 #include <corosync/logsys.h>
 #include <corosync/list.h>
 #include <corosync/coroapi.h>
+#include <corosync/cmap.h>
 
 /**
  * All service handlers
@@ -49,7 +50,14 @@ struct dynamic_service {
 };
 #define MAX_DYNAMIC_SERVICES 128
 
-extern int corosync_main_config_read (
+#ifdef LOGCONFIG_USE_ICMAP
+extern int corosync_log_config_read (
 	const char **error_string);
+#else
+extern int corosync_log_config_read (
+	cmap_handle_t cmap_h,
+	const char *default_logfile,
+	const char **error_string);
+#endif
 
-#endif /* MAINCONFIG_H_DEFINED */
+#endif /* LOGCONFIG_H_DEFINED */
