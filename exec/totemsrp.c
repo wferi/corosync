@@ -524,6 +524,45 @@ struct message_handlers {
 		int endian_conversion_needed);
 };
 
+enum gather_state_from {
+	TOTEMSRP_GSFROM_CONSENSUS_TIMEOUT = 0,
+	TOTEMSRP_GSFROM_GATHER_MISSING1 = 1,
+	TOTEMSRP_GSFROM_THE_TOKEN_WAS_LOST_IN_THE_OPERATIONAL_STATE = 2,
+	TOTEMSRP_GSFROM_THE_CONSENSUS_TIMEOUT_EXPIRED = 3,
+	TOTEMSRP_GSFROM_THE_TOKEN_WAS_LOST_IN_THE_COMMIT_STATE = 4,
+	TOTEMSRP_GSFROM_THE_TOKEN_WAS_LOST_IN_THE_RECOVERY_STATE = 5,
+	TOTEMSRP_GSFROM_FAILED_TO_RECEIVE = 6,
+	TOTEMSRP_GSFROM_FOREIGN_MESSAGE_IN_OPERATIONAL_STATE = 7,
+	TOTEMSRP_GSFROM_FOREIGN_MESSAGE_IN_GATHER_STATE = 8,
+	TOTEMSRP_GSFROM_MERGE_DURING_OPERATIONAL_STATE = 9,
+	TOTEMSRP_GSFROM_MERGE_DURING_GATHER_STATE = 10,
+	TOTEMSRP_GSFROM_MERGE_DURING_JOIN = 11,
+	TOTEMSRP_GSFROM_JOIN_DURING_OPERATIONAL_STATE = 12,
+	TOTEMSRP_GSFROM_JOIN_DURING_COMMIT_STATE = 13,
+	TOTEMSRP_GSFROM_JOIN_DURING_RECOVERY = 14,
+	TOTEMSRP_GSFROM_INTERFACE_CHANGE = 15,
+	TOTEMSRP_GSFROM_MAX = TOTEMSRP_GSFROM_INTERFACE_CHANGE,
+};
+
+const char* gather_state_from_desc [] = {
+	[TOTEMSRP_GSFROM_CONSENSUS_TIMEOUT] = "consensus timeout",
+	[TOTEMSRP_GSFROM_GATHER_MISSING1] = "MISSING",
+	[TOTEMSRP_GSFROM_THE_TOKEN_WAS_LOST_IN_THE_OPERATIONAL_STATE] = "The token was lost in the OPERATIONAL state.",
+	[TOTEMSRP_GSFROM_THE_CONSENSUS_TIMEOUT_EXPIRED] = "The consensus timeout expired.",
+	[TOTEMSRP_GSFROM_THE_TOKEN_WAS_LOST_IN_THE_COMMIT_STATE] = "The token was lost in the COMMIT state.",
+	[TOTEMSRP_GSFROM_THE_TOKEN_WAS_LOST_IN_THE_RECOVERY_STATE] = "The token was lost in the RECOVERY state.",
+	[TOTEMSRP_GSFROM_FAILED_TO_RECEIVE] = "failed to receive",
+	[TOTEMSRP_GSFROM_FOREIGN_MESSAGE_IN_OPERATIONAL_STATE] = "foreign message in operational state",
+	[TOTEMSRP_GSFROM_FOREIGN_MESSAGE_IN_GATHER_STATE] = "foreign message in gather state",
+	[TOTEMSRP_GSFROM_MERGE_DURING_OPERATIONAL_STATE] = "merge during operational state",
+	[TOTEMSRP_GSFROM_MERGE_DURING_GATHER_STATE] = "merge during gather state",
+	[TOTEMSRP_GSFROM_MERGE_DURING_JOIN] = "merge during join",
+	[TOTEMSRP_GSFROM_JOIN_DURING_OPERATIONAL_STATE] = "join during operational state",
+	[TOTEMSRP_GSFROM_JOIN_DURING_COMMIT_STATE] = "join during commit state",
+	[TOTEMSRP_GSFROM_JOIN_DURING_RECOVERY] = "join during recovery",
+	[TOTEMSRP_GSFROM_INTERFACE_CHANGE] = "interface change",
+};
+
 /*
  * forward decls
  */
@@ -586,7 +625,7 @@ static void memb_leave_message_send (struct totemsrp_instance *instance);
 static void memb_ring_id_create_or_load (struct totemsrp_instance *, struct memb_ring_id *);
 
 static void token_callbacks_execute (struct totemsrp_instance *instance, enum totem_callback_token_type type);
-static void memb_state_gather_enter (struct totemsrp_instance *instance, int gather_from);
+static void memb_state_gather_enter (struct totemsrp_instance *instance, enum gather_state_from gather_from);
 static void messages_deliver_to_app (struct totemsrp_instance *instance, int skip, unsigned int end_point);
 static int orf_token_mcast (struct totemsrp_instance *instance, struct orf_token *oken,
 	int fcc_mcasts_allowed);
@@ -617,6 +656,7 @@ static void timer_function_token_hold_retransmit_timeout (void *data);
 static void timer_function_merge_detect_timeout (void *data);
 static void *totemsrp_buffer_alloc (struct totemsrp_instance *instance);
 static void totemsrp_buffer_release (struct totemsrp_instance *instance, void *ptr);
+static const char* gsfrom_to_msg(enum gather_state_from gsfrom);
 
 void main_deliver_fn (
 	void *context,
@@ -658,6 +698,16 @@ do {												\
                 __FUNCTION__, __FILE__, __LINE__,						\
 		fmt ": %s (%d)\n", ##args, _error_ptr, err_num);				\
 	} while(0)
+
+static const char* gsfrom_to_msg(enum gather_state_from gsfrom)
+{
+	if (0 <= gsfrom && gsfrom <= TOTEMSRP_GSFROM_MAX) {
+		return gather_state_from_desc[gsfrom];
+	}
+	else {
+		return "UNKNOWN";
+	}
+}
 
 static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 {
@@ -1601,7 +1651,7 @@ static void memb_state_consensus_timeout_expired (
 
 		memb_set_merge (no_consensus_list, no_consensus_list_entries,
 			instance->my_failed_list, &instance->my_failed_list_entries);
-		memb_state_gather_enter (instance, 0);
+		memb_state_gather_enter (instance, TOTEMSRP_GSFROM_CONSENSUS_TIMEOUT);
 	}
 }
 
@@ -1623,7 +1673,7 @@ static void timer_function_pause_timeout (void *data)
 static void memb_recovery_state_token_loss (struct totemsrp_instance *instance)
 {
 	old_ring_state_restore (instance);
-	memb_state_gather_enter (instance, 5);
+	memb_state_gather_enter (instance, TOTEMSRP_GSFROM_THE_TOKEN_WAS_LOST_IN_THE_RECOVERY_STATE);
 	instance->stats.recovery_token_lost++;
 }
 
@@ -1638,7 +1688,7 @@ static void timer_function_orf_token_timeout (void *data)
 			log_printf (instance->totemsrp_log_level_notice,
 				"A processor failed, forming new configuration.");
 			totemrrp_iface_check (instance->totemrrp_context);
-			memb_state_gather_enter (instance, 2);
+			memb_state_gather_enter (instance, TOTEMSRP_GSFROM_THE_TOKEN_WAS_LOST_IN_THE_OPERATIONAL_STATE);
 			instance->stats.operational_token_lost++;
 			break;
 
@@ -1646,14 +1696,14 @@ static void timer_function_orf_token_timeout (void *data)
 			log_printf (instance->totemsrp_log_level_debug,
 				"The consensus timeout expired.");
 			memb_state_consensus_timeout_expired (instance);
-			memb_state_gather_enter (instance, 3);
+			memb_state_gather_enter (instance, TOTEMSRP_GSFROM_THE_CONSENSUS_TIMEOUT_EXPIRED);
 			instance->stats.gather_token_lost++;
 			break;
 
 		case MEMB_STATE_COMMIT:
 			log_printf (instance->totemsrp_log_level_debug,
 				"The token was lost in the COMMIT state.");
-			memb_state_gather_enter (instance, 4);
+			memb_state_gather_enter (instance, TOTEMSRP_GSFROM_THE_TOKEN_WAS_LOST_IN_THE_COMMIT_STATE);
 			instance->stats.commit_token_lost++;
 			break;
 
@@ -1796,6 +1846,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	unsigned int left_list[PROCESSOR_COUNT_MAX];
 	unsigned int i;
 	unsigned int res;
+	char left_node_msg[1024];
+	char joined_node_msg[1024];
 
 	memb_consensus_reset (instance);
 
@@ -1932,12 +1984,36 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	sq_items_release (&instance->regular_sort_queue, instance->my_high_delivered);
 	instance->last_released = instance->my_high_delivered;
 
+	if (joined_list_entries) {
+		int sptr = 0;
+		sptr += snprintf(joined_node_msg, sizeof(joined_node_msg)-sptr, " joined:");
+		for (i=0; i< joined_list_entries; i++) {
+			sptr += snprintf(joined_node_msg+sptr, sizeof(joined_node_msg)-sptr, " %d", joined_list_totemip[i]);
+		}
+	}
+	else {
+		joined_node_msg[0] = '\0';
+	}
+
+	if (instance->my_left_memb_entries) {
+		int sptr = 0;
+		sptr += snprintf(left_node_msg, sizeof(left_node_msg)-sptr, " left:");
+		for (i=0; i< instance->my_left_memb_entries; i++) {
+			sptr += snprintf(left_node_msg+sptr, sizeof(left_node_msg)-sptr, " %d", left_list[i]);
+		}
+	}
+	else {
+		left_node_msg[0] = '\0';
+	}
+
 	log_printf (instance->totemsrp_log_level_debug,
 		"entering OPERATIONAL state.");
 	log_printf (instance->totemsrp_log_level_notice,
-		"A processor joined or left the membership and a new membership (%s:%lld) was formed.",
+		"A new membership (%s:%lld) was formed. Members%s%s",
 		totemip_print (&instance->my_ring_id.rep),
-		instance->my_ring_id.seq);
+		instance->my_ring_id.seq,
+		joined_node_msg,
+		left_node_msg);
 	instance->memb_state = MEMB_STATE_OPERATIONAL;
 
 	instance->stats.operational_entered++;
@@ -1960,7 +2036,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 
 static void memb_state_gather_enter (
 	struct totemsrp_instance *instance,
-	int gather_from)
+	enum gather_state_from gather_from)
 {
 	instance->orf_token_discard = 1;
 
@@ -2007,12 +2083,13 @@ static void memb_state_gather_enter (
 	memb_consensus_set (instance, &instance->my_id);
 
 	log_printf (instance->totemsrp_log_level_debug,
-		"entering GATHER state from %d.", gather_from);
+		    "entering GATHER state from %d(%s).",
+		    gather_from, gsfrom_to_msg(gather_from));
 
 	instance->memb_state = MEMB_STATE_GATHER;
 	instance->stats.gather_entered++;
 
-	if (gather_from == 3) {
+	if (TOTEMSRP_GSFROM_THE_CONSENSUS_TIMEOUT_EXPIRED == 3) {
 		/*
 		 * State 3 means gather, so we are continuously gathering.
 		 */
@@ -3693,7 +3770,7 @@ printf ("token seq %d\n", token->seq);
 				instance->my_failed_list,
 				&instance->my_failed_list_entries);
 
-			memb_state_gather_enter (instance, 6);
+			memb_state_gather_enter (instance, TOTEMSRP_GSFROM_FAILED_TO_RECEIVE);
 		} else {
 			instance->my_token_seq = token->token_seq;
 			token->token_seq += 1;
@@ -3948,7 +4025,7 @@ static int message_handler_mcast (
 			memb_set_merge (
 				&mcast_header.system_from, 1,
 				instance->my_proc_list, &instance->my_proc_list_entries);
-			memb_state_gather_enter (instance, 7);
+			memb_state_gather_enter (instance, TOTEMSRP_GSFROM_FOREIGN_MESSAGE_IN_OPERATIONAL_STATE);
 			break;
 
 		case MEMB_STATE_GATHER:
@@ -3960,7 +4037,7 @@ static int message_handler_mcast (
 
 				memb_set_merge (&mcast_header.system_from, 1,
 					instance->my_proc_list, &instance->my_proc_list_entries);
-				memb_state_gather_enter (instance, 8);
+				memb_state_gather_enter (instance, TOTEMSRP_GSFROM_FOREIGN_MESSAGE_IN_GATHER_STATE);
 				return (0);
 			}
 			break;
@@ -4052,7 +4129,7 @@ static int message_handler_memb_merge_detect (
 	case MEMB_STATE_OPERATIONAL:
 		memb_set_merge (&memb_merge_detect.system_from, 1,
 			instance->my_proc_list, &instance->my_proc_list_entries);
-		memb_state_gather_enter (instance, 9);
+		memb_state_gather_enter (instance, TOTEMSRP_GSFROM_MERGE_DURING_OPERATIONAL_STATE);
 		break;
 
 	case MEMB_STATE_GATHER:
@@ -4064,7 +4141,7 @@ static int message_handler_memb_merge_detect (
 
 			memb_set_merge (&memb_merge_detect.system_from, 1,
 				instance->my_proc_list, &instance->my_proc_list_entries);
-			memb_state_gather_enter (instance, 10);
+			memb_state_gather_enter (instance, TOTEMSRP_GSFROM_MERGE_DURING_GATHER_STATE);
 			return (0);
 		}
 		break;
@@ -4191,7 +4268,7 @@ static void memb_join_process (
 				}
 			}
 		}
-		memb_state_gather_enter (instance, 11);
+		memb_state_gather_enter (instance, TOTEMSRP_GSFROM_MERGE_DURING_JOIN);
 		gather_entered = 1;
 	}
 
@@ -4199,7 +4276,7 @@ out:
 	if (gather_entered == 0 &&
 		instance->memb_state == MEMB_STATE_OPERATIONAL) {
 
-		memb_state_gather_enter (instance, 12);
+		memb_state_gather_enter (instance, TOTEMSRP_GSFROM_JOIN_DURING_OPERATIONAL_STATE);
 	}
 }
 
@@ -4323,6 +4400,36 @@ static void memb_merge_detect_endian_convert (
 	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
 }
 
+static int ignore_join_under_operational (
+	struct totemsrp_instance *instance,
+	const struct memb_join *memb_join)
+{
+	struct srp_addr *proc_list;
+	struct srp_addr *failed_list;
+	unsigned long long ring_seq;
+
+	proc_list = (struct srp_addr *)memb_join->end_of_memb_join;
+	failed_list = proc_list + memb_join->proc_list_entries;
+	ring_seq = memb_join->ring_seq;
+
+	if (memb_set_subset (&instance->my_id, 1,
+	    failed_list, memb_join->failed_list_entries)) {
+		return (1);
+	}
+
+	/*
+	 * In operational state, my_proc_list is exactly the same as
+	 * my_memb_list.
+	 */
+	if ((memb_set_subset (&memb_join->system_from, 1,
+	    instance->my_memb_list, instance->my_memb_entries)) &&
+	    (ring_seq < instance->my_ring_id.seq)) {
+		return (1);
+	}
+
+	return (0);
+}
+
 static int message_handler_memb_join (
 	struct totemsrp_instance *instance,
 	const void *msg,
@@ -4353,7 +4460,9 @@ static int message_handler_memb_join (
 	}
 	switch (instance->memb_state) {
 		case MEMB_STATE_OPERATIONAL:
-			memb_join_process (instance, memb_join);
+			if (!ignore_join_under_operational (instance, memb_join)) {
+				memb_join_process (instance, memb_join);
+			}
 			break;
 
 		case MEMB_STATE_GATHER:
@@ -4369,7 +4478,7 @@ static int message_handler_memb_join (
 				memb_join->ring_seq >= instance->my_ring_id.seq) {
 
 				memb_join_process (instance, memb_join);
-				memb_state_gather_enter (instance, 13);
+				memb_state_gather_enter (instance, TOTEMSRP_GSFROM_JOIN_DURING_COMMIT_STATE);
 			}
 			break;
 
@@ -4383,7 +4492,7 @@ static int message_handler_memb_join (
 
 				memb_join_process (instance, memb_join);
 				memb_recovery_state_token_loss (instance);
-				memb_state_gather_enter (instance, 14);
+				memb_state_gather_enter (instance, TOTEMSRP_GSFROM_JOIN_DURING_RECOVERY);
 			}
 			break;
 	}
@@ -4572,7 +4681,7 @@ void main_iface_change_fn (
 	}
 
 	if (instance->iface_changes >= instance->totem_config->interface_count) {
-		memb_state_gather_enter (instance, 15);
+		memb_state_gather_enter (instance, TOTEMSRP_GSFROM_INTERFACE_CHANGE);
 	}
 }
 

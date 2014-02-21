@@ -597,8 +597,8 @@ static void message_handler_req_lib_cmap_iter_next(void *conn, const void *messa
 	struct res_lib_cmap_iter_next res_lib_cmap_iter_next;
 	cs_error_t ret;
 	icmap_iter_t *iter;
-	size_t value_len;
-	icmap_value_types_t type;
+	size_t value_len = 0;
+	icmap_value_types_t type = 0;
 	const char *res = NULL;
 	struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
 
@@ -809,7 +809,7 @@ static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char 
 	size_t item_len;
 	size_t msg_len = 0;
 	struct req_exec_cmap_mcast req_exec_cmap_mcast;
-	struct req_exec_cmap_mcast_item *item;
+	struct req_exec_cmap_mcast_item *item = NULL;
 	struct iovec req_exec_cmap_iovec[MAX_REQ_EXEC_CMAP_MCAST_ITEMS + 1];
 
 	ENTER();

@@ -785,6 +785,7 @@ int totemudpu_initialize (
 		instance->totemudpu_log_level_error,
 		instance->totemudpu_subsys_id);
 	if (instance->crypto_inst == NULL) {
+		free(instance);
 		return (-1);
 	}
 	/*
@@ -1034,7 +1035,7 @@ static int totemudpu_create_sending_socket(
 	if (res == -1) {
 		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
 			"Could not set non-blocking operation on token socket");
-		return (-1);
+		goto error_close_fd;
 	}
 
 	/*
@@ -1047,6 +1048,9 @@ static int totemudpu_create_sending_socket(
 	if (res == -1) {
 		LOGSYS_PERROR (errno, instance->totemudpu_log_level_notice,
 			"Could not set sendbuf size");
+		/*
+		 * Fail in setting sendbuf size is not fatal -> don't exit
+		 */
 	}
 
 	/*
@@ -1057,11 +1061,14 @@ static int totemudpu_create_sending_socket(
 	if (res == -1) {
 		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
 			"bind token socket failed");
-		return (-1);
+		goto error_close_fd;
 	}
 
 	return (fd);
 
+error_close_fd:
+	close(fd);
+	return (-1);
 }
 
 int totemudpu_member_add (

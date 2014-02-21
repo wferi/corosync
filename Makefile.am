@@ -59,6 +59,17 @@ coverity:
 	cov-build --dir=cov make
 	cov-analyze --dir cov \
 		    --concurrency \
+		    -co BAD_FREE:allow_first_field:true \
+		    --security \
+		    --wait-for-license
+	cov-format-errors --dir cov
+
+coverity-aggressive:
+	rm -rf cov
+	make clean
+	cov-build --dir=cov make
+	cov-analyze --dir cov \
+		    --concurrency \
 		    --all \
 		    --aggressiveness-level high \
 		    --security \
@@ -156,11 +167,11 @@ RPMBUILDOPTS	= --define "_sourcedir $(abs_builddir)" \
 
 srpm: clean
 	$(MAKE) $(SPEC) $(TARFILE)
-	rpmbuild $(RPMBUILDOPTS) --nodeps -bs $(SPEC)
+	rpmbuild $(WITH_LIST) $(RPMBUILDOPTS) --nodeps -bs $(SPEC)
 
 rpm: clean _version
 	$(MAKE) $(SPEC) $(TARFILE)
-	rpmbuild $(RPMBUILDOPTS) -ba $(SPEC)
+	rpmbuild $(WITH_LIST) $(RPMBUILDOPTS) -ba $(SPEC)
 
 # release/versioning
 BUILT_SOURCES	= .version

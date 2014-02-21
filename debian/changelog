@@ -1,3 +1,13 @@
+corosync (2.3.3-1) experimental; urgency=medium
+
+  * New upstream release
+  * Upload to experimental
+  * Disable the resource monitoring feature due to an incompatibility with
+    SG (And according to Jan Friesse, the feature is 'useless' anyway)
+  * debian/control: Bump Standards-Version to 3.9.5
+
+ -- Martin Loschwitz <madkiss@debian.org>  Fri, 21 Feb 2014 12:22:49 +0000
+
 corosync (2.3.0-1) experimental; urgency=low
 
   * New upstream release 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2012 Red Hat, Inc.
+ * Copyright (c) 2006-2013 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -76,6 +76,7 @@ typedef int (*parser_cb_f)(const char *path,
 			char *value,
 			enum parser_cb_type type,
 			const char **error_string,
+			icmap_map_t config_map,
 			void *user_data);
 
 enum main_cp_cb_data_state {
@@ -120,7 +121,7 @@ struct main_cp_cb_data {
 };
 
 static int read_config_file_into_icmap(
-	const char **error_string);
+	const char **error_string, icmap_map_t config_map);
 static char error_string_response[512];
 
 static int uid_determine (const char *req_user)
@@ -130,7 +131,14 @@ static int uid_determine (const char *req_user)
 	struct passwd* pwdptr = &passwd;
 	struct passwd* temp_pwd_pt;
 	char *pwdbuffer;
-	int  pwdlinelen;
+	int  pwdlinelen, rc;
+	long int id;
+	char *ep;
+
+	id = strtol(req_user, &ep, 10);
+	if (*ep == '\0' && id >= 0 && id <= UINT_MAX) {
+		return (id);
+	}
 
 	pwdlinelen = sysconf (_SC_GETPW_R_SIZE_MAX);
 
@@ -140,7 +148,25 @@ static int uid_determine (const char *req_user)
 
 	pwdbuffer = malloc (pwdlinelen);
 
-	if ((getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) != 0) {
+	while ((rc = getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) == ERANGE) {
+		char *n;
+
+		pwdlinelen *= 2;
+		if (pwdlinelen <= 32678) {
+			n = realloc (pwdbuffer, pwdlinelen);
+			if (n != NULL) {
+				pwdbuffer = n;
+				continue;
+			}
+		}
+	}
+	if (rc != 0) {
+		free (pwdbuffer);
+	        sprintf (error_string_response, "getpwnam_r(): %s", strerror(rc));
+	        return (-1);
+	}
+	if (temp_pwd_pt == NULL) {
+		free (pwdbuffer);
 	        sprintf (error_string_response,
 	                "The '%s' user is not found in /etc/passwd, please read the documentation.",
 	                req_user);
@@ -159,7 +185,14 @@ static int gid_determine (const char *req_group)
 	struct group * grpptr = &group;
 	struct group * temp_grp_pt;
 	char *grpbuffer;
-	int  grplinelen;
+	int  grplinelen, rc;
+	long int id;
+	char *ep;
+
+	id = strtol(req_group, &ep, 10);
+	if (*ep == '\0' && id >= 0 && id <= UINT_MAX) {
+		return (id);
+	}
 
 	grplinelen = sysconf (_SC_GETGR_R_SIZE_MAX);
 
@@ -169,7 +202,25 @@ static int gid_determine (const char *req_group)
 
 	grpbuffer = malloc (grplinelen);
 
-	if ((getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) != 0) {
+	while ((rc = getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) == ERANGE) {
+		char *n;
+
+		grplinelen *= 2;
+		if (grplinelen <= 32678) {
+			n = realloc (grpbuffer, grplinelen);
+			if (n != NULL) {
+				grpbuffer = n;
+				continue;
+			}
+		}
+	}
+	if (rc != 0) {
+		free (grpbuffer);
+	        sprintf (error_string_response, "getgrnam_r(): %s", strerror(rc));
+	        return (-1);
+	}
+	if (temp_grp_pt == NULL) {
+		free (grpbuffer);
 	        sprintf (error_string_response,
 	                "The '%s' group is not found in /etc/group, please read the documentation.",
 	                req_group);
@@ -193,16 +244,16 @@ static char *strchr_rs (const char *haystack, int byte)
 	return ((char *) end_address);
 }
 
-int coroparse_configparse (const char **error_string)
+int coroparse_configparse (icmap_map_t config_map, const char **error_string)
 {
-	if (read_config_file_into_icmap(error_string)) {
+	if (read_config_file_into_icmap(error_string, config_map)) {
 		return -1;
 	}
 
 	return 0;
 }
 
-static char *remove_whitespace(char *string)
+static char *remove_whitespace(char *string, int remove_colon_and_brace)
 {
 	char *start;
 	char *end;
@@ -212,7 +263,7 @@ static char *remove_whitespace(char *string)
 		start++;
 
 	end = start+(strlen(start))-1;
-	while ((*end == ' ' || *end == '\t' || *end == ':' || *end == '{') && end > start)
+	while ((*end == ' ' || *end == '\t' || (remove_colon_and_brace && (*end == ':' || *end == '{'))) && end > start)
 		end--;
 	if (end != start)
 		*(end+1) = '\0';
@@ -225,7 +276,9 @@ static char *remove_whitespace(char *string)
 static int parse_section(FILE *fp,
 			 char *path,
 			 const char **error_string,
+			 int depth,
 			 parser_cb_f parser_cb,
+			 icmap_map_t config_map,
 			 void *user_data)
 {
 	char line[512];
@@ -235,7 +288,7 @@ static int parse_section(FILE *fp,
 	char new_keyname[ICMAP_KEYNAME_MAXLEN];
 
 	if (strcmp(path, "") == 0) {
-		parser_cb("", NULL, NULL, PARSER_CB_START, error_string, user_data);
+		parser_cb("", NULL, NULL, PARSER_CB_START, error_string, config_map, user_data);
 	}
 
 	while (fgets (line, sizeof (line), fp)) {
@@ -274,23 +327,29 @@ static int parse_section(FILE *fp,
 
 		/* New section ? */
 		if ((loc = strchr_rs (line, '{'))) {
-			char *section = remove_whitespace(line);
+			char *section = remove_whitespace(line, 1);
 
 			loc--;
 			*loc = '\0';
 
+			if (strlen(path) + strlen(section) + 1 >= ICMAP_KEYNAME_MAXLEN) {
+				*error_string = "parser error: Start of section makes total cmap path too long";
+				return -1;
+			}
 			strcpy(new_keyname, path);
 			if (strcmp(path, "") != 0) {
 				strcat(new_keyname, ".");
 			}
 			strcat(new_keyname, section);
 
-			if (!parser_cb(new_keyname, NULL, NULL, PARSER_CB_SECTION_START, error_string, user_data)) {
+			if (!parser_cb(new_keyname, NULL, NULL, PARSER_CB_SECTION_START, error_string, config_map, user_data)) {
 				return -1;
 			}
 
-			if (parse_section(fp, new_keyname, error_string, parser_cb, user_data))
+			if (parse_section(fp, new_keyname, error_string, depth + 1, parser_cb, config_map, user_data))
 				return -1;
+
+			continue ;
 		}
 
 		/* New key/value */
@@ -299,22 +358,34 @@ static int parse_section(FILE *fp,
 			char *value;
 
 			*(loc-1) = '\0';
-			key = remove_whitespace(line);
-			value = remove_whitespace(loc);
+			key = remove_whitespace(line, 1);
+			value = remove_whitespace(loc, 0);
 
+			if (strlen(path) + strlen(key) + 1 >= ICMAP_KEYNAME_MAXLEN) {
+				*error_string = "parser error: New key makes total cmap path too long";
+				return -1;
+			}
 			strcpy(new_keyname, path);
 			if (strcmp(path, "") != 0) {
 				strcat(new_keyname, ".");
 			}
 			strcat(new_keyname, key);
 
-			if (!parser_cb(new_keyname, key, value, PARSER_CB_ITEM, error_string, user_data)) {
+			if (!parser_cb(new_keyname, key, value, PARSER_CB_ITEM, error_string, config_map, user_data)) {
 				return -1;
 			}
+
+			continue ;
 		}
 
 		if (strchr_rs (line, '}')) {
-			if (!parser_cb(path, NULL, NULL, PARSER_CB_SECTION_END, error_string, user_data)) {
+			if (depth == 0) {
+				*error_string = "parser error: Unexpected closing brace";
+
+				return -1;
+			}
+
+			if (!parser_cb(path, NULL, NULL, PARSER_CB_SECTION_END, error_string, config_map, user_data)) {
 				return -1;
 			}
 
@@ -323,12 +394,12 @@ static int parse_section(FILE *fp,
 	}
 
 	if (strcmp(path, "") != 0) {
-		*error_string = "Missing closing brace";
+		*error_string = "parser error: Missing closing brace";
 		return -1;
 	}
 
 	if (strcmp(path, "") == 0) {
-		parser_cb("", NULL, NULL, PARSER_CB_END, error_string, user_data);
+		parser_cb("", NULL, NULL, PARSER_CB_END, error_string, config_map, user_data);
 	}
 
 	return 0;
@@ -387,6 +458,7 @@ static int main_config_parser_cb(const char *path,
 			char *value,
 			enum parser_cb_type type,
 			const char **error_string,
+			icmap_map_t config_map,
 			void *user_data)
 {
 	int i;
@@ -418,7 +490,7 @@ static int main_config_parser_cb(const char *path,
 				if (safe_atoi(value, &i) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint32(path, i);
+				icmap_set_uint32_r(config_map, path, i);
 				add_as_string = 0;
 			}
 			break;
@@ -430,11 +502,12 @@ static int main_config_parser_cb(const char *path,
 				if (safe_atoi(value, &i) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint32(path, i);
+				icmap_set_uint32_r(config_map, path, i);
 				add_as_string = 0;
 			}
 
 			if ((strcmp(path, "quorum.two_node") == 0) ||
+			    (strcmp(path, "quorum.expected_votes_tracking") == 0) ||
 			    (strcmp(path, "quorum.allow_downscale") == 0) ||
 			    (strcmp(path, "quorum.wait_for_all") == 0) ||
 			    (strcmp(path, "quorum.auto_tie_breaker") == 0) ||
@@ -442,7 +515,7 @@ static int main_config_parser_cb(const char *path,
 				if (safe_atoi(value, &i) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint8(path, i);
+				icmap_set_uint8_r(config_map, path, i);
 				add_as_string = 0;
 			}
 			break;
@@ -452,16 +525,17 @@ static int main_config_parser_cb(const char *path,
 				if (safe_atoi(value, &i) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint32(path, i);
+				icmap_set_uint32_r(config_map, path, i);
 				add_as_string = 0;
 			}
 			if ((strcmp(path, "quorum.device.master_wins") == 0)) {
 				if (safe_atoi(value, &i) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint8(path, i);
+				icmap_set_uint8_r(config_map, path, i);
 				add_as_string = 0;
 			}
+			break;
 		case MAIN_CP_CB_DATA_STATE_TOTEM:
 			if ((strcmp(path, "totem.version") == 0) ||
 			    (strcmp(path, "totem.nodeid") == 0) ||
@@ -491,14 +565,14 @@ static int main_config_parser_cb(const char *path,
 				if (safe_atoi(value, &i) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint32(path, i);
+				icmap_set_uint32_r(config_map,path, i);
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.config_version") == 0) {
 				if (str_to_ull(value, &ull) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint64(path, ull);
+				icmap_set_uint64_r(config_map, path, ull);
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.ip_version") == 0) {
@@ -679,7 +753,7 @@ static int main_config_parser_cb(const char *path,
 				}
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.uid.%u",
 						uid);
-				icmap_set_uint8(key_name, 1);
+				icmap_set_uint8_r(config_map, key_name, 1);
 				add_as_string = 0;
 			} else if (strcmp(key, "gid") == 0) {
 				gid = gid_determine(value);
@@ -689,7 +763,7 @@ static int main_config_parser_cb(const char *path,
 				}
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.gid.%u",
 						gid);
-				icmap_set_uint8(key_name, 1);
+				icmap_set_uint8_r(config_map, key_name, 1);
 				add_as_string = 0;
 			} else {
 				*error_string = "uidgid: Only uid and gid are allowed items";
@@ -733,7 +807,7 @@ static int main_config_parser_cb(const char *path,
 					goto atoi_error;
 				}
 
-				icmap_set_uint32(key_name, i);
+				icmap_set_uint32_r(config_map, key_name, i);
 				add_as_string = 0;
 			}
 
@@ -742,14 +816,14 @@ static int main_config_parser_cb(const char *path,
 			}
 
 			if (add_as_string) {
-				icmap_set_string(key_name, value);
+				icmap_set_string_r(config_map, key_name, value);
 				add_as_string = 0;
 			}
 			break;
 		}
 
 		if (add_as_string) {
-			icmap_set_string(path, value);
+			icmap_set_string_r(config_map, path, value);
 		}
 		break;
 	case PARSER_CB_SECTION_START:
@@ -812,7 +886,7 @@ static int main_config_parser_cb(const char *path,
 			if (data->bindnetaddr != NULL) {
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.bindnetaddr",
 						data->ringnumber);
-				icmap_set_string(key_name, data->bindnetaddr);
+				icmap_set_string_r(config_map, key_name, data->bindnetaddr);
 
 				free(data->bindnetaddr);
 				data->bindnetaddr = NULL;
@@ -821,7 +895,7 @@ static int main_config_parser_cb(const char *path,
 			if (data->mcastaddr != NULL) {
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr",
 						data->ringnumber);
-				icmap_set_string(key_name, data->mcastaddr);
+				icmap_set_string_r(config_map, key_name, data->mcastaddr);
 
 				free(data->mcastaddr);
 				data->mcastaddr = NULL;
@@ -830,7 +904,7 @@ static int main_config_parser_cb(const char *path,
 			if (data->broadcast != NULL) {
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast",
 						data->ringnumber);
-				icmap_set_string(key_name, data->broadcast);
+				icmap_set_string_r(config_map, key_name, data->broadcast);
 
 				free(data->broadcast);
 				data->broadcast = NULL;
@@ -839,13 +913,13 @@ static int main_config_parser_cb(const char *path,
 			if (data->mcastport > -1) {
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport",
 						data->ringnumber);
-				icmap_set_uint16(key_name, data->mcastport);
+				icmap_set_uint16_r(config_map, key_name, data->mcastport);
 			}
 
 			if (data->ttl > -1) {
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.ttl",
 						data->ringnumber);
-				icmap_set_uint8(key_name, data->ttl);
+				icmap_set_uint8_r(config_map, key_name, data->ttl);
 			}
 
 			i = 0;
@@ -855,7 +929,7 @@ static int main_config_parser_cb(const char *path,
 
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.%u",
 						data->ringnumber, i);
-				icmap_set_string(key_name, kv_item->value);
+				icmap_set_string_r(config_map, key_name, kv_item->value);
 
 				iter_next = iter->next;
 
@@ -886,7 +960,7 @@ static int main_config_parser_cb(const char *path,
 
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s.%s",
 						data->subsys, kv_item->key);
-				icmap_set_string(key_name, kv_item->value);
+				icmap_set_string_r(config_map, key_name, kv_item->value);
 
 				iter_next = iter->next;
 
@@ -897,7 +971,7 @@ static int main_config_parser_cb(const char *path,
 
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s.subsys",
 					data->subsys);
-			icmap_set_string(key_name, data->subsys);
+			icmap_set_string_r(config_map, key_name, data->subsys);
 
 			free(data->subsys);
 
@@ -937,7 +1011,7 @@ static int main_config_parser_cb(const char *path,
 								kv_item->key);
 					}
 				}
-				icmap_set_string(key_name, kv_item->value);
+				icmap_set_string_r(config_map, key_name, kv_item->value);
 
 				iter_next = iter->next;
 
@@ -950,21 +1024,21 @@ static int main_config_parser_cb(const char *path,
 				if (strcmp(data->logging_daemon_name, "corosync") != 0) {
 					snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logging_daemon.%s.name",
 							data->logging_daemon_name);
-					icmap_set_string(key_name, data->logging_daemon_name);
+					icmap_set_string_r(config_map, key_name, data->logging_daemon_name);
 				}
 			} else {
 				if (strcmp(data->logging_daemon_name, "corosync") == 0) {
 					snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s.subsys",
 							data->subsys);
-					icmap_set_string(key_name, data->subsys);
+					icmap_set_string_r(config_map, key_name, data->subsys);
 
 				} else {
 					snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logging_daemon.%s.%s.subsys",
 							data->logging_daemon_name, data->subsys);
-					icmap_set_string(key_name, data->subsys);
+					icmap_set_string_r(config_map, key_name, data->subsys);
 					snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logging_daemon.%s.%s.name",
 							data->logging_daemon_name, data->subsys);
-					icmap_set_string(key_name, data->logging_daemon_name);
+					icmap_set_string_r(config_map, key_name, data->logging_daemon_name);
 				}
 			}
 
@@ -1016,6 +1090,7 @@ static int uidgid_config_parser_cb(const char *path,
 			char *value,
 			enum parser_cb_type type,
 			const char **error_string,
+			icmap_map_t config_map,
 			void *user_data)
 {
 	char key_name[ICMAP_KEYNAME_MAXLEN];
@@ -1035,7 +1110,7 @@ static int uidgid_config_parser_cb(const char *path,
 			}
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.uid.%u",
 					uid);
-			icmap_set_uint8(key_name, 1);
+			icmap_set_uint8_r(config_map, key_name, 1);
 		} else if (strcmp(path, "uidgid.gid") == 0) {
 			gid = gid_determine(value);
 			if (gid == -1) {
@@ -1044,7 +1119,7 @@ static int uidgid_config_parser_cb(const char *path,
 			}
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.gid.%u",
 					gid);
-			icmap_set_uint8(key_name, 1);
+			icmap_set_uint8_r(config_map, key_name, 1);
 		} else {
 			*error_string = "uidgid: Only uid and gid are allowed items";
 			return (0);
@@ -1064,7 +1139,8 @@ static int uidgid_config_parser_cb(const char *path,
 }
 
 static int read_uidgid_files_into_icmap(
-	const char **error_string)
+	const char **error_string,
+	icmap_map_t config_map)
 {
 	FILE *fp;
 	const char *dirname;
@@ -1097,15 +1173,15 @@ static int read_uidgid_files_into_icmap(
 		return_code = readdir_r(dp, entry, &dirent)) {
 
 		snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
-		stat (filename, &stat_buf);
-		if (S_ISREG(stat_buf.st_mode)) {
+		res = stat (filename, &stat_buf);
+		if (res == 0 && S_ISREG(stat_buf.st_mode)) {
 
 			fp = fopen (filename, "r");
 			if (fp == NULL) continue;
 
 			key_name[0] = 0;
 
-			res = parse_section(fp, key_name, error_string, uidgid_config_parser_cb, NULL);
+			res = parse_section(fp, key_name, error_string, 0, uidgid_config_parser_cb, config_map, NULL);
 
 			fclose (fp);
 
@@ -1124,7 +1200,8 @@ error_exit:
 
 /* Read config file and load into icmap */
 static int read_config_file_into_icmap(
-	const char **error_string)
+	const char **error_string,
+	icmap_map_t config_map)
 {
 	FILE *fp;
 	const char *filename;
@@ -1150,12 +1227,12 @@ static int read_config_file_into_icmap(
 
 	key_name[0] = 0;
 
-	res = parse_section(fp, key_name, error_string, main_config_parser_cb, &data);
+	res = parse_section(fp, key_name, error_string, 0, main_config_parser_cb, config_map, &data);
 
 	fclose(fp);
 
 	if (res == 0) {
-	        res = read_uidgid_files_into_icmap(error_string);
+	        res = read_uidgid_files_into_icmap(error_string, config_map);
 	}
 
 	if (res == 0) {

@@ -221,7 +221,7 @@ LIBQB_LIBS = @LIBQB_LIBS@
 
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS = -version-number $(call get_soname,$<) \
-			  -Wl,-version-script=$(srcdir)/lib$(call get_libname,$<).versions \
+			  @VERSCRIPT_LDFLAGS@ \
 			  -lpthread \
 			  $(top_builddir)/common_lib/libcorosync_common.la \
 			  $(LIBQB_LIBS)
@@ -263,8 +263,11 @@ SOMINOR = @SOMINOR@
 SONAME = @SONAME@
 STRIP = @STRIP@
 SYSTEMDDIR = @SYSTEMDDIR@
+UPSTARTDIR = @UPSTARTDIR@
+VERSCRIPT_LDFLAGS = @VERSCRIPT_LDFLAGS@
 VERSION = @VERSION@
 VOTEQUORUM_SONAME = @VOTEQUORUM_SONAME@
+WITH_LIST = @WITH_LIST@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@

@@ -26,11 +26,14 @@ configure-stamp:
 		    --enable-dbus \
                     --enable-testagents \
                     --enable-rdma \
-                    --enable-monitoring \
+                    --disable-monitoring \
                     --enable-watchdog \
                     --enable-augeas 
 		    --enable-snmp \ 
-		    --enable-xmlconf
+		    --enable-xmlconf \
+		    --enable-systemd \
+		    --enable-upstart \
+		    --enable-qdevices
 	touch configure-stamp
 
 build: configure-stamp build-arch build-indep

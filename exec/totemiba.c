@@ -229,7 +229,7 @@ struct recv_buf {
 	struct ibv_recv_wr recv_wr;
 	struct ibv_sge sge;
 	struct ibv_mr *mr;
-	char buffer[MAX_MTU_SIZE];
+	char buffer[MAX_MTU_SIZE + sizeof (struct ibv_grh)];
 };
 
 struct send_buf {
@@ -272,7 +272,7 @@ static inline struct send_buf *mcast_send_buf_get (
 	}
 	send_buf->mr = ibv_reg_mr (instance->mcast_pd,
 		send_buf->buffer,
-		2048, IBV_ACCESS_LOCAL_WRITE);
+		MAX_MTU_SIZE, IBV_ACCESS_LOCAL_WRITE);
 	if (send_buf->mr == NULL) {
 		log_printf (LOGSYS_LEVEL_ERROR, "couldn't register memory range");
 		free (send_buf);
@@ -309,7 +309,7 @@ static inline struct send_buf *token_send_buf_get (
 	}
 	send_buf->mr = ibv_reg_mr (instance->send_token_pd,
 		send_buf->buffer,
-		2048, IBV_ACCESS_LOCAL_WRITE);
+		MAX_MTU_SIZE, IBV_ACCESS_LOCAL_WRITE);
 	if (send_buf->mr == NULL) {
 		log_printf (LOGSYS_LEVEL_ERROR, "couldn't register memory range");
 		free (send_buf);
@@ -356,7 +356,7 @@ static inline struct recv_buf *recv_token_recv_buf_create (
 	}
 
 	recv_buf->mr = ibv_reg_mr (instance->recv_token_pd, &recv_buf->buffer,
-		2048,
+		MAX_MTU_SIZE + sizeof (struct ibv_grh),
 		IBV_ACCESS_LOCAL_WRITE);
 
 	recv_buf->recv_wr.next = NULL;
@@ -364,7 +364,7 @@ static inline struct recv_buf *recv_token_recv_buf_create (
 	recv_buf->recv_wr.num_sge = 1;
 	recv_buf->recv_wr.wr_id = (uintptr_t)recv_buf;
 
-	recv_buf->sge.length = 2048;
+	recv_buf->sge.length = MAX_MTU_SIZE + sizeof (struct ibv_grh);
 	recv_buf->sge.lkey = recv_buf->mr->lkey;
 	recv_buf->sge.addr = (uintptr_t)recv_buf->buffer;
 
@@ -423,7 +423,7 @@ static inline struct recv_buf *mcast_recv_buf_create (struct totemiba_instance *
 	}
 
 	mr = ibv_reg_mr (instance->mcast_pd, &recv_buf->buffer,
-		2048,
+		MAX_MTU_SIZE + sizeof (struct ibv_grh),
 		IBV_ACCESS_LOCAL_WRITE);
 
 	recv_buf->recv_wr.next = NULL;
@@ -431,7 +431,7 @@ static inline struct recv_buf *mcast_recv_buf_create (struct totemiba_instance *
 	recv_buf->recv_wr.num_sge = 1;
 	recv_buf->recv_wr.wr_id = (uintptr_t)recv_buf;
 
-	recv_buf->sge.length = 2048;
+	recv_buf->sge.length = MAX_MTU_SIZE + sizeof (struct ibv_grh);
 	recv_buf->sge.lkey = mr->lkey;
 	recv_buf->sge.addr = (uintptr_t)recv_buf->buffer;
 
@@ -468,10 +468,11 @@ static inline void iba_deliver_fn (struct totemiba_instance *instance, uint64_t 
 	recv_buf = wrid2void(wr_id);
 	addr = &recv_buf->buffer[sizeof (struct ibv_grh)];
 
+	bytes -= sizeof (struct ibv_grh);
 	instance->totemiba_deliver_fn (instance->rrp_context, addr, bytes);
 }
 
-static int mcast_cq_send_event_fn (int events,  int suck,  void *context)
+static int mcast_cq_send_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -494,7 +495,7 @@ static int mcast_cq_send_event_fn (int events,  int suck,  void *context)
 	return (0);
 }
 
-static int mcast_cq_recv_event_fn (int events,  int suck,  void *context)
+static int mcast_cq_recv_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[64];
@@ -518,7 +519,7 @@ static int mcast_cq_recv_event_fn (int events,  int suck,  void *context)
 	return (0);
 }
 
-static int mcast_rdma_event_fn (int events,  int suck,  void *context)
+static int mcast_rdma_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct rdma_cm_event *event;
@@ -591,7 +592,7 @@ static int recv_token_cq_send_event_fn (
 	return (0);
 }
 
-static int recv_token_cq_recv_event_fn (int events,  int suck,  void *context)
+static int recv_token_cq_recv_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -621,6 +622,14 @@ static int recv_token_accept_destroy (struct totemiba_instance *instance)
 		return (0);
 	}
 
+	qb_loop_poll_del (
+		instance->totemiba_poll_handle,
+		instance->recv_token_recv_completion_channel->fd);
+
+	qb_loop_poll_del (
+		instance->totemiba_poll_handle,
+		instance->recv_token_send_completion_channel->fd);
+
 	rdma_destroy_qp (instance->recv_token_cma_id);
 
 	recv_token_recv_buf_post_destroy (instance);
@@ -636,14 +645,6 @@ static int recv_token_accept_destroy (struct totemiba_instance *instance)
 	ibv_dealloc_pd (instance->recv_token_pd);
 
 	rdma_destroy_id (instance->recv_token_cma_id);
-
-	qb_loop_poll_del (
-		instance->totemiba_poll_handle,
-		instance->recv_token_recv_completion_channel->fd);
-
-	qb_loop_poll_del (
-		instance->totemiba_poll_handle,
-		instance->recv_token_send_completion_channel->fd);
 
 	return (0);
 }
@@ -743,7 +744,7 @@ static int recv_token_accept_setup (struct totemiba_instance *instance)
 	return (res);
 };
 
-static int recv_token_rdma_event_fn (int events,  int suck,  void *context)
+static int recv_token_rdma_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct rdma_cm_event *event;
@@ -775,7 +776,7 @@ static int recv_token_rdma_event_fn (int events,  int suck,  void *context)
 	return (0);
 }
 
-static int send_token_cq_send_event_fn (int events,  int suck,  void *context)
+static int send_token_cq_send_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -798,7 +799,7 @@ static int send_token_cq_send_event_fn (int events,  int suck,  void *context)
 	return (0);
 }
 
-static int send_token_cq_recv_event_fn (int events,  int suck,  void *context)
+static int send_token_cq_recv_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -821,7 +822,7 @@ static int send_token_cq_recv_event_fn (int events,  int suck,  void *context)
 	return (0);
 }
 
-static int send_token_rdma_event_fn (int events,  int suck,  void *context)
+static int send_token_rdma_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct rdma_cm_event *event;
@@ -1051,6 +1052,7 @@ static int send_token_unbind (struct totemiba_instance *instance)
 static int recv_token_bind (struct totemiba_instance *instance)
 {
 	int res;
+	struct ibv_port_attr port_attr;
 
 	instance->listen_recv_token_channel = rdma_create_event_channel();
 	if (instance->listen_recv_token_channel == NULL) {
@@ -1069,6 +1071,20 @@ static int recv_token_bind (struct totemiba_instance *instance)
 		&instance->bind_addr);
 	if (res) {
 		log_printf (LOGSYS_LEVEL_ERROR, "error doing rdma_bind_addr for recv token");
+		return (-1);
+	}
+
+	/*
+	 * Determine active_mtu of port and compare it with the configured one (160 is aproximation of all totem
+	 * structures.
+	 *
+	 * TODO: Implement MTU discovery also for IP and handle MTU correctly for all structures inside totemsrp,
+	 *       crypto, ...
+	 */
+	res = ibv_query_port (instance->listen_recv_token_cma_id->verbs, instance->listen_recv_token_cma_id->port_num, &port_attr);
+	if ( (1 << (port_attr.active_mtu + 7)) < instance->totem_config->net_mtu + 160) {
+		log_printf (LOGSYS_LEVEL_ERROR, "requested net_mtu is %d and is larger than the active port mtu %d\n",\
+				instance->totem_config->net_mtu + 160, (1 << (port_attr.active_mtu + 7)));
 		return (-1);
 	}
 

@@ -48,6 +48,7 @@
 #include <sys/socket.h>
 #include <sys/mman.h>
 #include <sys/uio.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <limits.h>
 
@@ -67,6 +68,11 @@
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON
 #endif
+
+/*
+ * ZCB files have following umask (umask is same as used in libqb)
+ */
+#define CPG_MEMORY_MAP_UMASK		077
 
 struct cpg_inst {
 	qb_ipcc_connection_t *c;
@@ -730,20 +736,25 @@ static int
 memory_map (char *path, const char *file, void **buf, size_t bytes)
 {
 	int32_t fd;
-	void *addr_orig;
 	void *addr;
 	int32_t res;
 	char *buffer;
 	int32_t i;
 	size_t written;
 	size_t page_size; 
+	long int sysconf_page_size;
+	mode_t old_umask;
 
 	snprintf (path, PATH_MAX, "/dev/shm/%s", file);
 
+	old_umask = umask(CPG_MEMORY_MAP_UMASK);
 	fd = mkstemp (path);
+	(void)umask(old_umask);
 	if (fd == -1) {
 		snprintf (path, PATH_MAX, LOCALSTATEDIR "/run/%s", file);
+		old_umask = umask(CPG_MEMORY_MAP_UMASK);
 		fd = mkstemp (path);
+		(void)umask(old_umask);
 		if (fd == -1) {
 			return (-1);
 		}
@@ -753,7 +764,11 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 	if (res == -1) {
 		goto error_close_unlink;
 	}
-	page_size = (size_t)sysconf(_SC_PAGESIZE);
+	sysconf_page_size = sysconf(_SC_PAGESIZE);
+	if (sysconf_page_size <= 0) {
+		goto error_close_unlink;
+	}
+	page_size = sysconf_page_size;
 	buffer = malloc (page_size);
 	if (buffer == NULL) {
 		goto error_close_unlink;
@@ -772,28 +787,21 @@ retry_write:
 	}
 	free (buffer);
 
-	addr_orig = mmap (NULL, bytes, PROT_NONE,
-		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	addr = mmap (NULL, bytes, PROT_READ | PROT_WRITE,
+		MAP_SHARED, fd, 0);
 
-	if (addr_orig == MAP_FAILED) {
-		goto error_close_unlink;
-	}
-
-	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
-		MAP_FIXED | MAP_SHARED, fd, 0);
-
-	if (addr != addr_orig) {
+	if (addr == MAP_FAILED) {
 		goto error_close_unlink;
 	}
 #ifdef MADV_NOSYNC
-	madvise(addr_orig, bytes, MADV_NOSYNC);
+	madvise(addr, bytes, MADV_NOSYNC);
 #endif
 
 	res = close (fd);
 	if (res) {
 		return (-1);
 	}
-	*buf = addr_orig;
+	*buf = addr;
 
 	return 0;
 
@@ -825,6 +833,12 @@ cs_error_t cpg_zcb_alloc (
 
 	map_size = size + sizeof (struct req_lib_cpg_mcast) + sizeof (struct coroipcs_zc_header);
 	assert(memory_map (path, "corosync_zerocopy-XXXXXX", &buf, map_size) != -1);
+
+	if (strlen(path) >= CPG_ZC_PATH_LEN) {
+		unlink(path);
+		munmap (buf, map_size);
+		return (CS_ERR_NAME_TOO_LONG);
+	}
 
 	req_coroipcc_zc_alloc.header.size = sizeof (mar_req_coroipcc_zc_alloc_t);
 	req_coroipcc_zc_alloc.header.id = MESSAGE_REQ_CPG_ZC_ALLOC;

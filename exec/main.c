@@ -128,7 +128,7 @@
 #endif
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
-	LOGSYS_MODE_OUTPUT_STDERR,
+	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_OUTPUT_SYSLOG,
 	LOG_DAEMON,
 	LOG_INFO);
 
@@ -209,7 +209,10 @@ static void corosync_blackbox_write_to_file (void)
 	qb_log_blackbox_write_to_file(fname);
 
 	unlink(LOCALSTATEDIR "/lib/corosync/fdata");
-	symlink(fname, LOCALSTATEDIR "/lib/corosync/fdata");
+	if (symlink(fname, LOCALSTATEDIR "/lib/corosync/fdata") == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Can't create symlink to '%s' for corosync blackbox file '%s'",
+		    fname, LOCALSTATEDIR "/lib/corosync/fdata");
+	}
 }
 
 static void unlink_all_completed (void)
@@ -232,6 +235,7 @@ static int32_t sig_diag_handler (int num, void *data)
 
 static int32_t sig_exit_handler (int num, void *data)
 {
+	log_printf(LOGSYS_LEVEL_NOTICE, "Node was shut down by a signal");
 	corosync_service_unlink_all (api, unlink_all_completed);
 	return 0;
 }
@@ -397,7 +401,7 @@ static void priv_drop (void)
 
 static void corosync_tty_detach (void)
 {
-	FILE *r;
+	int devnull;
 
 	/*
 	 * Disconnect from TTY if this is not a debug run
@@ -423,18 +427,17 @@ static void corosync_tty_detach (void)
 	/*
 	 * Map stdin/out/err to /dev/null.
 	 */
-	r = freopen("/dev/null", "r", stdin);
-	if (r == NULL) {
+	devnull = open("/dev/null", O_RDWR);
+	if (devnull == -1) {
 		corosync_exit_error (COROSYNC_DONE_STD_TO_NULL_REDIR);
 	}
-	r = freopen("/dev/null", "a", stderr);
-	if (r == NULL) {
+
+	if (dup2(devnull, 0) < 0 || dup2(devnull, 1) < 0
+	    || dup2(devnull, 2) < 0) {
+		close(devnull);
 		corosync_exit_error (COROSYNC_DONE_STD_TO_NULL_REDIR);
 	}
-	r = freopen("/dev/null", "a", stdout);
-	if (r == NULL) {
-		corosync_exit_error (COROSYNC_DONE_STD_TO_NULL_REDIR);
-	}
+	close(devnull);
 }
 
 static void corosync_mlockall (void)
@@ -562,8 +565,8 @@ static void totem_dynamic_notify(
 	void *user_data)
 {
 	int res;
-	int ring_no;
-	int member_no;
+	unsigned int ring_no;
+	unsigned int member_no;
 	struct totem_ip_address member;
 	int add_new_member = 0;
 	int remove_old_member = 0;
@@ -785,6 +788,51 @@ void message_source_set (
 	source->nodeid = totempg_my_nodeid_get ();
 	source->conn = conn;
 }
+
+struct scheduler_pause_timeout_data {
+	struct totem_config *totem_config;
+	qb_loop_timer_handle handle;
+	unsigned long long tv_prev;
+	unsigned long long max_tv_diff;
+};
+
+static void timer_function_scheduler_timeout (void *data)
+{
+	struct scheduler_pause_timeout_data *timeout_data = (struct scheduler_pause_timeout_data *)data;
+	unsigned long long tv_current;
+	unsigned long long tv_diff;
+
+	tv_current = qb_util_nano_current_get ();
+
+	if (timeout_data->tv_prev == 0) {
+		/*
+		 * Initial call -> just pretent everything is ok
+		 */
+		timeout_data->tv_prev = tv_current;
+		timeout_data->max_tv_diff = 0;
+	}
+
+	tv_diff = tv_current - timeout_data->tv_prev;
+	timeout_data->tv_prev = tv_current;
+
+	if (tv_diff > timeout_data->max_tv_diff) {
+		log_printf (LOGSYS_LEVEL_WARNING, "Corosync main process was not scheduled for %0.4f ms "
+		    "(threshold is %0.4f ms). Consider token timeout increase.",
+		    (float)tv_diff / QB_TIME_NS_IN_MSEC, (float)timeout_data->max_tv_diff / QB_TIME_NS_IN_MSEC);
+	}
+
+	/*
+	 * Set next threshold, because token_timeout can change
+	 */
+	timeout_data->max_tv_diff = timeout_data->totem_config->token_timeout * QB_TIME_NS_IN_MSEC * 0.8;
+	qb_loop_timer_add (corosync_poll_handle,
+		QB_LOOP_MED,
+		timeout_data->totem_config->token_timeout * QB_TIME_NS_IN_MSEC / 3,
+		timeout_data,
+		timer_function_scheduler_timeout,
+		&timeout_data->handle);
+}
+
 
 static void corosync_setscheduler (void)
 {
@@ -1038,6 +1086,7 @@ int main (int argc, char **argv, char **envp)
 	char corosync_lib_dir[PATH_MAX];
 	enum e_corosync_done flock_err;
 	uint64_t totem_config_warnings;
+	struct scheduler_pause_timeout_data scheduler_pause_timeout_data;
 
 	/* default configuration
 	 */
@@ -1049,7 +1098,6 @@ int main (int argc, char **argv, char **envp)
 		switch (ch) {
 			case 'f':
 				background = 0;
-				logsys_config_mode_set (NULL, LOGSYS_MODE_OUTPUT_STDERR|LOGSYS_MODE_THREADED|LOGSYS_MODE_FORK);
 				break;
 			case 'p':
 				break;
@@ -1104,7 +1152,7 @@ int main (int argc, char **argv, char **envp)
 	 */
 	api = apidef_get ();
 
-	res = coroparse_configparse(&error_string);
+	res = coroparse_configparse(icmap_get_global_map(), &error_string);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
@@ -1175,7 +1223,10 @@ int main (int argc, char **argv, char **envp)
 	ip_version = totem_config.ip_version;
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
-	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem");
+	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem,"
+			"totemmrp.c,totemrrp.c,totemip.c,totemconfig.c,totemcrypto.c,totemsrp.c,"
+			"totempg.c,totemiba.c,totemudp.c,totemudpu.c,totemnet.c");
+
 	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_error = LOGSYS_LEVEL_ERROR;
 	totem_config.totem_logging_configuration.log_level_warning = LOGSYS_LEVEL_WARNING;
@@ -1193,6 +1244,10 @@ int main (int argc, char **argv, char **envp)
 	}
 
 	corosync_poll_handle = qb_loop_create ();
+
+	memset(&scheduler_pause_timeout_data, 0, sizeof(scheduler_pause_timeout_data));
+	scheduler_pause_timeout_data.totem_config = &totem_config;
+	timer_function_scheduler_timeout (&scheduler_pause_timeout_data);
 
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_LOW,
 		SIGUSR2, NULL, sig_diag_handler, NULL);

@@ -26,3 +26,13 @@ usr/share/man/man3/votequorum_getinfo.3
 usr/share/man/man3/votequorum_initialize.3
 usr/share/man/man3/votequorum_setexpected.3
 usr/share/man/man3/votequorum_setvotes.3
+usr/share/doc/corosync/html/votequorum_qdevice_update.3.html
+usr/share/doc/corosync/html/votequorum_qdevice_register.3.html
+usr/share/doc/corosync/html/votequorum_qdevice_poll.3.html
+usr/share/doc/corosync/html/votequorum_qdevice_master_wins.3.html
+usr/share/doc/corosync/html/votequorum_qdevice_unregister.3.html
+usr/share/man/man3/votequorum_qdevice_master_wins.3
+usr/share/man/man3/votequorum_qdevice_register.3
+usr/share/man/man3/votequorum_qdevice_poll.3
+usr/share/man/man3/votequorum_qdevice_update.3
+usr/share/man/man3/votequorum_qdevice_unregister.3

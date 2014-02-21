@@ -155,6 +155,7 @@ static int corosync_main_config_format_set (
 			/* nothing to do here */
 		} else {
 			error_reason = "unknown value for fileline";
+			free(value);
 			goto parse_error;
 		}
 
@@ -183,6 +184,7 @@ static int corosync_main_config_format_set (
 			/* nothing to do here */
 		} else {
 			error_reason = "unknown value for function_name";
+			free(value);
 			goto parse_error;
 		}
 
@@ -206,6 +208,7 @@ static int corosync_main_config_format_set (
 			/* nothing to do here */
 		} else {
 			error_reason = "unknown value for timestamp";
+			free(value);
 			goto parse_error;
 		}
 
@@ -345,6 +348,8 @@ static int corosync_main_config_set (
 		 " See corosync.conf man page syslog_priority directive.");
 
 		syslog_priority = logsys_priority_id_get(value);
+		free(value);
+
 		if (syslog_priority < 0) {
 			error_reason = "unknown syslog level specified";
 			goto parse_error;
@@ -354,7 +359,6 @@ static int corosync_main_config_set (
 			error_reason = "unable to set syslog level";
 			goto parse_error;
 		}
-		free(value);
 	}
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_priority");
@@ -362,6 +366,7 @@ static int corosync_main_config_set (
 		int syslog_priority;
 
 		syslog_priority = logsys_priority_id_get(value);
+		free(value);
 		if (syslog_priority < 0) {
 			error_reason = "unknown syslog priority specified";
 			goto parse_error;
@@ -371,7 +376,6 @@ static int corosync_main_config_set (
 			error_reason = "unable to set syslog priority";
 			goto parse_error;
 		}
-		free(value);
 	}
 
 #ifdef LOGCONFIG_USE_ICMAP
@@ -403,6 +407,7 @@ static int corosync_main_config_set (
 		int logfile_priority;
 
 		logfile_priority = logsys_priority_id_get(value);
+		free(value);
 		if (logfile_priority < 0) {
 			error_reason = "unknown logfile priority specified";
 			goto parse_error;
@@ -412,7 +417,6 @@ static int corosync_main_config_set (
 			error_reason = "unable to set logfile priority";
 			goto parse_error;
 		}
-		free(value);
 	}
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "debug");
@@ -420,22 +424,26 @@ static int corosync_main_config_set (
 		if (strcmp (value, "trace") == 0) {
 			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_TRACE) < 0) {
 				error_reason = "unable to set debug trace";
+				free(value);
 				goto parse_error;
 			}
 		} else
 		if (strcmp (value, "on") == 0) {
 			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_ON) < 0) {
 				error_reason = "unable to set debug on";
+				free(value);
 				goto parse_error;
 			}
 		} else
 		if (strcmp (value, "off") == 0) {
 			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_OFF) < 0) {
 				error_reason = "unable to set debug off";
+				free(value);
 				goto parse_error;
 			}
 		} else {
 			error_reason = "unknown value for debug";
+			free(value);
 			goto parse_error;
 		}
 		free(value);
@@ -534,6 +542,22 @@ static void main_logging_notify(
 #endif
 {
 	const char *error_string;
+	static int reload_in_progress = 0;
+
+	/* If a full reload happens then suspend updates for individual keys until
+	 * it's all completed
+	 */
+	if (strcmp(key_name, "config.reload_in_progress") == 0) {
+		if (*(uint8_t *)new_val.data == 1) {
+			reload_in_progress = 1;
+		} else {
+			reload_in_progress = 0;
+		}
+	}
+	if (reload_in_progress) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "Ignoring key change, reload in progress. %s\n", key_name);
+		return;
+	}
 
 	/*
 	 * Reload the logsys configuration
@@ -554,6 +578,12 @@ static void add_logsys_config_notification(void)
 			main_logging_notify,
 			NULL,
 			&icmap_track);
+
+	icmap_track_add("config.reload_in_progress",
+			ICMAP_TRACK_ADD | ICMAP_TRACK_MODIFY,
+			main_logging_notify,
+			NULL,
+			&icmap_track);
 }
 #else
 static void add_logsys_config_notification(void)
@@ -562,6 +592,12 @@ static void add_logsys_config_notification(void)
 
 	cmap_track_add(cmap_handle, "logging.",
 			CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
+			main_logging_notify,
+			NULL,
+			&cmap_track);
+
+	cmap_track_add(cmap_handle, "config.reload_in_progress",
+			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY,
 			main_logging_notify,
 			NULL,
 			&cmap_track);
