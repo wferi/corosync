@@ -1,3 +1,10 @@
+corosync (1.4.6-1.1) unreleased; urgency=low
+
+  * Non-maintainer upload.
+  * Use autotools-dev in build for new architectures (Closes: #743243)
+
+ -- Wookey <wookey@debian.org>  Mon, 31 Mar 2014 18:17:42 +0000
+
 corosync (1.4.6-1) unstable; urgency=low
 
   * New upstream release
