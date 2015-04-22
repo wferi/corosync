@@ -1,3 +1,4 @@
-# format version number, currently 3; this line is compulsory!
 version=3
-opts=pasv ftp://ftp:downloads@corosync.org/downloads/corosync-([\d\.]*)/corosync-([\d\.]*)\.tar\.gz
+
+opts=uversionmangle=s/(\d)[_\.\-\+]?((RC|rc|pre|dev|beta|alpha)\d*)$/$1~$2/ \
+  https://github.com/corosync/corosync/releases .*/v?(\d\S*)\.tar\.gz
