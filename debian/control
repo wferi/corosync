@@ -37,7 +37,7 @@ Depends: ${shlibs:Depends},
  libquorum5 (= ${binary:Version}),
  libsam4 (= ${binary:Version}),
  libtotem-pg5 (= ${binary:Version}),
- libvotequorum6 (= ${binary:Version}),
+ libvotequorum7 (= ${binary:Version}),
  adduser
 Conflicts: openais (<< 0.85),
  openais-legacy (<< 1.0.0)
@@ -68,7 +68,7 @@ Depends: ${shlibs:Depends},
  libquorum5 (= ${binary:Version}),
  libsam4 (= ${binary:Version}),
  libtotem-pg5 (= ${binary:Version}),
- libvotequorum6 (= ${binary:Version})
+ libvotequorum7 (= ${binary:Version})
 Description: Standards-based cluster framework (debugging symbols)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
@@ -117,7 +117,7 @@ Depends: ${misc:Depends},
  libquorum5,
  libsam4,
  libtotem-pg5,
- libvotequorum6
+ libvotequorum7
 Conflicts: libopenais2 (<< 0.85)
 Description: Standards-based cluster framework (transitional package)
  The corosync project is a project to implement a production quality
@@ -338,7 +338,7 @@ Description: Standards-based cluster framework, Totem library
  This package contains the Totem library, which is a library included
  in Corosync.
 
-Package: libvotequorum6
+Package: libvotequorum7
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
