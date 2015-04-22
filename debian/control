@@ -6,10 +6,11 @@ Uploaders: Martin Loschwitz <madkiss@debian.org>,
  Guido Günther <agx@sigxcpu.org>,
  Richard B Winters <rik@mmogp.com>
 Standards-Version: 3.9.6
-Build-Depends: debhelper (>> 5),
+Build-Depends: debhelper (>= 9),
  chrpath,
+ dh-autoreconf,
+ dh-systemd,
  groff,
- hardening-wrapper,
  libaugeas-dev,
  libibverbs-dev,
  libnss3-dev,
