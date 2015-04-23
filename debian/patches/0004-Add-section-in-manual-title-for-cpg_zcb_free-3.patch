@@ -1,0 +1,23 @@
+From: Richard B Winters <rik@mmogp.com>
+Date: Thu, 23 Apr 2015 16:13:02 -0400
+Subject: Add section in manual title for cpg_zcb_free 3
+
+Change-Id: Ib80face38dce0345e649297d16cf8a63c5b0e8c1
+Signed-off-by: Richard B Winters <rik@mmogp.com>
+---
+ man/cpg_zcb_free.3.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/man/cpg_zcb_free.3.in b/man/cpg_zcb_free.3.in
+index f26e2c0..369c660 100644
+--- a/man/cpg_zcb_free.3.in
++++ b/man/cpg_zcb_free.3.in
+@@ -31,7 +31,7 @@
+ .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ .\" * THE POSSIBILITY OF SUCH DAMAGE.
+ .\" */
+-.TH CPG_ZCB_FREE 2009-04-15 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
++.TH CPG_ZCB_FREE 3 2009-04-15 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+ .SH NAME
+ cpg_zcb_free \- Frees a zero copy buffer
+ .B #include <corosync/cpg.h>

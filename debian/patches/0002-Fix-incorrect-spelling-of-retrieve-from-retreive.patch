@@ -1,0 +1,37 @@
+From: Richard B Winters <rik@mmogp.com>
+Date: Thu, 23 Apr 2015 15:48:57 -0400
+Subject: Fix incorrect spelling of retrieve from retreive
+
+Corrected the spelling of retrieve, where it was spelled as retreive.
+
+ - There were two cases of this mispelling; one 
+   upper-case and one lower-case
+
+Change-Id: Ic97fd210d8d3ae7e568e5a2e5d97c6220d2ff628
+Signed-off-by: Richard B Winters <rik@mmogp.com>
+---
+ man/cmap_get.3.in | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/man/cmap_get.3.in b/man/cmap_get.3.in
+index 7e8c797..7747b7a 100644
+--- a/man/cmap_get.3.in
++++ b/man/cmap_get.3.in
+@@ -35,7 +35,7 @@
+ 
+ .SH NAME
+ .P
+-cmap_get \- Retreive value from CMAP
++cmap_get \- Retrieve value from CMAP
+ 
+ .SH SYNOPSIS
+ .P
+@@ -74,7 +74,7 @@ Also shortcuts for different types are defined
+ .P
+ The
+ .B cmap_get
+-function is used to retreive key from cmap previously set by
++function is used to retrieve key from cmap previously set by
+ .B cmap_set(3)
+ function. The
+ .I handle

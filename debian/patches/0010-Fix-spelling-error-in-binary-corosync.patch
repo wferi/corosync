@@ -1,0 +1,34 @@
+From: Richard B Winters <rik@mmogp.com>
+Date: Thu, 23 Apr 2015 16:46:58 -0400
+Subject: Fix spelling error in binary corosync
+
+ - Changed paramater to parameter in exec/logcconfig.c
+
+Change-Id: I8a24b0ef5c6621dc6c19d7decbdfe7a255afd10d
+Signed-off-by: Richard B Winters <rik@mmogp.com>
+---
+ exec/logconfig.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/exec/logconfig.c b/exec/logconfig.c
+index e6f984a..0d1abf1 100644
+--- a/exec/logconfig.c
++++ b/exec/logconfig.c
+@@ -246,7 +246,7 @@ static int corosync_main_config_log_destination_set (
+ 	if (map_get_string(key_name, &value) == CS_OK) {
+ 		if (deprecated) {
+ 			log_printf(LOGSYS_LEVEL_WARNING,
+-			 "Warning: the %s config paramater has been obsoleted."
++			 "Warning: the %s config parameter has been obsoleted."
+ 			 " See corosync.conf man page %s directive.",
+ 			 key, replacement);
+ 		}
+@@ -344,7 +344,7 @@ static int corosync_main_config_set (
+ 		int syslog_priority;
+ 
+ 		log_printf(LOGSYS_LEVEL_WARNING,
+-		 "Warning: the syslog_level config paramater has been obsoleted."
++		 "Warning: the syslog_level config parameter has been obsoleted."
+ 		 " See corosync.conf man page syslog_priority directive.");
+ 
+ 		syslog_priority = logsys_priority_id_get(value);

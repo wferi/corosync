@@ -1,0 +1,40 @@
+From: Richard B Winters <rik@mmogp.com>
+Date: Thu, 23 Apr 2015 16:28:19 -0400
+Subject: Fix spelling and grammar errors in manual cmap_keys 8
+
+ - "There are informations" changed to "There is information"
+ - Other occurrences of informations changed to information
+
+Change-Id: Ic2b6388e26592affb7514f81ffa9a7f1dfae5a99
+Signed-off-by: Richard B Winters <rik@mmogp.com>
+---
+ man/cmap_keys.8 | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/man/cmap_keys.8 b/man/cmap_keys.8
+index 16b7d46..268897a 100644
+--- a/man/cmap_keys.8
++++ b/man/cmap_keys.8
+@@ -85,11 +85,11 @@ to change keys in this prefix.
+ 
+ .TP
+ runtime.connections.*
+-There are informations about total number of active connections in given moment in
++There is information about total number of active connections in given moment in
+ .B active
+ key, number of closed connections during whole runtime of corosync in
+ .B closed
+-key and informations about each active IPC connection. All keys in this prefix are read-only.
++key and information about each active IPC connection. All keys in this prefix are read-only.
+ 
+ .TP
+ runtime.connections.ID.*
+@@ -266,7 +266,7 @@ State of client. Can be one of failed, stopped, running and waiting for quorum.
+ 
+ .TP
+ uidgid.*
+-Informations about users/groups which are allowed to do IPC connection to
++Information about users/groups which are allowed to do IPC connection to
+ corosync.
+ 
+ .TP
