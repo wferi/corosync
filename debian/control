@@ -389,7 +389,8 @@ Package: libcfg-dev
 Section: libdevel 
 Architecture: any
 Depends: ${shlibs:Depends},
- ${misc:Depends}
+ ${misc:Depends},
+ libcfg6 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
  corosync (<< 1.99.9-1),
  corosync-dev (<< 1.99.9-1)
@@ -414,7 +415,8 @@ Package: libcmap-dev
 Section: libdevel
 Architecture: any
 Depends: ${shlibs:Depends},
- ${misc:Depends}
+ ${misc:Depends},
+ libcmap4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
  corosync (<< 1.99.9-1),
  corosync-dev (<< 1.99.9-1)
@@ -439,7 +441,8 @@ Package: libcorosync-common-dev
 Section: libdevel
 Architecture: any
 Depends: ${shlibs:Depends},
- ${misc:Depends}
+ ${misc:Depends},
+ libcorosync-common4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
  corosync (<< 1.99.9-1),
  corosync-dev (<< 1.99.9-1)
@@ -463,7 +466,8 @@ Package: libcpg-dev
 Section: libdevel
 Architecture: any
 Depends: ${shlibs:Depends},
- ${misc:Depends}
+ ${misc:Depends},
+ libcpg4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
  corosync (<< 1.99.9-1),
  corosync-dev (<< 1.99.9-1)
@@ -488,7 +492,8 @@ Package: libquorum-dev
 Section: libdevel
 Architecture: any
 Depends: ${shlibs:Depends},
- ${misc:Depends}
+ ${misc:Depends},
+ libquorum5 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
  corosync (<< 1.99.9-1),
  corosync-dev (<< 1.99.9-1)
@@ -513,7 +518,8 @@ Package: libsam-dev
 Section: libdevel
 Architecture: any
 Depends: ${shlibs:Depends},
- ${misc:Depends}
+ ${misc:Depends},
+ libsam4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
  corosync (<< 1.99.9-1),
  corosync-dev (<< 1.99.9-1)
@@ -538,7 +544,8 @@ Package: libtotem-pg-dev
 Section: libdevel
 Architecture: any
 Depends: ${shlibs:Depends},
- ${misc:Depends}
+ ${misc:Depends},
+ libtotem-pg5 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
  corosync (<< 1.99.9-1),
  corosync-dev (<< 1.99.9-1)
@@ -563,7 +570,8 @@ Package: libvotequorum-dev
 Section: libdevel
 Architecture: any
 Depends: ${shlibs:Depends},
- ${misc:Depends}
+ ${misc:Depends},
+ libvotequorum7 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
  corosync (<< 1.99.9-1),
  corosync-dev (<< 1.99.9-1)
