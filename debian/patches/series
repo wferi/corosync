@@ -8,3 +8,4 @@
 0009-Fix-spelling-error-in-binary-corosync-cfgtool.patch
 0010-Fix-spelling-error-in-binary-corosync.patch
 0011-Remove-deprecated-doxygen-flags.patch
+0012-Debianize-corosync-notifyd-systemd-service-file.patch
