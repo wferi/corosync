@@ -15,6 +15,8 @@ usr/share/corosync/tests/net_breaker.sh
 usr/share/snmp/mibs/COROSYNC-MIB.txt
 usr/bin/cpg_test_agent
 usr/bin/sam_test_agent 
+usr/bin/corosync-xmlproc
 usr/bin/votequorum_test_agent 
 etc/dbus-1/system.d/corosync-signals.conf
 etc/corosync/corosync.*example* usr/share/doc/corosync/examples
+usr/share/corosync/xml2conf.xsl

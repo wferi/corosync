@@ -41,7 +41,8 @@ Depends: ${shlibs:Depends},
  libsam4 (= ${binary:Version}),
  libtotem-pg5 (= ${binary:Version}),
  libvotequorum7 (= ${binary:Version}),
- adduser
+ adduser,
+ xsltproc
 Conflicts: openais (<< 0.85),
  openais-legacy (<< 1.0.0)
 Description: Standards-based cluster framework (daemon and modules)
