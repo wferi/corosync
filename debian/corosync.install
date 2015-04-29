@@ -18,5 +18,6 @@ usr/bin/sam_test_agent
 usr/bin/corosync-xmlproc
 usr/bin/votequorum_test_agent 
 etc/dbus-1/system.d/corosync-signals.conf
+lib/systemd/system
 etc/corosync/corosync.*example* usr/share/doc/corosync/examples
 usr/share/corosync/xml2conf.xsl
