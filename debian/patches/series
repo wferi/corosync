@@ -9,3 +9,4 @@
 0010-Fix-spelling-error-in-binary-corosync.patch
 0011-Remove-deprecated-doxygen-flags.patch
 0012-Debianize-corosync-notifyd-systemd-service-file.patch
+0013-call-corosync-directly-in-service-file.patch

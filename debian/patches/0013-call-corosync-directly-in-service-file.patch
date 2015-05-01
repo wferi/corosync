@@ -1,0 +1,17 @@
+Modify init/corosync.service.in to call corosync directly instead of
+through the upstream SysV initscript.
+--- corosync-old.orig/init/corosync.service.in
++++ corosync-old/init/corosync.service.in
+@@ -5,9 +5,9 @@ Requires=network-online.target
+ After=network-online.target
+ 
+ [Service]
+-ExecStart=@INITWRAPPERSDIR@/corosync start
+-ExecStop=@INITWRAPPERSDIR@/corosync stop
+-Type=forking
++EnvironmentFile=-/etc/default/corosync
++ExecStart=/usr/sbin/corosync -f
++Type=simple
+ 
+ # The following config is for corosync with enabled watchdog service.
+ #
