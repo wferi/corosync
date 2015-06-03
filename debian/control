@@ -20,8 +20,8 @@ Build-Depends: debhelper (>> 5),
  pkg-config,
  zlib1g-dev
 Homepage: http://corosync.github.io/corosync/
-Vcs-Git: git://git.debian.org/debian-ha/corosync.git
-Vcs-Browser: http://git.debian.org/?p=debian-ha/corosync.git;a=summary
+Vcs-Git: git://anonscm.debian.org/debian-ha/corosync.git
+Vcs-Browser: http://anonscm.debian.org/cgit/debian-ha/corosync.git/
 
 Package: corosync
 Section: admin
