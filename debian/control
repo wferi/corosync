@@ -19,6 +19,7 @@ Build-Depends: debhelper (>> 5),
  libxml2-dev,
  pkg-config,
  zlib1g-dev
+Homepage: http://corosync.github.io/corosync/
 Vcs-Git: git://git.debian.org/debian-ha/corosync.git
 Vcs-Browser: http://git.debian.org/?p=debian-ha/corosync.git;a=summary
 
