@@ -1,105 +1,75 @@
-This is the Ubuntu / Debian GNU/Linux prepackaged version of corosync.
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: corosync
+Source: http://corosync.github.io/corosync/
 
-Mainly packaged by Fabio M. Di Nitto <fabbione@ubuntu.com>.
+Files: *
+Comment: Based on the distributed LICENSE file
+Copyright: 2002-2004 MontaVista Software, Inc.
+           2005-2015 Red Hat, Inc.
+License: BSD-3-clause
 
-It was downloaded from http://corosync.org
+Files: build-aux/git-version-gen
+       build-aux/gitlog-to-changelog
+Comment: Based on the distributed LICENSE file
+Copyright: 2002-2004 MontaVista Software, Inc.
+           2005-2013 Red Hat, Inc.
+License: GPL-3+
 
-Upstream Authors:
+Files: debian/*
+Copyright: 2006-2009 Fabio M. Di Nitto <fabbione@ubuntu.com>
+           2007      Bastian Blank <waldi@debian.org>
+           2007      Soren Hansen <soren@ubuntu.com>
+           2007-2008 Frederik Schüler <fs@debian.org>
+           2009      Ante Karamatić <ivoks@ubuntu.com>
+           2009-2012 Guido Günther <agx@sigxcpu.org>
+           2011      Andres Rodriguez <andreserl@ubuntu.com>
+           2011-2014 Martin Loschwitz <madkiss@debian.org>
+           2014      Wookey <wookey@debian.org>
+           2015      Richard B Winters <rik@mmogp.com>
+License: BSD-3-clause
 
-	Steven Dake
-	Christine Caulfield
-	Fabien Thomas
-	Hans Feldt
-	Angus Salkeld
-	Lon Hohberger
-	Fabio Di Nitt
-	Jim Meyering
-	Andrew Beekhof
-	Dave Teigland
-	Jan Friesse
-	Jérôme Flesch
+License: BSD-3-clause
+ All rights reserved.
+ .
+ This software licensed under BSD license, the text of which follows:
+ .
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+ .
+ - Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+ - Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+ - Neither the name of the MontaVista Software, Inc. nor the names of its
+   contributors may be used to endorse or promote products derived from this
+   software without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ THE POSSIBILITY OF SUCH DAMAGE.
 
-Copyright:
-
-	These companies hold copyrights on parts of the code. Please see the
-        individual files for detailed copyright information.
-
-	2002-2006 MontaVista Software, Inc
-        2005-2009 Red Hat, Inc.
-	2008 Allied Telesis Labs NZ
-	2006 Steven Dake (sdake@redhat.com)
-        1996 Bob Jenkins
-        2003 David S. Miller
-
-License:
-
-	***
-	All cryptographic software in this package is subject to the following legal
-	notice:
-	This package includes publicly available encryption source code which,
-	together with object code resulting from the compiling of publicly
-	available source code, may be exported from the United States under License
-	Exception TSU prsuant to 15 C.F.R Section 740.13(e).
-	***
-
-    All files unless noted otherwise:
-
-        Copyright (c) The Regents of the University of California.
-        All rights reserved.
-
-        Redistribution and use in source and binary forms, with or without
-        modification, are permitted provided that the following conditions
-        are met:
-        1. Redistributions of source code must retain the above copyright
-           notice, this list of conditions and the following disclaimer.
-        2. Redistributions in binary form must reproduce the above copyright
-           notice, this list of conditions and the following disclaimer in the
-           documentation and/or other materials provided with the distribution.
-        3. Neither the name of the University nor the names of its contributors
-           may be used to endorse or promote products derived from this software
-           without specific prior written permission.
-
-        THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
-        ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-        ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-        FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-        DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-        OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-        HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-        LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-        OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-        SUCH DAMAGE.
-
-    exec/crypto.c:
-    exec/crypto.h:
-
-	LibTomCrypt is public domain.  As should all quality software be.
-
-	All of the software was either written by or donated to Tom St Denis for the
-	purposes of this project.  The only exception is the SAFER.C source which has
-	no known license status (assumed copyrighted) which is why SAFER,C is shipped
-	as disabled.
-
-	Tom St Denis
-
-    include/corosync/jhash.h:
-
-	/* Copyright (C) 1996 Bob Jenkins (bob_jenkins@burtleburtle.net)
-	 *
-	 * http://burtleburtle.net/bob/hash/
-	 *
-	 * These are the credits from Bob's sources:
-	 *
-	 * lookup2.c, by Bob Jenkins, December 1996, Public Domain.
-	 * hash(), hash2(), hash3, and mix() are externally useful functions.
-	 * Routines to test the hash are included if SELF_TEST is defined.
-	 * You can use this free for any purpose.  It has no warranty.
-	 *
-	 * Copyright (C) 2003 David S. Miller (davem@redhat.com)
-	 *
-	 * I've modified Bob's hash to be useful in the Linux kernel, and
-	 * any bugs present are surely my fault.  -DaveM
-         */
-
-
+License: GPL-3+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU General
+ Public License version 3 can be found in "/usr/share/common-licenses/GPL-3".
