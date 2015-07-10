@@ -36,6 +36,10 @@ override_dh_auto_configure:
 	    --enable-upstart \
 	    --enable-qdevices
 
+override_dh_auto_build:
+	dh_auto_build
+	$(MAKE) doxygen
+
 override_dh_auto_install:
 	dh_auto_install
 	rm -v debian/tmp/usr/lib/lib*.la
@@ -44,7 +48,7 @@ override_dh_auto_install:
 	cp -ax $(CURDIR)/debian/corosync.example-config $(CURDIR)/debian/corosync/etc/corosync/corosync.conf
 
 override_dh_install:
-	dh_install --fail-missing
+	dh_install --fail-missing --exclude=.md5
 
 override_dh_installinit:
 	dh_installinit -p corosync --name corosync -- defaults 19 1
