@@ -89,7 +89,7 @@ Architecture: any
 Depends: ${shlibs:Depends},
  ${misc:Depends},
  libcorosync-common-dev (= ${binary:Version})
-Description: Standards-based cluster framework (transitional package)
+Description: Standards-based cluster framework (generic devel files, transitional package)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
  required by openais. The project implements cutting edge research
@@ -102,7 +102,7 @@ Description: Standards-based cluster framework (transitional package)
  faults.
  .
  This package exists for historical reasons to assure a smooth upgrade
- from further versions to the libcorosync-common-dev package.
+ from older versions to the libcorosync-common-dev package.
 
 Package: libcorosync4
 Section: oldlibs
@@ -118,7 +118,7 @@ Depends: ${misc:Depends},
  libtotem-pg5,
  libvotequorum7
 Conflicts: libopenais2 (<< 0.85)
-Description: Standards-based cluster framework (transitional package)
+Description: Standards-based cluster framework (libraries, transitional package)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
  required by openais. The project implements cutting edge research
@@ -147,7 +147,7 @@ Depends: ${misc:Depends},
  libvotequorum-dev
 Conflicts: libopenais-dev (<< 0.85),
  libopenais-legacy-dev (<< 1.0.0)
-Description: Standards-based cluster framework (transitional package)
+Description: Standards-based cluster framework (developer files, transitional package)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
  required by openais. The project implements cutting edge research
