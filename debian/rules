@@ -30,7 +30,8 @@ override_dh_auto_configure:
 	    --enable-xmlconf \
 	    --enable-systemd \
 	    --enable-upstart \
-	    --enable-qdevices
+	    --enable-qdevices \
+	    --disable-static
 
 override_dh_auto_build:
 	dh_auto_build

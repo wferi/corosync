@@ -1,4 +1,3 @@
-usr/lib/*/libquorum.a
 usr/lib/*/libquorum.so
 usr/lib/*/pkgconfig/libquorum.pc
 usr/include/corosync/quorum.h

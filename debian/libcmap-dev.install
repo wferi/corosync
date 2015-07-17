@@ -1,5 +1,4 @@
 usr/include/corosync/cmap.h
-usr/lib/*/libcmap.a
 usr/lib/*/libcmap.so
 usr/lib/*/pkgconfig/libcmap.pc
 usr/share/man/man3/cmap_iter_next.3

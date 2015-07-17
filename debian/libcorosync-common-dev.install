@@ -1,4 +1,3 @@
-usr/lib/*/libcorosync_common.a
 usr/lib/*/libcorosync_common.so
 usr/lib/*/pkgconfig/libcorosync_common.pc
 usr/include/corosync/corodefs.h

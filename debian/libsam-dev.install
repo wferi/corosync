@@ -1,5 +1,4 @@
 usr/include/corosync/sam.h
-usr/lib/*/libsam.a
 usr/lib/*/libsam.so
 usr/lib/*/pkgconfig/libsam.pc
 usr/share/man/man3/sam_data_getsize.3
