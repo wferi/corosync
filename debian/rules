@@ -43,6 +43,9 @@ override_dh_auto_build:
 override_dh_auto_install:
 	dh_auto_install
 	rm -v debian/tmp/usr/lib/lib*.la
+# we don't need the upstream SysV init scripts
+	rm debian/tmp/usr/share/corosync/corosync \
+	   debian/tmp/usr/share/corosync/corosync-notifyd
 # install example configuration file
 	mkdir -p $(CURDIR)/debian/corosync/etc/corosync/
 	cp -ax $(CURDIR)/debian/corosync.example-config $(CURDIR)/debian/corosync/etc/corosync/corosync.conf
