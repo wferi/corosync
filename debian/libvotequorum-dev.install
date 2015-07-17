@@ -36,3 +36,4 @@ usr/share/man/man3/votequorum_qdevice_register.3
 usr/share/man/man3/votequorum_qdevice_poll.3
 usr/share/man/man3/votequorum_qdevice_update.3
 usr/share/man/man3/votequorum_qdevice_unregister.3
+usr/share/man/man8/votequorum_overview.8

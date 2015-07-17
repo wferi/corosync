@@ -18,6 +18,7 @@ usr/share/man/man3/cmap_track_add.3
 usr/share/man/man3/cmap_fd_get.3
 usr/share/man/man3/cmap_delete.3
 usr/share/man/man3/cmap_context_get.3
+usr/share/man/man8/cmap_overview.8
 usr/share/doc/corosync/html/cmap_context_get.3.html
 usr/share/doc/corosync/html/cmap_context_set.3.html
 usr/share/doc/corosync/html/cmap_dec.3.html

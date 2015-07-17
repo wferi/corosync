@@ -27,3 +27,4 @@ usr/share/man/man3/sam_register.3
 usr/share/man/man3/sam_start.3
 usr/share/man/man3/sam_stop.3
 usr/share/man/man3/sam_warn_signal_set.3
+usr/share/man/man8/sam_overview.8

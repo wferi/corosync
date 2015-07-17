@@ -39,3 +39,4 @@ usr/share/man/man3/cpg_model_initialize.3
 usr/share/man/man3/cpg_zcb_alloc.3
 usr/share/man/man3/cpg_zcb_free.3
 usr/share/man/man3/cpg_zcb_mcast_joined.3
+usr/share/man/man8/cpg_overview.8
