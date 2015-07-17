@@ -11,8 +11,6 @@ usr/share/doc/corosync/AUTHORS
 usr/share/doc/corosync/INSTALL
 usr/share/augeas/lenses/corosync.aug
 usr/share/augeas/lenses/tests/test_corosync.aug
-usr/share/doc/corosync/html/index.html
-usr/share/doc/corosync/html/corosync*.html
 usr/share/corosync/tests/shm_leak_audit.sh 
 usr/share/corosync/tests/cmap-dispatch-deadlock.sh 
 usr/share/corosync/tests/mem_leak_test.sh
