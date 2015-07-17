@@ -52,8 +52,8 @@ override_dh_install:
 	dh_install --fail-missing --exclude=.md5
 
 override_dh_installinit:
-	dh_installinit -p corosync --name corosync -- defaults 19 1
-	dh_installinit -p corosync --name corosync-notifyd -- defaults 19 1
+	dh_installinit
+	dh_installinit -p corosync --name corosync-notifyd
 
 override_dh_installchangelogs:
 	dh_installchangelogs ChangeLog
