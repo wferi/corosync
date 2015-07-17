@@ -1,2 +1,2 @@
-usr/lib/libcfg.so.6
-usr/lib/libcfg.so.6.0.0
+usr/lib/*/libcfg.so.6
+usr/lib/*/libcfg.so.6.0.0

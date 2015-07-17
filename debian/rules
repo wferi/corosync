@@ -19,10 +19,7 @@ override_dh_autoreconf:
 	dh_autoreconf ./autogen.sh
 
 override_dh_auto_configure:
-	./configure --prefix=/usr \
-	    --libexecdir=/usr/lib/ \
-	    --localstatedir=/var \
-	    --sysconfdir=/etc \
+	dh_auto_configure -- \
 	    --enable-dbus \
 	    --enable-testagents \
 	    --enable-rdma \
@@ -41,7 +38,7 @@ override_dh_auto_build:
 
 override_dh_auto_install:
 	dh_auto_install
-	rm -v debian/tmp/usr/lib/lib*.la
+	rm -v debian/tmp/usr/lib/*/lib*.la
 # we don't need the upstream SysV init scripts and license
 	rm debian/tmp/usr/share/corosync/corosync \
 	   debian/tmp/usr/share/corosync/corosync-notifyd \

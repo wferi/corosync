@@ -92,6 +92,7 @@ Description: Standards-based cluster framework (debugging symbols)
 Package: corosync-doc
 Section: doc
 Architecture: all
+Multi-Arch: foreign
 Depends: ${misc:Depends}
 Recommends: w3m | www-browser
 Description: Standards-based cluster framework, HTML documentation
@@ -111,9 +112,11 @@ Description: Standards-based cluster framework, HTML documentation
 Package: corosync-dev
 Section: oldlibs 
 Priority: extra
-Architecture: any 
+Architecture: all
+Multi-Arch: foreign
 Depends: ${misc:Depends},
- libcorosync-common-dev (= ${binary:Version})
+ libcorosync-common-dev (>= ${source:Version})
+# to avoid not-binnmuable-all-depends-any Lintian error
 Description: Standards-based cluster framework (generic devel files, transitional package)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
@@ -133,6 +136,7 @@ Package: libcorosync4
 Section: oldlibs
 Priority: extra
 Architecture: all
+Multi-Arch: foreign
 Depends: ${misc:Depends},
  libcfg6,
  libcmap4,
@@ -162,6 +166,7 @@ Package: libcorosync-dev
 Section: oldlibs
 Priority: extra
 Architecture: all
+Multi-Arch: foreign
 Depends: ${misc:Depends},
  libcmap-dev,
  libcorosync-common-dev,
@@ -190,6 +195,8 @@ Description: Standards-based cluster framework (developer files, transitional pa
 Package: libcfg6
 Section: libs
 Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${shlibs:Depends},
  ${misc:Depends}
 Replaces: libcorosync4 (<= 1.4.2-1),
@@ -215,6 +222,8 @@ Description: Standards-based cluster framework, Cfg library
 Package: libcmap4
 Section: libs
 Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${shlibs:Depends},
  ${misc:Depends}
 Replaces: libcorosync4 (<= 1.4.2-1),
@@ -240,6 +249,8 @@ Description: Standards-based cluster framework, Cmap library
 Package: libcorosync-common4
 Section: libs
 Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${shlibs:Depends},
  ${misc:Depends}
 Replaces: libcorosync4 (<= 1.4.2-1),
@@ -265,6 +276,8 @@ Description: Standards-based cluster framework, common library
 Package: libcpg4
 Section: libs
 Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${shlibs:Depends},
  ${misc:Depends}
 Replaces: libcorosync4 (<= 1.4.2-1),
@@ -290,6 +303,8 @@ Description: Standards-based cluster framework, Cpg library
 Package: libquorum5
 Section: libs
 Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${shlibs:Depends},
  ${misc:Depends}
 Replaces: libcorosync4 (<= 1.4.2-1),
@@ -315,6 +330,8 @@ Description: Standards-based cluster framework, Quorum library
 Package: libsam4
 Section: libs
 Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${shlibs:Depends},
  ${misc:Depends}
 Replaces: libcorosync4 (<= 1.4.2-1),
@@ -340,6 +357,8 @@ Description: Standards-based cluster framework, Sam library
 Package: libtotem-pg5
 Section: libs
 Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${shlibs:Depends},
  ${misc:Depends}
 Replaces: libcorosync4 (<= 1.4.2-1),
@@ -365,6 +384,8 @@ Description: Standards-based cluster framework, Totem library
 Package: libvotequorum7
 Section: libs
 Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
 Depends: ${shlibs:Depends},
  ${misc:Depends}
 Replaces: libcorosync4 (<= 1.4.2-1),
@@ -392,6 +413,7 @@ Description: Standards-based cluster framework, Votequorum library
 Package: libcfg-dev
 Section: libdevel 
 Architecture: any
+Multi-Arch: same
 Depends: ${misc:Depends},
  libcfg6 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
@@ -417,6 +439,7 @@ Description: Standards-based cluster framework, Cfg devel files
 Package: libcmap-dev
 Section: libdevel
 Architecture: any
+Multi-Arch: same
 Depends: ${misc:Depends},
  libcmap4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
@@ -442,6 +465,7 @@ Description: Standards-based cluster framework, Cmap devel files
 Package: libcorosync-common-dev
 Section: libdevel
 Architecture: any
+Multi-Arch: same
 Depends: ${misc:Depends},
  libcorosync-common4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
@@ -466,6 +490,7 @@ Description: Standards-based cluster framework, common devel files
 Package: libcpg-dev
 Section: libdevel
 Architecture: any
+Multi-Arch: same
 Depends: ${misc:Depends},
  libcpg4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
@@ -491,6 +516,7 @@ Description: Standards-based cluster framework, Cpg devel files
 Package: libquorum-dev
 Section: libdevel
 Architecture: any
+Multi-Arch: same
 Depends: ${misc:Depends},
  libquorum5 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
@@ -516,6 +542,7 @@ Description: Standards-based cluster framework, Quorum devel files
 Package: libsam-dev
 Section: libdevel
 Architecture: any
+Multi-Arch: same
 Depends: ${misc:Depends},
  libsam4 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
@@ -541,6 +568,7 @@ Description: Standards-based cluster framework, Sam devel files
 Package: libtotem-pg-dev
 Section: libdevel
 Architecture: any
+Multi-Arch: same
 Depends: ${misc:Depends},
  libtotem-pg5 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
@@ -566,6 +594,7 @@ Description: Standards-based cluster framework, Totem devel files
 Package: libvotequorum-dev
 Section: libdevel
 Architecture: any
+Multi-Arch: same
 Depends: ${misc:Depends},
  libvotequorum7 (= ${binary:Version})
 Replaces: libcorosync-dev (<= 1.4.2-1),
