@@ -44,8 +44,6 @@ Depends: ${shlibs:Depends},
  libvotequorum7 (= ${binary:Version}),
  adduser,
  xsltproc
-Conflicts: openais (<< 0.85),
- openais-legacy (<< 1.0.0)
 Description: Standards-based cluster framework (daemon and modules)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
@@ -144,7 +142,6 @@ Depends: ${misc:Depends},
  libsam4,
  libtotem-pg5,
  libvotequorum7
-Conflicts: libopenais2 (<< 0.85)
 Description: Standards-based cluster framework (libraries, transitional package)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
@@ -173,8 +170,6 @@ Depends: ${misc:Depends},
  libsam-dev,
  libtotem-pg-dev,
  libvotequorum-dev
-Conflicts: libopenais-dev (<< 0.85),
- libopenais-legacy-dev (<< 1.0.0)
 Description: Standards-based cluster framework (developer files, transitional package)
  The corosync project is a project to implement a production quality
  "Revised BSD" licensed implementation of all core functionalities
