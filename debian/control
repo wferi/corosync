@@ -65,8 +65,7 @@ Package: corosync-dbg
 Section: debug
 Priority: extra
 Architecture: any
-Depends: ${shlibs:Depends},
- ${misc:Depends},
+Depends: ${misc:Depends},
  libcfg6 (= ${binary:Version}),
  libcmap4 (= ${binary:Version}),
  libcorosync-common4 (= ${binary:Version}),
