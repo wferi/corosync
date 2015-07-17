@@ -9,7 +9,6 @@ Uploaders: Martin Loschwitz <madkiss@debian.org>,
  Ferenc Wágner <wferi@niif.hu>
 Standards-Version: 3.9.6
 Build-Depends: debhelper (>= 9),
- chrpath,
  dh-autoreconf,
  dh-systemd,
  doxygen,

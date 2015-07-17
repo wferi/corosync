@@ -60,7 +60,3 @@ override_dh_installchangelogs:
 
 override_dh_strip:
 	dh_strip --dbg-package=corosync-dbg
-
-override_dh_compress:
-	dh_compress
-	for a in $(CURDIR)/debian/corosync/usr/sbin/*; do chrpath -d $$a; done
