@@ -61,3 +61,17 @@ override_dh_installchangelogs:
 
 override_dh_strip:
 	dh_strip --dbg-package=corosync-dbg
+
+# Play safe
+.DELETE_ON_ERROR:
+
+DESC_SUBST=debian/description.subst
+
+$(DESC_SUBST): debian/description
+	tr '\n' _ < $< | sed 's/^/DESCRIPTION=/;s/_/$${Newline}/g' >$@
+
+override_dh_gencontrol: $(DESC_SUBST)
+	dh_gencontrol -- -T$<
+
+override_dh_clean:
+	dh_clean $(DESC_SUBST)
