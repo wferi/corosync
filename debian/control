@@ -220,6 +220,7 @@ Section: libdevel
 Architecture: any
 Multi-Arch: same
 Depends: ${misc:Depends},
+ libcorosync-common-dev (= ${binary:Version}),
  libcfg6 (= ${binary:Version})
 # Moved from libcorosync-dev: /usr/include/corosync/cfg.h
 Replaces: libcorosync-dev (<= 1.4.2-1)
@@ -234,6 +235,7 @@ Section: libdevel
 Architecture: any
 Multi-Arch: same
 Depends: ${misc:Depends},
+ libcorosync-common-dev (= ${binary:Version}),
  libcmap4 (= ${binary:Version})
 Description: cluster engine CMAP library development
  ${DESCRIPTION}
@@ -258,6 +260,7 @@ Section: libdevel
 Architecture: any
 Multi-Arch: same
 Depends: ${misc:Depends},
+ libcorosync-common-dev (= ${binary:Version}),
  libcpg4 (= ${binary:Version})
 # Moved from corosync: /usr/share/man/man8/cpg_overview.8.gz
 #        corosync-dev: /usr/share/man/man3/cpg_join.3.gz etc.
@@ -278,6 +281,7 @@ Section: libdevel
 Architecture: any
 Multi-Arch: same
 Depends: ${misc:Depends},
+ libcorosync-common-dev (= ${binary:Version}),
  libquorum5 (= ${binary:Version})
 # Moved from libcorosync-dev: /usr/include/corosync/quorum.h
 Replaces: libcorosync-dev (<= 1.4.2-1)
@@ -292,6 +296,7 @@ Section: libdevel
 Architecture: any
 Multi-Arch: same
 Depends: ${misc:Depends},
+ libcorosync-common-dev (= ${binary:Version}),
  libsam4 (= ${binary:Version})
 # Moved from corosync: /usr/share/man/man8/sam_overview.8.gz
 #        corosync-dev: /usr/share/man/man3/sam_stop.3.gz etc.
@@ -312,6 +317,7 @@ Section: libdevel
 Architecture: any
 Multi-Arch: same
 Depends: ${misc:Depends},
+ libcorosync-common-dev (= ${binary:Version}),
  libtotem-pg5 (= ${binary:Version})
 # Moved from libcorosync-dev: /usr/include/corosync/totem/totem.h
 Replaces: libcorosync-dev (<= 1.4.2-1)
@@ -326,6 +332,7 @@ Section: libdevel
 Architecture: any
 Multi-Arch: same
 Depends: ${misc:Depends},
+ libcorosync-common-dev (= ${binary:Version}),
  libvotequorum7 (= ${binary:Version})
 # Moved from corosync: /usr/share/man/man8/votequorum_overview.8.gz
 #        corosync-dev: /usr/share/man/man3/votequorum_fd_get.3.gz etc.
