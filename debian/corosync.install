@@ -23,4 +23,5 @@ usr/bin/votequorum_test_agent
 etc/dbus-1/system.d/corosync-signals.conf
 lib/systemd/system
 etc/corosync/corosync.*example* usr/share/doc/corosync/examples
+debian/corosync.conf etc/corosync
 usr/share/corosync/xml2conf.xsl
