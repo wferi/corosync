@@ -7,6 +7,7 @@
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: corosync notifying daemon
+# Description:       Manages the notification daemon of the Corosync Cluster Engine.
 ### END INIT INFO
 
 # Author: Fabio M. Di Nitto <fabbione@ubuntu.com>
