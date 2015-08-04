@@ -1,4 +1,5 @@
 libcpg.so.4 libcpg4 #MINVER#
+* Build-Depends-Package: libcpg-dev
  COROSYNC_CPG_1.0@COROSYNC_CPG_1.0 1.0.0
  cpg_context_get@COROSYNC_CPG_1.0 1.0.0
  cpg_context_set@COROSYNC_CPG_1.0 1.0.0

@@ -1,4 +1,5 @@
 libcfg.so.6 libcfg6 #MINVER#
+* Build-Depends-Package: libcfg-dev
  COROSYNC_CFG_0.82@COROSYNC_CFG_0.82 1.99.9
  corosync_cfg_dispatch@COROSYNC_CFG_0.82 1.99.9
  corosync_cfg_fd_get@COROSYNC_CFG_0.82 1.99.9

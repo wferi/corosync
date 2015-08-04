@@ -1,4 +1,5 @@
 libsam.so.4 libsam4 #MINVER#
+* Build-Depends-Package: libsam-dev
  COROSYNC_SAM_1.0@COROSYNC_SAM_1.0 1.2.0
  sam_data_getsize@Base 1.99.9
  sam_data_restore@Base 1.99.9

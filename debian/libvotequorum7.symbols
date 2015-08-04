@@ -1,4 +1,5 @@
 libvotequorum.so.7 libvotequorum7 #MINVER#
+* Build-Depends-Package: libvotequorum-dev
  COROSYNC_VOTEQUORUM_1.0@COROSYNC_VOTEQUORUM_1.0 2.3.4
  votequorum_context_get@COROSYNC_VOTEQUORUM_1.0 2.3.4
  votequorum_context_set@COROSYNC_VOTEQUORUM_1.0 2.3.4

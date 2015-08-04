@@ -1,4 +1,5 @@
 libtotem_pg.so.5 libtotem-pg5 #MINVER#
+* Build-Depends-Package: libtotem-pg-dev
  active_algo@Base 1.99.9
  assembly_list_free@Base 1.99.9
  assembly_list_free_trans@Base 2.3.0
