@@ -11,15 +11,8 @@ usr/share/doc/corosync/AUTHORS
 usr/share/doc/corosync/INSTALL
 usr/share/augeas/lenses/corosync.aug
 usr/share/augeas/lenses/tests/test_corosync.aug
-usr/share/corosync/tests/shm_leak_audit.sh 
-usr/share/corosync/tests/cmap-dispatch-deadlock.sh 
-usr/share/corosync/tests/mem_leak_test.sh
-usr/share/corosync/tests/net_breaker.sh 
 usr/share/snmp/mibs/COROSYNC-MIB.txt
-usr/bin/cpg_test_agent
-usr/bin/sam_test_agent 
 usr/bin/corosync-xmlproc
-usr/bin/votequorum_test_agent 
 etc/dbus-1/system.d/corosync-signals.conf
 lib/systemd/system
 etc/corosync/corosync.*example* usr/share/doc/corosync/examples

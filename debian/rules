@@ -22,7 +22,6 @@ override_dh_autoreconf:
 override_dh_auto_configure:
 	dh_auto_configure -- \
 	    --enable-dbus \
-	    --enable-testagents \
 	    --enable-rdma \
 	    --disable-monitoring \
 	    --enable-watchdog \
