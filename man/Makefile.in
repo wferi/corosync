@@ -16,7 +16,7 @@
 @SET_MAKE@
 
 # Copyright (c) 2004 MontaVista Software, Inc.
-# Copyright (c) 2009, 2012 Red Hat, Inc.
+# Copyright (c) 2009, 2012, 2014 Red Hat, Inc.
 #
 # Authors: Steven Dake (sdake@redhat.com)
 #          Fabio M. Di Nitto (fdinitto@redhat.com)
@@ -214,8 +214,11 @@ SOMINOR = @SOMINOR@
 SONAME = @SONAME@
 STRIP = @STRIP@
 SYSTEMDDIR = @SYSTEMDDIR@
+UPSTARTDIR = @UPSTARTDIR@
+VERSCRIPT_LDFLAGS = @VERSCRIPT_LDFLAGS@
 VERSION = @VERSION@
 VOTEQUORUM_SONAME = @VOTEQUORUM_SONAME@
+WITH_LIST = @WITH_LIST@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
@@ -320,6 +323,11 @@ autogen_man = cpg_context_get.3 \
 			  votequorum_setvotes.3 \
 			  votequorum_trackstart.3 \
 			  votequorum_trackstop.3 \
+			  votequorum_qdevice_register.3 \
+			  votequorum_qdevice_unregister.3 \
+			  votequorum_qdevice_update.3 \
+			  votequorum_qdevice_master_wins.3 \
+			  votequorum_qdevice_poll.3 \
 			  sam_data_getsize.3 \
 			  sam_data_restore.3 \
 			  sam_data_store.3 \

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2012 Red Hat, Inc.
+ * Copyright (c) 2006-2013 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -50,6 +50,20 @@
 #include <corosync/corotypes.h>
 #include <corosync/totem/totem.h>
 #include <corosync/cfg.h>
+
+#define cs_repeat(result, max, code)				\
+	do {							\
+		int counter = 0;				\
+		do {						\
+			result = code;				\
+			if (result == CS_ERR_TRY_AGAIN) {	\
+				sleep(1);			\
+				counter++;			\
+			} else {				\
+				break;				\
+			}					\
+		} while (counter < max);			\
+	} while (0)
 
 static int ringstatusget_do (char *interface_name)
 {
@@ -123,6 +137,35 @@ static void ringreenable_do (void)
 	(void)corosync_cfg_finalize (handle);
 }
 
+static int reload_config_do (void)
+{
+	cs_error_t result;
+	corosync_cfg_handle_t handle;
+	int rc;
+
+	rc = 0;
+
+	printf ("Reloading corosync.conf...\n");
+	result = corosync_cfg_initialize (&handle, NULL);
+	if (result != CS_OK) {
+		printf ("Could not initialize corosync configuration API error %s\n", cs_strerror(result));
+		exit (1);
+	}
+
+	result = corosync_cfg_reload_config (handle);
+	if (result != CS_OK) {
+		printf ("Could not reload configuration. Error %s\n", cs_strerror(result));
+		rc = (int)result;
+	}
+	else {
+		printf ("Done\n");
+	}
+
+	(void)corosync_cfg_finalize (handle);
+
+	return (rc);
+}
+
 static void shutdown_do(void)
 {
 	cs_error_t result;
@@ -138,7 +181,7 @@ static void shutdown_do(void)
 	}
 
 	printf ("Shutting down corosync\n");
-	result = corosync_cfg_try_shutdown (handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST);
+	cs_repeat(result, 30, corosync_cfg_try_shutdown (handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST));
 	if (result != CS_OK) {
 		printf ("Could not shutdown (error = %d)\n", result);
 	}
@@ -218,11 +261,12 @@ static void usage_do (void)
 	printf ("\t\tre-enable redundant ring operation.\n");
 	printf ("\t-a\tDisplay the IP address(es) of a node\n");
 	printf ("\t-k\tKill a node identified by node id.\n");
+	printf ("\t-R\tReload corosync.conf on all nodes.\n");
 	printf ("\t-H\tShutdown corosync cleanly on this node.\n");
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "i:srk:a:hH";
+	const char *options = "i:srRk:a:hH";
 	int opt;
 	unsigned int nodeid;
 	char interface_name[128] = "";
@@ -238,6 +282,9 @@ int main (int argc, char *argv[]) {
 			break;
 		case 's':
 			rc = ringstatusget_do (interface_name);
+			break;
+		case 'R':
+			rc = reload_config_do ();
 			break;
 		case 'r':
 			ringreenable_do ();

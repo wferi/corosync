@@ -4,9 +4,10 @@ Wants=corosync.service
 After=corosync.service
 
 [Service]
-EnvironmentFile=@SYSCONFIGDIR@/corosync-notifyd
+EnvironmentFile=@SYSCONFDIR@/sysconfig/corosync-notifyd
 ExecStart=@SBINDIR@/corosync-notifyd -f $OPTIONS
 Type=simple
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

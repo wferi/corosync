@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2012 Red Hat, Inc.
+ * Copyright (c) 2009-2014 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -36,7 +36,10 @@
 #include <config.h>
 
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include <qb/qbipc_common.h>
 
@@ -84,6 +87,10 @@ static uint32_t last_man_standing_window = DEFAULT_LMS_WIN;
 
 static uint8_t allow_downscale = 0;
 static uint32_t ev_barrier = 0;
+
+static uint8_t ev_tracking = 0;
+static uint32_t ev_tracking_barrier = 0;
+static int ev_tracking_fd = -1;
 
 /*
  * votequorum_exec defines/structs/forward definitions
@@ -225,12 +232,18 @@ static int last_man_standing_timer_set = 0;
  * Service Interfaces required by service_message_handler struct
  */
 
-static void votequorum_confchg_fn (
-	enum totem_configuration_type configuration_type,
-	const unsigned int *member_list, size_t member_list_entries,
-	const unsigned int *left_list, size_t left_list_entries,
-	const unsigned int *joined_list, size_t joined_list_entries,
+static int sync_in_progress = 0;
+
+static void votequorum_sync_init (
+	const unsigned int *trans_list,
+	size_t trans_list_entries,
+	const unsigned int *member_list,
+	size_t member_list_entries,
 	const struct memb_ring_id *ring_id);
+
+static int votequorum_sync_process (void);
+static void votequorum_sync_activate (void);
+static void votequorum_sync_abort (void);
 
 static quorum_set_quorate_fn_t quorum_callback;
 
@@ -379,7 +392,10 @@ static struct corosync_service_engine votequorum_service_engine = {
 	.exec_exit_fn			= votequorum_exec_exit_fn,
 	.exec_engine			= votequorum_exec_engine,
 	.exec_engine_count		= sizeof (votequorum_exec_engine) / sizeof (struct corosync_exec_handler),
-	.confchg_fn			= votequorum_confchg_fn
+	.sync_init			= votequorum_sync_init,
+	.sync_process			= votequorum_sync_process,
+	.sync_activate			= votequorum_sync_activate,
+	.sync_abort			= votequorum_sync_abort
 };
 
 struct corosync_service_engine *votequorum_get_service_engine_ver0 (void)
@@ -580,6 +596,47 @@ static void decode_flags(uint32_t flags)
 	LEAVE();
 }
 
+/*
+ * load/save are copied almost pristine from totemsrp,c
+ */
+static int load_ev_tracking_barrier(void)
+{
+	int res = 0;
+	char filename[PATH_MAX];
+
+	ENTER();
+
+	snprintf(filename, sizeof(filename) - 1, LOCALSTATEDIR "/lib/corosync/ev_tracking");
+
+	ev_tracking_fd = open(filename, O_RDWR, 0700);
+	if (ev_tracking_fd != -1) {
+		res = read (ev_tracking_fd, &ev_tracking_barrier, sizeof(uint32_t));
+		if (res == sizeof (uint32_t)) {
+		        LEAVE();
+			return 0;
+		}
+	}
+
+	ev_tracking_barrier = 0;
+	umask(0);
+	ev_tracking_fd = open (filename, O_CREAT|O_RDWR, 0700);
+	if (ev_tracking_fd != -1) {
+		res = write (ev_tracking_fd, &ev_tracking_barrier, sizeof (uint32_t));
+		if ((res == -1) || (res != sizeof (uint32_t))) {
+			log_printf(LOGSYS_LEVEL_WARNING,
+				   "Unable to write to %s", filename);
+		}
+		LEAVE();
+		return 0;
+	}
+	log_printf(LOGSYS_LEVEL_WARNING,
+		   "Unable to create %s file", filename);
+
+	LEAVE();
+
+	return -1;
+}
+
 static void update_wait_for_all_status(uint8_t wfa_status)
 {
 	ENTER(); 
@@ -631,6 +688,32 @@ static void update_qdevice_master_wins(uint8_t allow)
 
 	qdevice_master_wins = allow;
 	icmap_set_uint8("runtime.votequorum.qdevice_master_wins", qdevice_master_wins);
+
+	LEAVE();
+}
+
+static void update_ev_tracking_barrier(uint32_t ev_t_barrier)
+{
+	int res;
+
+	ENTER();
+
+	ev_tracking_barrier = ev_t_barrier;
+	icmap_set_uint32("runtime.votequorum.ev_tracking_barrier", ev_tracking_barrier);
+
+	if (lseek (ev_tracking_fd, 0, SEEK_SET) != 0) {
+		log_printf(LOGSYS_LEVEL_WARNING,
+			   "Unable to update ev_tracking_barrier on disk data!!!");
+		LEAVE();
+		return;
+	}
+
+	res = write (ev_tracking_fd, &ev_tracking_barrier, sizeof (uint32_t));
+	if (res != sizeof (uint32_t)) {
+		log_printf(LOGSYS_LEVEL_WARNING,
+			   "Unable to update ev_tracking_barrier on disk data!!!");
+	}
+	fdatasync(ev_tracking_fd);
 
 	LEAVE();
 }
@@ -783,7 +866,8 @@ static void are_we_quorate(unsigned int total_votes)
 		}
 	}
 
-	if (quorum_change) {
+	if ((quorum_change) &&
+	    (sync_in_progress == 0)) {
 		quorum_callback(quorum_members, quorum_members_entries,
 				cluster_is_quorate, &quorum_ringid);
 	}
@@ -842,6 +926,11 @@ static void recalculate_quorum(int allow_decrease, int by_current_nodes)
 	if (total_votes > us->expected_votes) {
 		us->expected_votes = total_votes;
 		votequorum_exec_send_expectedvotes_notification();
+	}
+
+	if ((ev_tracking) &&
+	    (us->expected_votes > ev_tracking_barrier)) {
+		update_ev_tracking_barrier(us->expected_votes);
 	}
 
 	quorum = calculate_quorum(allow_decrease, cluster_members, &total_votes);
@@ -917,25 +1006,28 @@ static int votequorum_read_nodelist_configuration(uint32_t *votes,
 static int votequorum_qdevice_is_configured(uint32_t *qdevice_votes)
 {
 	char *qdevice_model = NULL;
+	int ret = 0;
 
 	ENTER();
 
-	if ((icmap_get_string("quorum.device.model", &qdevice_model) == CS_OK) &&
-	    (strlen(qdevice_model))) {
+	if (icmap_get_string("quorum.device.model", &qdevice_model) == CS_OK) {
+		if (strlen(qdevice_model)) {
+			if (icmap_get_uint32("quorum.device.votes", qdevice_votes) != CS_OK) {
+				*qdevice_votes = -1;
+			}
+			if (icmap_get_uint32("quorum.device.timeout", &qdevice_timeout) != CS_OK) {
+				qdevice_timeout = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
+			}
+			update_qdevice_can_operate(1);
+			ret = 1;
+		}
+
 		free(qdevice_model);
-		if (icmap_get_uint32("quorum.device.votes", qdevice_votes) != CS_OK) {
-			*qdevice_votes = -1;
-		}
-		if (icmap_get_uint32("quorum.device.timeout", &qdevice_timeout) != CS_OK) {
-			qdevice_timeout = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
-		}
-		update_qdevice_can_operate(1);
-		return 1;
 	}
 
 	LEAVE();
 
-	return 0;
+	return ret;
 }
 
 #define VOTEQUORUM_READCONFIG_STARTUP 0
@@ -1009,6 +1101,21 @@ static char *votequorum_readconfig(int runtime)
 		icmap_get_uint8("quorum.auto_tie_breaker", &auto_tie_breaker);
 		icmap_get_uint8("quorum.last_man_standing", &last_man_standing);
 		icmap_get_uint32("quorum.last_man_standing_window", &last_man_standing_window);
+		icmap_get_uint8("quorum.expected_votes_tracking", &ev_tracking);
+
+		/* allow_downscale requires ev_tracking */
+		if (allow_downscale) {
+		    ev_tracking = 1;
+		}
+
+		if (ev_tracking) {
+		    if (load_ev_tracking_barrier() < 0) {
+		        LEAVE();
+		        return ((char *)"Unable to load ev_tracking file!");
+		    }
+		    update_ev_tracking_barrier(ev_tracking_barrier);
+		}
+
 	}
 
 	/*
@@ -1131,6 +1238,11 @@ static char *votequorum_readconfig(int runtime)
 	/*
 	 * set this node votes and expected_votes
 	 */
+	log_printf(LOGSYS_LEVEL_DEBUG, "ev_tracking=%d, ev_tracking_barrier = %d: expected_votes = %d\n", ev_tracking, ev_tracking_barrier, expected_votes);
+
+	if (ev_tracking) {
+	        expected_votes = ev_tracking_barrier;
+	}
 
 	if (have_nodelist) {
 		us->votes = node_votes;
@@ -1624,6 +1736,9 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 
 	if (nodeid == VOTEQUORUM_QDEVICE_NODEID) {
 		struct cluster_node *sender_node = find_node_by_nodeid(sender_nodeid);
+
+		assert(sender_node != NULL);
+
 		if ((!cluster_is_quorate) &&
 		    (sender_node->flags & NODE_FLAGS_QUORATE)) {
 			node->votes = req_exec_quorum_nodeinfo->votes;
@@ -1650,7 +1765,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 		us->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
 	}
 
-	if (node->flags & NODE_FLAGS_QUORATE) {
+	if (node->flags & NODE_FLAGS_QUORATE || (ev_tracking)) {
 		node->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
 	} else {
 		node->expected_votes = us->expected_votes;
@@ -1667,7 +1782,6 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	}
 
 recalculate:
-
 	if ((new_node) ||
 	    (nodeid == us->node_id) ||
 	    (node->flags & NODE_FLAGS_FIRST) || 
@@ -1723,6 +1837,9 @@ static void message_handler_req_exec_votequorum_reconfigure (
 		}
 		votequorum_exec_send_expectedvotes_notification();
 		update_ev_barrier(req_exec_quorum_reconfigure->value);
+		if (ev_tracking) {
+		    us->expected_votes = max(us->expected_votes, ev_tracking_barrier);
+		}
 		recalculate_quorum(1, 0);  /* Allow decrease */
 		break;
 
@@ -1755,6 +1872,11 @@ static int votequorum_exec_exit_fn (void)
 		us->flags |= NODE_FLAGS_LEAVING;
 		ret = votequorum_exec_send_nodeinfo(us->node_id);
 	}
+
+	if ((ev_tracking) && (ev_tracking_fd != -1)) {
+	    close(ev_tracking_fd);
+	}
+
 
 	LEAVE();
 	return ret;
@@ -1838,25 +1960,41 @@ static void votequorum_last_man_standing_timer_fn(void *arg)
 	LEAVE();
 }
 
-static void votequorum_confchg_fn (
-	enum totem_configuration_type configuration_type,
+static void votequorum_sync_init (
+	const unsigned int *trans_list, size_t trans_list_entries,
 	const unsigned int *member_list, size_t member_list_entries,
-	const unsigned int *left_list, size_t left_list_entries,
-	const unsigned int *joined_list, size_t joined_list_entries,
 	const struct memb_ring_id *ring_id)
 {
-	int i;
+	int i, j;
+	int found;
+	int left_nodes;
 	struct cluster_node *node;
 
 	ENTER();
+
+	sync_in_progress = 1;
 
 	if (member_list_entries > 1) {
 		us->flags &= ~NODE_FLAGS_FIRST;
 	}
 
-	if (left_list_entries) {
-		for (i = 0; i< left_list_entries; i++) {
-			node = find_node_by_nodeid(left_list[i]);
+	/*
+	 * we don't need to track which nodes have left directly,
+	 * since that info is in the node db, but we need to know
+	 * if somebody has left for last_man_standing
+	 */
+	left_nodes = 0;
+	for (i = 0; i < quorum_members_entries; i++) {
+		found = 0;
+		for (j = 0; j < member_list_entries; j++) {
+			if (quorum_members[i] == member_list[j]) {
+				found = 1;
+				break;
+			}
+		}
+		if (found == 0) {
+			left_nodes = 1;
+			node = find_node_by_nodeid(quorum_members[i]);
 			if (node) {
 				node->state = NODESTATE_DEAD;
 			}
@@ -1864,7 +2002,7 @@ static void votequorum_confchg_fn (
 	}
 
 	if (last_man_standing) {
-		if (((member_list_entries >= quorum) && (left_list_entries)) ||
+		if (((member_list_entries >= quorum) && (left_nodes)) ||
 		    ((member_list_entries <= quorum) && (auto_tie_breaker) && (check_low_node_id_partition() == 1))) {
 			if (last_man_standing_timer_set) {
 				corosync_api->timer_delete(last_man_standing_timer);
@@ -1877,31 +2015,36 @@ static void votequorum_confchg_fn (
 		}
 	}
 
-	if (member_list_entries) {
-		memcpy(quorum_members, member_list, sizeof(unsigned int) * member_list_entries);
-		quorum_members_entries = member_list_entries;
-		votequorum_exec_send_nodeinfo(us->node_id);
-		votequorum_exec_send_nodeinfo(VOTEQUORUM_QDEVICE_NODEID);
-		if (strlen(qdevice_name)) {
-			votequorum_exec_send_qdevice_reg(VOTEQUORUM_QDEVICE_OPERATION_REGISTER,
-							 qdevice_name);
-		}
-	}
-
+	memcpy(quorum_members, member_list, sizeof(unsigned int) * member_list_entries);
+	quorum_members_entries = member_list_entries;
 	memcpy(&quorum_ringid, ring_id, sizeof(*ring_id));
-
-	if (left_list_entries) {
-		recalculate_quorum(0, 0);
-	}
-
-	if (configuration_type == TOTEM_CONFIGURATION_REGULAR) {
-		quorum_callback(quorum_members, quorum_members_entries,
-				cluster_is_quorate, &quorum_ringid);
-	}
 
 	LEAVE();
 }
 
+static int votequorum_sync_process (void)
+{
+	votequorum_exec_send_nodeinfo(us->node_id);
+	votequorum_exec_send_nodeinfo(VOTEQUORUM_QDEVICE_NODEID);
+	if (strlen(qdevice_name)) {
+		votequorum_exec_send_qdevice_reg(VOTEQUORUM_QDEVICE_OPERATION_REGISTER,
+						 qdevice_name);
+	}
+	return 0;
+}
+
+static void votequorum_sync_activate (void)
+{
+	recalculate_quorum(0, 0);
+	quorum_callback(quorum_members, quorum_members_entries,
+			cluster_is_quorate, &quorum_ringid);
+	sync_in_progress = 0;
+}
+
+static void votequorum_sync_abort (void)
+{
+
+}
 
 char *votequorum_init(struct corosync_api_v1 *api,
 	quorum_set_quorate_fn_t q_set_quorate_fn)

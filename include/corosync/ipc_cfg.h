@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2009-2012 Red Hat, Inc.
+ * Copyright (c) 2009-2013 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -39,6 +39,14 @@
 #include <corosync/corotypes.h>
 #include <corosync/mar_gen.h>
 
+#define CFG_INTERFACE_NAME_MAX_LEN		128
+#define CFG_INTERFACE_STATUS_MAX_LEN		512
+/*
+ * Too keep future ABI compatibility, this value
+ * is intentionaly bigger then INTERFACE_MAX
+ */
+#define CFG_MAX_INTERFACES			16
+
 enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_RINGSTATUSGET = 0,
 	MESSAGE_REQ_CFG_RINGREENABLE = 1,
@@ -47,7 +55,8 @@ enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_REPLYTOSHUTDOWN = 4,
 	MESSAGE_REQ_CFG_GET_NODE_ADDRS = 5,
 	MESSAGE_REQ_CFG_LOCAL_GET = 6,
-	MESSAGE_REQ_CFG_CRYPTO_SET = 7
+	MESSAGE_REQ_CFG_RELOAD_CONFIG = 7,
+	MESSAGE_REQ_CFG_CRYPTO_SET = 8
 };
 
 enum res_lib_cfg_types {
@@ -66,6 +75,7 @@ enum res_lib_cfg_types {
 	MESSAGE_RES_CFG_LOCAL_GET = 12,
 	MESSAGE_RES_CFG_REPLYTOSHUTDOWN = 13,
 	MESSAGE_RES_CFG_CRYPTO_SET = 14,
+	MESSAGE_RES_CFG_RELOAD_CONFIG = 15
 };
 
 struct req_lib_cfg_ringstatusget {
@@ -75,8 +85,8 @@ struct req_lib_cfg_ringstatusget {
 struct res_lib_cfg_ringstatusget {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t interface_count __attribute__((aligned(8)));
-	char interface_name[16][128] __attribute__((aligned(8)));
-	char interface_status[16][512] __attribute__((aligned(8)));
+	char interface_name[CFG_MAX_INTERFACES][CFG_INTERFACE_NAME_MAX_LEN] __attribute__((aligned(8)));
+	char interface_status[CFG_MAX_INTERFACES][CFG_INTERFACE_STATUS_MAX_LEN] __attribute__((aligned(8)));
 };
 
 struct req_lib_cfg_ringreenable {
@@ -129,7 +139,8 @@ struct res_lib_cfg_get_node_addrs {
         struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int family;
 	unsigned int num_addrs;
-	char addrs[TOTEMIP_ADDRLEN][0];
+	/* array of TOTEMIP_ADDRLEN items */
+	char addrs[];
 };
 
 struct req_lib_cfg_local_get {
@@ -139,6 +150,14 @@ struct req_lib_cfg_local_get {
 struct res_lib_cfg_local_get {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t local_nodeid __attribute__((aligned(8)));
+};
+
+struct req_lib_cfg_reload_config {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+};
+
+struct res_lib_cfg_reload_config {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 typedef enum {

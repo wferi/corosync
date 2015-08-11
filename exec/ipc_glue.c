@@ -70,10 +70,12 @@ static int32_t ipc_fc_totem_queue_level; /* percentage used */
 static int32_t ipc_fc_sync_in_process; /* boolean */
 static int32_t ipc_allow_connections = 0; /* boolean */
 
+#define CS_IPCS_MAPPER_SERV_NAME		256
+
 struct cs_ipcs_mapper {
 	int32_t id;
 	qb_ipcs_service_t *inst;
-	char name[256];
+	char name[CS_IPCS_MAPPER_SERV_NAME];
 };
 
 struct outq_item {
@@ -90,6 +92,7 @@ static int32_t cs_ipcs_dispatch_add(enum qb_loop_priority p, int32_t fd, int32_t
 static int32_t cs_ipcs_dispatch_mod(enum qb_loop_priority p, int32_t fd, int32_t events,
 	void *data, qb_ipcs_dispatch_fn_t fn);
 static int32_t cs_ipcs_dispatch_del(int32_t fd);
+static void outq_flush (void *data);
 
 
 static struct qb_ipcs_poll_handlers corosync_poll_funcs = {
@@ -417,6 +420,8 @@ static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 		return res;
 	}
 
+	qb_loop_job_del(cs_poll_handle_get(), QB_LOOP_HIGH, c, outq_flush);
+
 	cnx = qb_ipcs_context_get(c);
 
 	snprintf(prefix, ICMAP_KEYNAME_MAXLEN, "%s.", cnx->icmap_path);
@@ -471,7 +476,6 @@ static void outq_flush (void *data)
 		if (rc < 0 && rc != -EAGAIN) {
 			errno = -rc;
 			qb_perror(LOG_ERR, "qb_ipcs_event_send");
-			qb_ipcs_connection_unref(conn);
 			return;
 		} else if (rc == -EAGAIN) {
 			break;
@@ -490,7 +494,6 @@ static void outq_flush (void *data)
 			context->queued, context->sent);
 		context->queued = 0;
 		context->sent = 0;
-		qb_ipcs_connection_unref(conn);
 	} else {
 		qb_loop_job_add(cs_poll_handle_get(), QB_LOOP_HIGH, conn, outq_flush);
 	}
@@ -520,7 +523,6 @@ static void msg_send_or_queue(qb_ipcs_connection_t *conn, const struct iovec *io
 			context->queued = 0;
 			context->sent = 0;
 			context->queuing = QB_TRUE;
-			qb_ipcs_connection_ref(conn);
 			qb_loop_job_add(cs_poll_handle_get(), QB_LOOP_HIGH, conn, outq_flush);
 		} else {
 			log_printf(LOGSYS_LEVEL_ERROR, "event_send retuned %d, expected %d!", rc, bytes_msg);
@@ -529,14 +531,12 @@ static void msg_send_or_queue(qb_ipcs_connection_t *conn, const struct iovec *io
 	}
 	outq_item = malloc (sizeof (struct outq_item));
 	if (outq_item == NULL) {
-		qb_ipcs_connection_unref(conn);
 		qb_ipcs_disconnect(conn);
 		return;
 	}
 	outq_item->msg = malloc (bytes_msg);
 	if (outq_item->msg == NULL) {
 		free (outq_item);
-		qb_ipcs_connection_unref(conn);
 		qb_ipcs_disconnect(conn);
 		return;
 	}
@@ -746,7 +746,7 @@ void cs_ipcs_stats_update(void)
 	int32_t i;
 	struct qb_ipcs_stats srv_stats;
 	struct qb_ipcs_connection_stats stats;
-	qb_ipcs_connection_t *c;
+	qb_ipcs_connection_t *c, *prev;
 	struct cs_ipcs_conn_context *cnx;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
@@ -756,8 +756,9 @@ void cs_ipcs_stats_update(void)
 		}
 		qb_ipcs_stats_get(ipcs_mapper[i].inst, &srv_stats, QB_FALSE);
 
-		for (c = qb_ipcs_connection_first_get(ipcs_mapper[i].inst); c;
-		     c = qb_ipcs_connection_next_get(ipcs_mapper[i].inst, c)) {
+		for (c = qb_ipcs_connection_first_get(ipcs_mapper[i].inst);
+			 c;
+			 prev = c, c = qb_ipcs_connection_next_get(ipcs_mapper[i].inst, prev), qb_ipcs_connection_unref(prev)) {
 
 			cnx = qb_ipcs_context_get(c);
 			if (cnx == NULL) continue;
@@ -796,7 +797,6 @@ void cs_ipcs_stats_update(void)
 
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.overload", cnx->icmap_path);
 			icmap_set_uint64(key_name, cnx->overload);
-			qb_ipcs_connection_unref(c);
 		}
 	}
 }
@@ -840,15 +840,25 @@ static enum qb_ipc_type cs_get_ipc_type (void)
 
 const char *cs_ipcs_service_init(struct corosync_service_engine *service)
 {
+	const char *serv_short_name;
+
+	serv_short_name = cs_ipcs_serv_short_name(service->id);
+
 	if (service->lib_engine_count == 0) {
 		log_printf (LOGSYS_LEVEL_DEBUG,
 			"NOT Initializing IPC on %s [%d]",
-			cs_ipcs_serv_short_name(service->id),
+			serv_short_name,
 			service->id);
 		return NULL;
 	}
+
+	if (strlen(serv_short_name) >= CS_IPCS_MAPPER_SERV_NAME) {
+		log_printf (LOGSYS_LEVEL_ERROR, "service name %s is too long", serv_short_name);
+		return "qb_ipcs_run error";
+	}
+
 	ipcs_mapper[service->id].id = service->id;
-	strcpy(ipcs_mapper[service->id].name, cs_ipcs_serv_short_name(service->id));
+	strcpy(ipcs_mapper[service->id].name, serv_short_name);
 	log_printf (LOGSYS_LEVEL_DEBUG,
 		"Initializing IPC on %s [%d]",
 		ipcs_mapper[service->id].name,

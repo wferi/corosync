@@ -25,6 +25,7 @@ AC_CANONICAL_HOST
 
 AC_LANG([C])
 
+AC_SUBST(WITH_LIST, [""])
 
 #Enable inter-library dependencies
 AC_ARG_ENABLE(interlib-deps,
@@ -342,6 +343,11 @@ AC_ARG_ENABLE([systemd],
 	[ enable_systemd="no" ])
 AM_CONDITIONAL(INSTALL_SYSTEMD, test x$enable_systemd = xyes)
 
+AC_ARG_ENABLE([upstart],
+	      [  --enable-upstart                : Install upstart service files],,
+	[ enable_upstart="no" ])
+AM_CONDITIONAL(INSTALL_UPSTART, test x$enable_upstart = xyes)
+
 AC_ARG_WITH([initddir],
 	[  --with-initddir=DIR     : path to init script directory. ],
 	[ INITDDIR="$withval" ],
@@ -351,6 +357,11 @@ AC_ARG_WITH([systemddir],
 	[  --with-systemddir=DIR   : path to systemd unit files directory. ],
 	[ SYSTEMDDIR="$withval" ],
 	[ SYSTEMDDIR="/lib/systemd/system" ])
+
+AC_ARG_WITH([upstartdir],
+	[  --with-upstartdir=DIR   : path to upstart config files directory. ],
+	[ UPSTARTDIR="$withval" ],
+	[ UPSTARTDIR="$sysconfdir/init" ])
 
 AC_ARG_WITH([initwrappersdir],
 	[  --with-initwrappersdir=DIR   : path to init wrappers files directory. ],
@@ -398,11 +409,13 @@ if test "x${enable_dbus}" = xyes; then
 	PKG_CHECK_MODULES([DBUS],[dbus-1])
 	AC_DEFINE_UNQUOTED([HAVE_DBUS], 1, [have dbus])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES dbus"
+	WITH_LIST="$WITH_LIST --with dbus"
 fi
 
 if test "x${enable_testagents}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_TESTAGENTS], 1, [have testagents])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES testagents"
+	WITH_LIST="$WITH_LIST --with testagents"
 fi
 
 if test "x${enable_rdma}" = xyes; then
@@ -410,12 +423,14 @@ if test "x${enable_rdma}" = xyes; then
 	PKG_CHECK_MODULES([ibverbs],[ibverbs])
 	AC_DEFINE_UNQUOTED([HAVE_RDMA], 1, [have rdmacm])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
+	WITH_LIST="$WITH_LIST --with rdma"
 fi
 
 if test "x${enable_monitoring}" = xyes; then
 	PKG_CHECK_MODULES([statgrab], [libstatgrab])
 	AC_DEFINE_UNQUOTED([HAVE_MONITORING], 1, [have resource monitoring])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES monitoring"
+	WITH_LIST="$WITH_LIST --with monitoring"
 fi
 
 if test "x${enable_watchdog}" = xyes; then
@@ -423,6 +438,7 @@ if test "x${enable_watchdog}" = xyes; then
 	AC_CHECK_HEADER([linux/reboot.h], [], [AC_MSG_ERROR([watchdog requires linux/reboot.h])])
 	AC_DEFINE_UNQUOTED([HAVE_WATCHDOG], 1, [have watchdog])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES watchdog"
+	WITH_LIST="$WITH_LIST --with watchdog"
 fi
 
 if test "x${enable_augeas}" = xyes; then
@@ -430,9 +446,15 @@ if test "x${enable_augeas}" = xyes; then
 fi
 if test "x${enable_systemd}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES systemd"
+	WITH_LIST="$WITH_LIST --with systemd"
+fi
+if test "x${enable_upstart}" = xyes; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES upstart"
+	WITH_LIST="$WITH_LIST --with upstart"
 fi
 if test "x${enable_xmlconf}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES xmlconf"
+	WITH_LIST="$WITH_LIST --with xmlconf"
 fi
 if test "x${enable_qdevices}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES qdevices"
@@ -477,6 +499,7 @@ if test "x${enable_snmp}" = xyes; then
 
 		do_snmp=1
 		PACKAGE_FEATURES="$PACKAGE_FEATURES snmp"
+		WITH_LIST="$WITH_LIST --with snmp"
 		AC_DEFINE_UNQUOTED([ENABLE_SNMP], $do_snmp, [Build in support for sending SNMP traps])
 	else
 		AC_MSG_ERROR([You need the net_snmp development package to continue.])
@@ -601,6 +624,28 @@ if test "x${enable_secure_build}" = xyes; then
   fi
 fi
 
+AC_CACHE_CHECK([whether $CC accepts "--as-needed"], [ap_cv_cc_as_needed], [
+  save_LDFLAGS=$LDFLAGS
+  LDFLAGS="$LDFLAGS -Wl,--as-needed"
+  AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+    [ap_cv_cc_as_needed=yes], [ap_cv_cc_as_needed=no], [ap_cv_cc_as_needed=yes])
+  LDFLAGS=$save_LDFLAGS
+])
+
+AC_CACHE_CHECK([whether $CC accepts "--version-script"], [ap_cv_cc_version_script], [
+  save_LDFLAGS=$LDFLAGS
+  LDFLAGS="$LDFLAGS -Wl,--version-script=conftest.versions"
+  echo "CONFTEST { };" >conftest.versions
+  AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+    [ap_cv_cc_version_script=yes], [ap_cv_cc_version_script=no], [ap_cv_cc_version_script=yes])
+  rm -f conftest.versions
+  LDFLAGS=$save_LDFLAGS
+])
+if test "$ap_cv_cc_version_script" = "yes"; then
+  AC_SUBST(VERSCRIPT_LDFLAGS, ["-Wl,--version-script=\$(srcdir)/lib\$(call get_libname,\$<).versions"])
+else
+  AC_SUBST(VERSCRIPT_LDFLAGS, [""])
+fi
 
 # define global include dirs
 INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include -I\$(top_srcdir)/include"
@@ -612,12 +657,17 @@ CFLAGS="$ENV_CFLAGS $lt_prog_compiler_pic $SEC_FLAGS $OPT_CFLAGS $GDB_FLAGS \
 	$WERROR_CFLAGS $NSS_CFLAGS $LIBQB_CFLAGS \
 	$SNMP_INCLUDES"
 CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $INCLUDE_DIRS"
-LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic $SEC_LDFLAGS -Wl,--as-needed $COVERAGE_LDFLAGS"
+LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic $SEC_LDFLAGS $COVERAGE_LDFLAGS"
+
+if test "$ap_cv_cc_as_needed" = "yes"; then
+  LDFLAGS="$LDFLAGS -Wl,--as-needed"
+fi
 
 # substitute what we need:
 AC_SUBST([BASHPATH])
 AC_SUBST([INITDDIR])
 AC_SUBST([SYSTEMDDIR])
+AC_SUBST([UPSTARTDIR])
 INITWRAPPERSDIR=$(eval echo ${INITWRAPPERSDIR})
 AC_SUBST([INITWRAPPERSDIR])
 
@@ -626,7 +676,7 @@ AC_SUBST([SOMINOR])
 AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
 
-AM_CONDITIONAL(INSTALL_TESTAGENTS, test -n "${enable_testagents}")
+AM_CONDITIONAL(INSTALL_TESTAGENTS, test "${enable_testagents}" = "yes")
 AM_CONDITIONAL(INSTALL_MIB, test "${do_snmp}" = "1")
 AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "yes")
 AM_CONDITIONAL(AUGTOOL, test -n "${AUGTOOL}")
@@ -660,6 +710,7 @@ AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
 AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
 AC_MSG_RESULT([  System systemd directory = ${SYSTEMDDIR}])
+AC_MSG_RESULT([  System upstart directory = ${UPSTARTDIR}])
 AC_MSG_RESULT([  System init wraps dir    = ${INITWRAPPERSDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
 AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])

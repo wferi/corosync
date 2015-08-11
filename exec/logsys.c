@@ -301,35 +301,20 @@ int _logsys_system_setup(
 	    (strlen(mainsystem) >= LOGSYS_MAX_SUBSYS_NAMELEN)) {
 		return -1;
 	}
+
 	/*
 	 * Setup libqb as a subsys
 	 */
-	i = _logsys_subsys_create ("QB", "array.c");
-	_logsys_subsys_filename_add (i, "log.c");
-	_logsys_subsys_filename_add (i, "log_syslog.c");
-	_logsys_subsys_filename_add (i, "log_blackbox.c");
-	_logsys_subsys_filename_add (i, "log_format.c");
-	_logsys_subsys_filename_add (i, "log_file.c");
-	_logsys_subsys_filename_add (i, "log_dcs.c");
-	_logsys_subsys_filename_add (i, "log_thread.c");
-	_logsys_subsys_filename_add (i, "ipc_shm.c");
-	_logsys_subsys_filename_add (i, "ipcs.c");
-	_logsys_subsys_filename_add (i, "ipc_us.c");
-	_logsys_subsys_filename_add (i, "loop.c");
-	_logsys_subsys_filename_add (i, "loop_poll_epoll.c");
-	_logsys_subsys_filename_add (i, "loop_job.c");
-	_logsys_subsys_filename_add (i, "loop_poll_poll.c");
-	_logsys_subsys_filename_add (i, "loop_poll_kqueue.c");
-	_logsys_subsys_filename_add (i, "loop_timerlist.c");
-	_logsys_subsys_filename_add (i, "loop_poll.c");
-	_logsys_subsys_filename_add (i, "ringbuffer.c");
-	_logsys_subsys_filename_add (i, "ringbuffer_helper.c");
-	_logsys_subsys_filename_add (i, "trie.c");
-	_logsys_subsys_filename_add (i, "map.c");
-	_logsys_subsys_filename_add (i, "skiplist.c");
-	_logsys_subsys_filename_add (i, "rpl_sem.c");
-	_logsys_subsys_filename_add (i, "hdb.c");
-	_logsys_subsys_filename_add (i, "unix.c");
+	i = _logsys_subsys_create ("QB", "array.c,log.c,log_syslog.c,log_blackbox.c,log_format.c,"
+		"log_file.c,log_dcs.c,log_thread.c,ipc_shm.c,ipcs.c,ipc_us.c,loop.c,"
+		"loop_poll_epoll.c,loop_job.c,loop_poll_poll.c,loop_poll_kqueue.c,"
+		"loop_timerlist.c,loop_poll.c,ringbuffer.c,ringbuffer_helper.c,trie.c,"
+		"map.c,skiplist.c,rpl_sem.c,hdb.c,unix.c,hashtable.c,strlcpy.c,ipc_socket.c,"
+		"strchrnul.c,ipc_setup.c,strlcat.c");
+	if (i < 0) {
+		return -1;
+	}
+
 	/*
 	 * name clash
 	 * _logsys_subsys_filename_add (i, "util.c");
@@ -368,7 +353,10 @@ int _logsys_system_setup(
 	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_THREADED, QB_FALSE);
 	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_TRUE);
 
-	logsys_format_set(NULL);
+	if (logsys_format_set(NULL) == -1) {
+		return -1;
+	}
+
 	qb_log_tags_stringify_fn_set(_logsys_tags_stringify);
 
 	logsys_loggers[i].init_status = LOGSYS_LOGGER_INIT_DONE;
@@ -569,7 +557,6 @@ logsys_file_format_get(char* file_format, int buf_len)
 
 int logsys_format_set (const char *format)
 {
-	int ret = 0;
 	int i;
 	int c;
 	int w;
@@ -584,8 +571,9 @@ int logsys_format_set (const char *format)
 
 	format_buffer = strdup(format ? format : "%7p [%6g] %b");
 	if (format_buffer == NULL) {
-		ret = -1;
+		return -1;
 	}
+
 	qb_log_format_set(QB_LOG_STDERR, format_buffer);
 
 	logsys_file_format_get(file_format, 128);
@@ -622,7 +610,7 @@ int logsys_format_set (const char *format)
 	}
 	qb_log_format_set(QB_LOG_SYSLOG, syslog_format);
 
-	return ret;
+	return 0;
 }
 
 char *logsys_format_get (void)
