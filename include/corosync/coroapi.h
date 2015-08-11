@@ -34,8 +34,10 @@
 #ifndef COROAPI_H_DEFINED
 #define COROAPI_H_DEFINED
 
+#include <config.h>
+
 #include <stdio.h>
-#ifdef COROSYNC_BSD
+#ifdef HAVE_SYS_UIO_H
 #include <sys/uio.h>
 #endif
 #include <corosync/hdb.h>
@@ -409,6 +411,8 @@ struct corosync_api_v1 {
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )
 
 #define SERVICE_HANDLER_MAXIMUM_COUNT 64
+
+#define SERVICES_COUNT_MAX 64
 
 struct corosync_lib_handler {
 	void (*lib_handler_fn) (void *conn, const void *msg);

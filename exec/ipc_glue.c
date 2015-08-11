@@ -54,7 +54,6 @@
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
 
-#include "mainconfig.h"
 #include "sync.h"
 #include "timer.h"
 #include "main.h"
@@ -69,6 +68,7 @@ static int32_t ipc_not_enough_fds_left = 0;
 static int32_t ipc_fc_is_quorate; /* boolean */
 static int32_t ipc_fc_totem_queue_level; /* percentage used */
 static int32_t ipc_fc_sync_in_process; /* boolean */
+static int32_t ipc_allow_connections = 0; /* boolean */
 
 struct cs_ipcs_mapper {
 	int32_t id;
@@ -82,7 +82,7 @@ struct outq_item {
 	struct list_head list;
 };
 
-static struct cs_ipcs_mapper ipcs_mapper[SERVICE_HANDLER_MAXIMUM_COUNT];
+static struct cs_ipcs_mapper ipcs_mapper[SERVICES_COUNT_MAX];
 
 static int32_t cs_ipcs_job_add(enum qb_loop_priority p,	void *data, qb_loop_job_dispatch_fn fn);
 static int32_t cs_ipcs_dispatch_add(enum qb_loop_priority p, int32_t fd, int32_t events,
@@ -149,6 +149,11 @@ static const char* cs_ipcs_serv_short_name(int32_t service_id)
 	return name;
 }
 
+void cs_ipc_allow_connections(int32_t allow)
+{
+	ipc_allow_connections = allow;
+}
+
 int32_t cs_ipcs_service_destroy(int32_t service_id)
 {
 	if (ipcs_mapper[service_id].inst) {
@@ -164,8 +169,12 @@ static int32_t cs_ipcs_connection_accept (qb_ipcs_connection_t *c, uid_t euid, g
 	uint8_t u8;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
+	if (!ipc_allow_connections) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "Denied connection, corosync is not ready");
+		return -EAGAIN;
+	}
+
 	if (corosync_service[service] == NULL ||
-		corosync_service_exiting[service] ||
 		ipcs_mapper[service].inst == NULL) {
 		return -ENOSYS;
 	}
@@ -626,7 +635,7 @@ static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
 		res = -ENOBUFS;
 	}
 
-	if (send_ok) {
+	if (send_ok >= 0) {
 		corosync_service[service]->lib_engine[request_pt->id].lib_handler_fn(c, request_pt);
 		res = 0;
 	}
@@ -681,7 +690,7 @@ static void cs_ipcs_check_for_flow_control(void)
 	int32_t i;
 	int32_t fc_enabled;
 
-	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
+	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
 		if (corosync_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
 			continue;
 		}
@@ -741,7 +750,7 @@ void cs_ipcs_stats_update(void)
 	struct cs_ipcs_conn_context *cnx;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
-	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
+	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
 		if (corosync_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
 			continue;
 		}
@@ -787,20 +796,56 @@ void cs_ipcs_stats_update(void)
 
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.overload", cnx->icmap_path);
 			icmap_set_uint64(key_name, cnx->overload);
-
 			qb_ipcs_connection_unref(c);
 		}
 	}
 }
 
-void cs_ipcs_service_init(struct corosync_service_engine *service)
+static enum qb_ipc_type cs_get_ipc_type (void)
+{
+	char *str;
+	int found = 0;
+	enum qb_ipc_type ret = QB_IPC_NATIVE;
+
+	if (icmap_get_string("qb.ipc_type", &str) != CS_OK) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "No configured qb.ipc_type. Using native ipc");
+		return QB_IPC_NATIVE;
+	}
+
+	if (strcmp(str, "native") == 0) {
+		ret = QB_IPC_NATIVE;
+		found = 1;
+	}
+
+	if (strcmp(str, "shm") == 0) {
+		ret = QB_IPC_SHM;
+		found = 1;
+	}
+
+	if (strcmp(str, "socket") == 0) {
+		ret = QB_IPC_SOCKET;
+		found = 1;
+	}
+
+	if (found) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "Using %s ipc", str);
+	} else {
+		log_printf(LOGSYS_LEVEL_DEBUG, "Unknown ipc type %s", str);
+	}
+
+	free(str);
+
+	return ret;
+}
+
+const char *cs_ipcs_service_init(struct corosync_service_engine *service)
 {
 	if (service->lib_engine_count == 0) {
 		log_printf (LOGSYS_LEVEL_DEBUG,
 			"NOT Initializing IPC on %s [%d]",
 			cs_ipcs_serv_short_name(service->id),
 			service->id);
-		return;
+		return NULL;
 	}
 	ipcs_mapper[service->id].id = service->id;
 	strcpy(ipcs_mapper[service->id].name, cs_ipcs_serv_short_name(service->id));
@@ -810,12 +855,17 @@ void cs_ipcs_service_init(struct corosync_service_engine *service)
 		ipcs_mapper[service->id].id);
 	ipcs_mapper[service->id].inst = qb_ipcs_create(ipcs_mapper[service->id].name,
 		ipcs_mapper[service->id].id,
-		QB_IPC_SHM,
+		cs_get_ipc_type(),
 		&corosync_service_funcs);
 	assert(ipcs_mapper[service->id].inst);
 	qb_ipcs_poll_handlers_set(ipcs_mapper[service->id].inst,
 		&corosync_poll_funcs);
-	qb_ipcs_run(ipcs_mapper[service->id].inst);
+	if (qb_ipcs_run(ipcs_mapper[service->id].inst) != 0) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Can't initialize IPC");
+		return "qb_ipcs_run error";
+	}
+
+	return NULL;
 }
 
 void cs_ipcs_init(void)

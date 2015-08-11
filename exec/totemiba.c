@@ -98,6 +98,8 @@ struct totemiba_instance {
 
 	struct totem_config *totem_config;
 
+	totemsrp_stats_t *stats;
+
 	void (*totemiba_iface_change_fn) (
 		void *context,
 		const struct totem_ip_address *iface_address);
@@ -534,6 +536,7 @@ static int mcast_rdma_event_fn (int events,  int suck,  void *context)
 	 */
 	case RDMA_CM_EVENT_ADDR_RESOLVED:
 		rdma_join_multicast (instance->mcast_cma_id, &instance->mcast_addr, instance);
+		usleep(1000);
 		break;
 	/*
 	 * occurs when the CM joins the multicast group
@@ -1027,6 +1030,12 @@ static int send_token_unbind (struct totemiba_instance *instance)
 		instance->totemiba_poll_handle,
 		instance->send_token_channel->fd);
 
+	if(instance->send_token_ah)
+	{
+		ibv_destroy_ah(instance->send_token_ah);
+		instance->send_token_ah = 0;
+	}
+
 	rdma_destroy_qp (instance->send_token_cma_id);
 	ibv_destroy_cq (instance->send_token_send_cq);
 	ibv_destroy_cq (instance->send_token_recv_cq);
@@ -1282,6 +1291,7 @@ int totemiba_initialize (
 	qb_loop_t *qb_poll_handle,
 	void **iba_context,
 	struct totem_config *totem_config,
+	totemsrp_stats_t *stats,
 	int interface_no,
 	void *context,
 
@@ -1320,6 +1330,7 @@ int totemiba_initialize (
 	instance->totemiba_iface_change_fn = iface_change_fn;
 
 	instance->totem_config = totem_config;
+	instance->stats = stats;
 
 	instance->rrp_context = context;
 
@@ -1413,7 +1424,8 @@ int totemiba_token_send (
 	sge.lkey = send_buf->mr->lkey;
 	sge.addr = (uintptr_t)msg;
 
-	res = ibv_post_send (instance->send_token_cma_id->qp, &send_wr, &failed_send_wr);
+	if(instance->send_token_ah != 0 && instance->send_token_bound)
+		res = ibv_post_send (instance->send_token_cma_id->qp, &send_wr, &failed_send_wr);
 
 	return (res);
 }

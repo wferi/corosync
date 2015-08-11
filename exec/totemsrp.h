@@ -65,7 +65,9 @@ int totemsrp_initialize (
 		const unsigned int *member_list, size_t member_list_entries,
 		const unsigned int *left_list, size_t left_list_entries,
 		const unsigned int *joined_list, size_t joined_list_entries,
-		const struct memb_ring_id *ring_id));
+		const struct memb_ring_id *ring_id),
+	void (*waiting_trans_ack_cb_fn) (
+		int waiting_trans_ack));
 
 void totemsrp_finalize (void *srp_context);
 
@@ -136,6 +138,9 @@ extern int totemsrp_member_remove (
 	int ring_no);
 	
 void totemsrp_threaded_mode_enable (
+	void *srp_context);
+
+void totemsrp_trans_ack (
 	void *srp_context);
 
 #endif /* TOTEMSRP_H_DEFINED */

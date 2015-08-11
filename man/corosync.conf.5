@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2012-01-12 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2012-10-10 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -57,6 +57,9 @@ This top level directive contains configuration options for quorum.
 .TP
 nodelist { }
 This top level directive contains configuration options for nodes in cluster.
+.TP
+qb { }
+This top level directive contains configuration options related to libqb.
 
 .PP
 .PP
@@ -81,13 +84,18 @@ ring. The ringnumber must start at 0.
 .TP
 bindnetaddr
 This specifies the network address the corosync executive should bind
-to.  For example, if the local interface is 192.168.5.92 with netmask
-255.255.255.0, set bindnetaddr to 192.168.5.0.  If the local interface
-is 192.168.5.92 with netmask 255.255.255.192, set bindnetaddr to
-192.168.5.64, and so forth.
+to.
+
+bindnetaddr should be an IP address configured on the system, or a network
+address.
+
+For example, if the local interface is 192.168.5.92 with netmask
+255.255.255.0, you should set bindnetaddr to 192.168.5.92 or 192.168.5.0.
+If the local interface is 192.168.5.92 with netmask 255.255.255.192,
+set bindnetaddr to 192.168.5.92 or 192.168.5.64, and so forth.
 
 This may also be an IPV6 address, in which case IPV6 networking will be used.
-In this case, the full address must be specified and there is no automatic
+In this case, the exact address must be specified and there is no automatic
 selection of the network interface within a specific subnet as with IPv4.
 
 If IPv6 networking is used, the nodeid field in nodelist must be specified.
@@ -168,7 +176,8 @@ The default is sha1.
 .TP
 crypto_cipher
 This specifies which cipher should be used to encrypt all messages.
-Valid values are none (no encryption) and aes256.
+Valid values are none (no encryption), aes256, aes192, aes128 and 3des.
+Enabling crypto_cipher, requires also enabling of crypto_hash.
 
 The default is aes256.
 
@@ -200,6 +209,9 @@ protocol.
 If only one interface directive is specified, none is automatically chosen.
 If multiple interface directives are specified, only active or passive may
 be chosen.
+
+The maximum number of interface directives that is allowed for either 
+modes (active or passive) is 2.
 
 .TP
 netmtu
@@ -252,6 +264,22 @@ The default is udp.  The transport type can also be set to udpu or iba.
 cluster_name
 This specifies the name of cluster and it's used for automatic generating
 of multicast address.
+
+.TP
+config_version
+This specifies version of config file. This is converted to unsigned 64-bit int.
+By default it's 0. Option is used to prevent joining old nodes with not
+up-to-date configuration. If value is not 0, and node is going for first time
+(only for first time, join after split doesn't follow this rules)
+from single-node membership to multiple nodes membership, other nodes
+config_versions are collected. If current node config_version is not
+equal to highest of collected versions, corosync is terminated.
+
+.TP
+ip_version
+Specifies version of IP to use for communication. Value can be one of
+ipv4 or ipv6. Default (if unspecified) is ipv4.
+
 
 Within the
 .B totem
@@ -357,7 +385,7 @@ The default is 2500 failures to receive a message.
 .TP
 seqno_unchanged_const
 This constant specifies how many rotations of the token without any multicast
-traffic should occur before the merge detection timeout is started.
+traffic should occur before the hold timer is started.
 
 The default is 30 rotations.
 
@@ -573,7 +601,8 @@ The default is: info.
 
 .TP
 debug
-This specifies whether debug output is logged for this particular logger.
+This specifies whether debug output is logged for this particular logger. Also can contain
+value trace, what is highest level of debug informations.
 
 The default is off.
 
@@ -602,8 +631,8 @@ directive it is possible to specify the quorum algorithm to use with the
 
 .TP
 provider
-directive. At the time of writing only corosync_votequorum is supported. Please refer
-to quorum modules man pages (8) for specific config options.
+directive. At the time of writing only corosync_votequorum is supported.
+See votequorum(5) for configuration options.
 
 .PP
 Within the
@@ -630,8 +659,18 @@ will be determined from the 32 bit IP address the system to which the system
 is bound with ring identifier of 0.  The node identifier value of zero is
 reserved and should not be used.
 
+.PP
+Within the
+.B qb
+directive it is possible to specify options for libqb.
+
+Possible option is:
 .TP
-quorum_votes
+ipc_type
+This specifies type of IPC to use. Can be one of native (default), shm and socket.
+Native means one of shm or socket, depending on what is supported by OS. On systems
+with support for both, SHM is selected. SHM is generally faster, but need to allocate
+ring buffer file in /dev/shm.
 
 .SH "FILES"
 .TP

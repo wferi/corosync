@@ -49,6 +49,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkgincludedir = $(includedir)/@PACKAGE@
@@ -71,8 +72,10 @@ host_triplet = @host@
 subdir = init
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/lib/libcfg.verso \
-	$(top_srcdir)/lib/libcpg.verso \
+am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
+	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
+	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
+	$(top_srcdir)/lib/libcfg.verso $(top_srcdir)/lib/libcpg.verso \
 	$(top_srcdir)/lib/libquorum.verso \
 	$(top_srcdir)/lib/libsam.verso \
 	$(top_srcdir)/lib/libvotequorum.verso \
@@ -83,14 +86,6 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/include/corosync/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-AM_V_GEN = $(am__v_GEN_$(V))
-am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
-am__v_GEN_0 = @echo "  GEN   " $@;
-AM_V_at = $(am__v_at_$(V))
-am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
-am__v_at_0 = @
-SOURCES =
-DIST_SOURCES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -112,63 +107,87 @@ am__nobase_list = $(am__nobase_strip_setup); \
 am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
-am__installdirs = "$(DESTDIR)$(systemdconfdir)"
+am__installdirs = "$(DESTDIR)$(initscriptdir)" \
+	"$(DESTDIR)$(systemdconfdir)"
+SCRIPTS = $(initscript_SCRIPTS)
+AM_V_GEN = $(am__v_GEN_$(V))
+am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
+am__v_GEN_0 = @echo "  GEN   " $@;
+AM_V_at = $(am__v_at_$(V))
+am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
+am__v_at_0 = @
+SOURCES =
+DIST_SOURCES =
 DATA = $(systemdconf_DATA)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
+AR = @AR@
 AUGTOOL = @AUGTOOL@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BASHPATH = @BASHPATH@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFG_SONAME = @CFG_SONAME@
 CFLAGS = @CFLAGS@
 CMAP_SONAME = @CMAP_SONAME@
 COROSYSCONFDIR = @COROSYSCONFDIR@
-CP = @CP@
 CPG_SONAME = @CPG_SONAME@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CXX = @CXX@
+CXXCPP = @CXXCPP@
+CXXDEPMODE = @CXXDEPMODE@
+CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
-DARWIN_OPTS = @DARWIN_OPTS@
 DBUS_CFLAGS = @DBUS_CFLAGS@
 DBUS_LIBS = @DBUS_LIBS@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DOT = @DOT@
 DOXYGEN = @DOXYGEN@
+DSYMUTIL = @DSYMUTIL@
+DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+FGREP = @FGREP@
 GREP = @GREP@
 GROFF = @GROFF@
 INITDDIR = @INITDDIR@
+INITWRAPPERSDIR = @INITWRAPPERSDIR@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBQB_CFLAGS = @LIBQB_CFLAGS@
 LIBQB_LIBS = @LIBQB_LIBS@
 LIBS = @LIBS@
+LIBTOOL = @LIBTOOL@
 LINT_FLAGS = @LINT_FLAGS@
+LIPO = @LIPO@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+NM = @NM@
+NMEDIT = @NMEDIT@
 NSS_LDFLAGS = @NSS_LDFLAGS@
+OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
-OS_DYFLAGS = @OS_DYFLAGS@
-OS_LDL = @OS_LDL@
+OTOOL = @OTOOL@
+OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -181,16 +200,17 @@ PKG_CONFIG = @PKG_CONFIG@
 QUORUM_SONAME = @QUORUM_SONAME@
 RANLIB = @RANLIB@
 SAM_SONAME = @SAM_SONAME@
+SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SNMPCONFIG = @SNMPCONFIG@
-SNMPLIBS = @SNMPLIBS@
-SOLARIS_OPTS = @SOLARIS_OPTS@
+SNMP_LIBS = @SNMP_LIBS@
 SOMAJOR = @SOMAJOR@
 SOMICRO = @SOMICRO@
 SOMINOR = @SOMINOR@
 SONAME = @SONAME@
 STRIP = @STRIP@
+SYSTEMDDIR = @SYSTEMDDIR@
 VERSION = @VERSION@
 VOTEQUORUM_SONAME = @VOTEQUORUM_SONAME@
 abs_builddir = @abs_builddir@
@@ -198,6 +218,8 @@ abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
+ac_ct_CXX = @ac_ct_CXX@
+ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -230,6 +252,7 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
+lt_ECHO = @lt_ECHO@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 nss_CFLAGS = @nss_CFLAGS@
@@ -244,6 +267,7 @@ rdmacm_LIBS = @rdmacm_LIBS@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
+statgrab_CFLAGS = @statgrab_CFLAGS@
 statgrab_LIBS = @statgrab_LIBS@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
@@ -251,10 +275,12 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in
-EXTRA_DIST = generic.in notifyd.in corosync.service.in corosync-notifyd.service.in
-@INSTALL_SYSTEMD_TRUE@systemdconfdir = /lib/systemd/system
+EXTRA_DIST = corosync.in corosync-notifyd.in corosync.service.in corosync-notifyd.service.in
+@INSTALL_SYSTEMD_TRUE@systemdconfdir = $(SYSTEMDDIR)
 @INSTALL_SYSTEMD_TRUE@systemdconf_DATA = corosync.service corosync-notifyd.service
-@INSTALL_SYSTEMD_FALSE@target_INIT = generic notifyd
+@INSTALL_SYSTEMD_FALSE@initscriptdir = $(INITDDIR)
+@INSTALL_SYSTEMD_TRUE@initscriptdir = $(INITWRAPPERSDIR)
+initscript_SCRIPTS = corosync corosync-notifyd
 all: all-am
 
 .SUFFIXES:
@@ -288,6 +314,46 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
+install-initscriptSCRIPTS: $(initscript_SCRIPTS)
+	@$(NORMAL_INSTALL)
+	test -z "$(initscriptdir)" || $(MKDIR_P) "$(DESTDIR)$(initscriptdir)"
+	@list='$(initscript_SCRIPTS)'; test -n "$(initscriptdir)" || list=; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  if test -f "$$d$$p"; then echo "$$d$$p"; echo "$$p"; else :; fi; \
+	done | \
+	sed -e 'p;s,.*/,,;n' \
+	    -e 'h;s|.*|.|' \
+	    -e 'p;x;s,.*/,,;$(transform)' | sed 'N;N;N;s,\n, ,g' | \
+	$(AWK) 'BEGIN { files["."] = ""; dirs["."] = 1; } \
+	  { d=$$3; if (dirs[d] != 1) { print "d", d; dirs[d] = 1 } \
+	    if ($$2 == $$4) { files[d] = files[d] " " $$1; \
+	      if (++n[d] == $(am__install_max)) { \
+		print "f", d, files[d]; n[d] = 0; files[d] = "" } } \
+	    else { print "f", d "/" $$4, $$1 } } \
+	  END { for (d in files) print "f", d, files[d] }' | \
+	while read type dir files; do \
+	     if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
+	     test -z "$$files" || { \
+	       echo " $(INSTALL_SCRIPT) $$files '$(DESTDIR)$(initscriptdir)$$dir'"; \
+	       $(INSTALL_SCRIPT) $$files "$(DESTDIR)$(initscriptdir)$$dir" || exit $$?; \
+	     } \
+	; done
+
+uninstall-initscriptSCRIPTS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(initscript_SCRIPTS)'; test -n "$(initscriptdir)" || exit 0; \
+	files=`for p in $$list; do echo "$$p"; done | \
+	       sed -e 's,.*/,,;$(transform)'`; \
+	test -n "$$list" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(initscriptdir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(initscriptdir)" && rm -f $$files
+
+mostlyclean-libtool:
+	-rm -f *.lo
+
+clean-libtool:
+	-rm -rf .libs _libs
 install-systemdconfDATA: $(systemdconf_DATA)
 	@$(NORMAL_INSTALL)
 	test -z "$(systemdconfdir)" || $(MKDIR_P) "$(DESTDIR)$(systemdconfdir)"
@@ -347,9 +413,9 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(DATA) all-local
+all-am: Makefile $(SCRIPTS) $(DATA) all-local
 installdirs:
-	for dir in "$(DESTDIR)$(systemdconfdir)"; do \
+	for dir in "$(DESTDIR)$(initscriptdir)" "$(DESTDIR)$(systemdconfdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -378,11 +444,9 @@ maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
-@INSTALL_SYSTEMD_TRUE@uninstall-local:
-@INSTALL_SYSTEMD_TRUE@install-exec-local:
 clean: clean-am
 
-clean-am: clean-generic clean-local mostlyclean-am
+clean-am: clean-generic clean-libtool clean-local mostlyclean-am
 
 distclean: distclean-am
 	-rm -f Makefile
@@ -400,13 +464,13 @@ info: info-am
 
 info-am:
 
-install-data-am: install-systemdconfDATA
+install-data-am: install-initscriptSCRIPTS install-systemdconfDATA
 
 install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am: install-exec-local
+install-exec-am:
 
 install-html: install-html-am
 
@@ -434,7 +498,7 @@ maintainer-clean-am: distclean-am maintainer-clean-generic
 
 mostlyclean: mostlyclean-am
 
-mostlyclean-am: mostlyclean-generic
+mostlyclean-am: mostlyclean-generic mostlyclean-libtool
 
 pdf: pdf-am
 
@@ -444,47 +508,41 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-local uninstall-systemdconfDATA
+uninstall-am: uninstall-initscriptSCRIPTS uninstall-systemdconfDATA
 
 .MAKE: install-am install-strip
 
 .PHONY: all all-am all-local check check-am clean clean-generic \
-	clean-local distclean distclean-generic distdir dvi dvi-am \
-	html html-am info info-am install install-am install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-exec-local install-html \
-	install-html-am install-info install-info-am install-man \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-strip install-systemdconfDATA installcheck \
-	installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-generic pdf \
-	pdf-am ps ps-am uninstall uninstall-am uninstall-local \
+	clean-libtool clean-local distclean distclean-generic \
+	distclean-libtool distdir dvi dvi-am html html-am info info-am \
+	install install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am \
+	install-initscriptSCRIPTS install-man install-pdf \
+	install-pdf-am install-ps install-ps-am install-strip \
+	install-systemdconfDATA installcheck installcheck-am \
+	installdirs maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-generic mostlyclean-libtool pdf pdf-am \
+	ps ps-am uninstall uninstall-am uninstall-initscriptSCRIPTS \
 	uninstall-systemdconfDATA
 
 
 %: %.in Makefile
 	rm -f $@-t $@
-	sed \
+	cat $< | sed \
 		-e 's#@''SBINDIR@#$(sbindir)#g' \
 		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \
 		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
+		-e 's#@''INITWRAPPERSDIR@#$(INITWRAPPERSDIR)#g' \
 		-e 's#@''LOCALSTATEDIR@#$(localstatedir)#g' \
-	    $< > $@-t
+		-e 's#@''BASHPATH@#${BASHPATH}#g' \
+	    > $@-t
 	mv $@-t $@
 
-all-local: $(target_INIT) $(systemdconf_DATA)
+all-local: $(initscript_SCRIPTS) $(systemdconf_DATA)
 
 clean-local:
-	rm -rf $(target_INIT) $(systemdconf_DATA)
-
-@INSTALL_SYSTEMD_FALSE@install-exec-local:
-@INSTALL_SYSTEMD_FALSE@	$(INSTALL) -d $(DESTDIR)/$(INITDDIR)
-@INSTALL_SYSTEMD_FALSE@	$(INSTALL) -m 755 generic $(DESTDIR)/$(INITDDIR)/corosync
-@INSTALL_SYSTEMD_FALSE@	$(INSTALL) -m 755 notifyd $(DESTDIR)/$(INITDDIR)/corosync-notifyd
-
-@INSTALL_SYSTEMD_FALSE@uninstall-local:
-@INSTALL_SYSTEMD_FALSE@	cd $(DESTDIR)/$(INITDDIR) && \
-@INSTALL_SYSTEMD_FALSE@		rm -f corosync corosync-notifyd
+	rm -rf $(initscript_SCRIPTS) $(systemdconf_DATA)
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -35,9 +35,7 @@
 #include <config.h>
 
 #include <unistd.h>
-#if defined(HAVE_LIBSTATGRAB)
 #include <statgrab.h>
-#endif
 
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
@@ -45,7 +43,7 @@
 #include <corosync/list.h>
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
-#include "../exec/fsm.h"
+#include "fsm.h"
 
 #include "service.h"
 
@@ -184,6 +182,37 @@ static const char * mon_res_event_to_str(struct cs_fsm* fsm,
 	return NULL;
 }
 
+static void mon_fsm_cb (struct cs_fsm *fsm, int cb_event, int32_t curr_state,
+	int32_t next_state, int32_t fsm_event, void *data)
+{
+	switch (cb_event) {
+	case CS_FSM_CB_EVENT_PROCESS_NF:
+		log_printf (LOGSYS_LEVEL_ERROR, "Fsm:%s could not find event \"%s\" in state \"%s\"",
+			fsm->name, fsm->event_to_str(fsm, fsm_event), fsm->state_to_str(fsm, curr_state));
+		corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
+		break;
+	case CS_FSM_CB_EVENT_STATE_SET:
+		log_printf (LOGSYS_LEVEL_INFO, "Fsm:%s event \"%s\", state \"%s\" --> \"%s\"",
+			fsm->name,
+			fsm->event_to_str(fsm, fsm_event),
+			fsm->state_to_str(fsm, fsm->table[fsm->curr_entry].curr_state),
+			fsm->state_to_str(fsm, next_state));
+		break;
+	case CS_FSM_CB_EVENT_STATE_SET_NF:
+		log_printf (LOGSYS_LEVEL_CRIT, "Fsm:%s Can't change state from \"%s\" to \"%s\" (event was \"%s\")",
+			fsm->name,
+			fsm->state_to_str(fsm, fsm->table[fsm->curr_entry].curr_state),
+			fsm->state_to_str(fsm, next_state),
+			fsm->event_to_str(fsm, fsm_event));
+	        corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
+		break;
+	default:
+		log_printf (LOGSYS_LEVEL_CRIT, "Fsm: Can't find callback event!");
+	        corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
+		break;
+	}
+}
+
 static void mon_fsm_state_set (struct cs_fsm* fsm,
 	enum mon_resource_state next_state, struct resource_instance* inst)
 {
@@ -193,7 +222,7 @@ static void mon_fsm_state_set (struct cs_fsm* fsm,
 
 	ENTER();
 
-	cs_fsm_state_set(fsm, next_state, inst);
+	cs_fsm_state_set(fsm, next_state, inst, mon_fsm_cb);
 
 	if (prev_state == fsm->curr_state) {
 		return;
@@ -274,7 +303,6 @@ void mon_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
 
 static int32_t percent_mem_used_get(void)
 {
-#if defined(HAVE_LIBSTATGRAB)
 	sg_mem_stats *mem_stats;
 	sg_swap_stats *swap_stats;
 	long long total, freemem;
@@ -290,44 +318,7 @@ static int32_t percent_mem_used_get(void)
 	total = mem_stats->total + swap_stats->total;
 	freemem = mem_stats->free + swap_stats->free;
 	return ((total - freemem) * 100) / total;
-#else
-#if defined(COROSYNC_LINUX)
-	char *line_ptr;
-	char line[512];
-	unsigned long long value;
-	FILE *f;
-	long long total = 0;
-	long long freemem = 0;
-
-	if ((f = fopen("/proc/meminfo", "r")) == NULL) {
-		return -1;
-	}
-
-	while ((line_ptr = fgets(line, sizeof(line), f)) != NULL) {
-		if (sscanf(line_ptr, "%*s %llu kB", &value) != 1) {
-			continue;
-		}
-		value *= 1024;
-
-		if (strncmp(line_ptr, "MemTotal:", 9) == 0) {
-			total += value;
-		} else if (strncmp(line_ptr, "MemFree:", 8) == 0) {
-			freemem += value;
-		} else if (strncmp(line_ptr, "SwapTotal:", 10) == 0) {
-			total += value;
-		} else if (strncmp(line_ptr, "SwapFree:", 9) == 0) {
-			freemem += value;
-		}
-	}
-
-	fclose(f);
-	return ((total - freemem) * 100) / total;
-#else
-#error need libstatgrab or linux.
-#endif /* COROSYNC_LINUX */
-#endif /* HAVE_LIBSTATGRAB */
 }
-
 
 static void mem_update_stats_fn (void *data)
 {
@@ -347,7 +338,7 @@ static void mem_update_stats_fn (void *data)
 		icmap_set_uint64(key_name, timestamp);
 
 		if (new_value > inst->max.int32 && inst->fsm.curr_state != MON_S_FAILED) {
-			cs_fsm_process (&inst->fsm, MON_E_FAILURE, inst);
+			cs_fsm_process (&inst->fsm, MON_E_FAILURE, inst, mon_fsm_cb);
 		}
 	}
 	api->timer_add_duration(inst->period * MILLI_2_NANO_SECONDS,
@@ -356,7 +347,6 @@ static void mem_update_stats_fn (void *data)
 
 static double min15_loadavg_get(void)
 {
-#if defined(HAVE_LIBSTATGRAB)
 	sg_load_stats *load_stats;
 	load_stats = sg_get_load_stats ();
 	if (load_stats == NULL) {
@@ -365,17 +355,6 @@ static double min15_loadavg_get(void)
 		return -1;
 	}
 	return load_stats->min15;
-#else
-#if defined(COROSYNC_LINUX)
-	double loadav[3];
-	if (getloadavg(loadav,3) < 0) {
-		return -1;
-	}
-	return loadav[2];
-#else
-#error need libstatgrab or linux.
-#endif /* COROSYNC_LINUX */
-#endif /* HAVE_LIBSTATGRAB */
 }
 
 static void load_update_stats_fn (void *data)
@@ -395,7 +374,7 @@ static void load_update_stats_fn (void *data)
 		icmap_set_uint64(key_name, timestamp);
 
 		if (min15 > inst->max.dbl && inst->fsm.curr_state != MON_S_FAILED) {
-			cs_fsm_process (&inst->fsm, MON_E_FAILURE, &inst);
+			cs_fsm_process (&inst->fsm, MON_E_FAILURE, &inst, mon_fsm_cb);
 		}
 	}
 
@@ -418,7 +397,7 @@ static void mon_key_changed_cb (
 			"resource \"%s\" deleted from cmap!",
 			inst->name);
 
-		cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst);
+		cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst, mon_fsm_cb);
 	}
 
 	if (event == ICMAP_TRACK_MODIFY) {
@@ -430,7 +409,7 @@ static void mon_key_changed_cb (
 		if (strcmp(last_key_part, "max") == 0 ||
 		    strcmp(last_key_part, "poll_period") == 0) {
 			ENTER();
-			cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst);
+			cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst, mon_fsm_cb);
 		}
 	}
 }
@@ -475,7 +454,7 @@ static void mon_instance_init (struct resource_instance* inst)
 				tmp_value, inst->name);
 		}
 	}
-	cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst);
+	cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst, mon_fsm_cb);
 
 	icmap_track_add(inst->icmap_path,
 			ICMAP_TRACK_ADD | ICMAP_TRACK_MODIFY | ICMAP_TRACK_DELETE | ICMAP_TRACK_PREFIX,
@@ -484,14 +463,8 @@ static void mon_instance_init (struct resource_instance* inst)
 
 static char *mon_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
-
-#ifdef HAVE_LIBSTATGRAB
 	sg_init();
-#endif /* HAVE_LIBSTATGRAB */
 
-#ifdef COROSYNC_SOLARIS
-	logsys_subsys_init();
-#endif
 	api = corosync_api;
 
 	mon_instance_init (&memory_used_inst);

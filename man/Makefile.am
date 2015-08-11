@@ -123,7 +123,6 @@ dist_man_MANS 		= corosync.conf.5 \
 			  corosync-keygen.8 \
 			  corosync-cfgtool.8 \
 			  corosync-cpgtool.8 \
-			  corosync-fplay.8 \
 			  corosync-notifyd.8 \
 			  corosync-quorumtool.8 \
 			  corosync_overview.8 \
@@ -131,7 +130,8 @@ dist_man_MANS 		= corosync.conf.5 \
 			  quorum_overview.8 \
 			  votequorum_overview.8 \
 			  sam_overview.8 \
-			  cmap_overview.8
+			  cmap_overview.8 \
+			  cmap_keys.8
 
 if INSTALL_XMLCONF
 dist_man_MANS		+= $(xml_man)
@@ -140,13 +140,18 @@ endif
 HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
 
 # developer man page generation
-%.3: %.3.in $(autogen_common) $(top_srcdir)/build-aux/genman
+%.3: %.3.in $(autogen_common)
 	@echo Generating $@ man page && \
-	rm -f $@-t $@ && \
-	$(top_srcdir)/build-aux/genman \
-		$(srcdir)/$@.in \
-		$(builddir)/$@-t \
-		$(srcdir)/$(autogen_common) && \
+	rm -f $@-t-t $@-t $@ && \
+	date="$$(LC_ALL=C date "+%F")" && \
+	awk "{print}(\$$1 ~ /@COMMONIPCERRORS@/){exit 0}" ${top_srcdir}/man/$@.in > $@-t-t && \
+	cat ${top_srcdir}/man/$(autogen_common) >> $@-t-t && \
+	awk -v p=0 "(\$$1 ~ /@COMMONIPCERRORS@/){p = 1} {if(p==1)print}" ${top_srcdir}/man/$@.in >> $@-t-t && \
+	cat $@-t-t | \
+		sed -e 's#@BUILDDATE@#'$$date'#g' \
+		    -e 's#@COMMONIPCERRORS@##g' \
+		    > $@-t && \
+	rm -f $@-t-t && \
 	mv $@-t $@
 
 clean-local:
@@ -158,7 +163,7 @@ if BUILD_HTML_DOCS
 
 install-data-local:
 	$(INSTALL) -d $(DESTDIR)/${docdir}/html
-	$(INSTALL) -m644 ${srcdir}/$(INDEX_HTML) $(HTML_DOCS) $(DESTDIR)/${docdir}/html/
+	$(INSTALL) -m 644 ${srcdir}/$(INDEX_HTML) $(HTML_DOCS) $(DESTDIR)/${docdir}/html/
 
 uninstall-local:
 	cd $(DESTDIR)/${docdir}/html && rm -f $(INDEX_HTML) $(HTML_DOCS)

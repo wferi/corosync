@@ -42,7 +42,6 @@
 #include <corosync/totem/totem.h>
 
 #include <corosync/corotypes.h>
-#include "mainconfig.h"
 #include "util.h"
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
@@ -108,12 +107,10 @@ struct seus_handler_data {
 	struct corosync_api_v1 *api;
 };
 
-struct corosync_service_engine *corosync_service[SERVICE_HANDLER_MAXIMUM_COUNT];
+struct corosync_service_engine *corosync_service[SERVICES_COUNT_MAX];
 
-const char *service_stats_rx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
-const char *service_stats_tx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
-
-int corosync_service_exiting[SERVICE_HANDLER_MAXIMUM_COUNT];
+const char *service_stats_rx[SERVICES_COUNT_MAX][SERVICE_HANDLER_MAXIMUM_COUNT];
+const char *service_stats_tx[SERVICES_COUNT_MAX][SERVICE_HANDLER_MAXIMUM_COUNT];
 
 static void (*service_unlink_all_complete) (void) = NULL;
 
@@ -175,7 +172,10 @@ char *corosync_service_link_and_init (
 
 	log_printf (LOGSYS_LEVEL_NOTICE,
 		"Service engine loaded: %s [%d]", service_engine->name, service_engine->id);
-	cs_ipcs_service_init(service_engine);
+	init_result = (char *)cs_ipcs_service_init(service_engine);
+	if (init_result != NULL) {
+		return (init_result);
+	}
 
 	return NULL;
 }
@@ -183,7 +183,7 @@ char *corosync_service_link_and_init (
 static int service_priority_max(void)
 {
 	int lpc = 0, max = 0;
-	for(; lpc < SERVICE_HANDLER_MAXIMUM_COUNT; lpc++) {
+	for(; lpc < SERVICES_COUNT_MAX; lpc++) {
 		if(corosync_service[lpc] != NULL && corosync_service[lpc]->priority > max) {
 			max = corosync_service[lpc]->priority;
 		}
@@ -195,7 +195,7 @@ static int service_priority_max(void)
  * use the force
  */
 static unsigned int
-corosync_service_unlink_priority (
+corosync_service_unlink_and_exit_priority (
 	struct corosync_api_v1 *corosync_api,
 	int lowest_priority,
 	int *current_priority,
@@ -206,7 +206,7 @@ corosync_service_unlink_priority (
 
 	for(; *current_priority >= lowest_priority; *current_priority = *current_priority - 1) {
 		for(*current_service_engine = 0;
-			*current_service_engine < SERVICE_HANDLER_MAXIMUM_COUNT;
+			*current_service_engine < SERVICES_COUNT_MAX;
 			*current_service_engine = *current_service_engine + 1) {
 
 			if(corosync_service[*current_service_engine] == NULL ||
@@ -230,7 +230,16 @@ corosync_service_unlink_priority (
 				}
 			}
 
-			corosync_service_exiting[*current_service_engine] = 1;
+			/*
+			 * Exit all ipc connections dependent on this service
+			 */
+			cs_ipcs_service_destroy (*current_service_engine);
+
+			log_printf(LOGSYS_LEVEL_NOTICE,
+				"Service engine unloaded: %s",
+				corosync_service[*current_service_engine]->name);
+
+			corosync_service[*current_service_engine] = NULL;
 
 			/*
 			 * Call should call this function again
@@ -294,7 +303,7 @@ static unsigned int service_unlink_and_exit (
 	}
 	icmap_iter_finalize(iter);
 
-	if (service_found && service_id < SERVICE_HANDLER_MAXIMUM_COUNT
+	if (service_found && service_id < SERVICES_COUNT_MAX
 		&& corosync_service[service_id] != NULL) {
 
 		if (corosync_service[service_id]->exec_exit_fn) {
@@ -350,43 +359,6 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 	return (0);
 }
 
-/*
- * Declaration of exit_schedwrk_handler, because of cycle
- * (service_exit_schedwrk_handler calls service_unlink_schedwrk_handler, and vice-versa)
- */
-static void service_exit_schedwrk_handler (void *data);
-
-static void service_unlink_schedwrk_handler (void *data) {
-	struct seus_handler_data *cb_data = (struct seus_handler_data *)data;
-
-	/*
-	 * Exit all ipc connections dependent on this service
-	 */
-	if (cs_ipcs_service_destroy (cb_data->service_engine) == -1) {
-		goto redo_this_function;
-	}
-
-	log_printf(LOGSYS_LEVEL_NOTICE,
-		"Service engine unloaded: %s",
-		corosync_service[cb_data->service_engine]->name);
-
-	corosync_service[cb_data->service_engine] = NULL;
-
-	qb_loop_job_add(cs_poll_handle_get(),
-		QB_LOOP_HIGH,
-		data,
-		service_exit_schedwrk_handler);
-
-	return;
-
- redo_this_function:
-	qb_loop_job_add(cs_poll_handle_get(),
-		QB_LOOP_HIGH,
-		data,
-		service_unlink_schedwrk_handler);
-
-}
-
 static void service_exit_schedwrk_handler (void *data) {
 	int res;
 	static int current_priority = 0;
@@ -402,23 +374,13 @@ static void service_exit_schedwrk_handler (void *data) {
 		called = 1;
 	}
 
-	res = corosync_service_unlink_priority (
+	res = corosync_service_unlink_and_exit_priority (
 		api,
 		0,
 		&current_priority,
 		&current_service_engine);
 	if (res == 0) {
 		service_unlink_all_complete();
-		return;
-	}
-
-	if (res == 1) {
-		cb_data->service_engine = current_service_engine;
-
-		qb_loop_job_add(cs_poll_handle_get(),
-			QB_LOOP_HIGH,
-			data,
-			service_unlink_schedwrk_handler);
 		return;
 	}
 

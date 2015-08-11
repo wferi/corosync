@@ -72,6 +72,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/poll.h>
+#include <sys/uio.h>
 #include <limits.h>
 
 #include <qb/qbdefs.h>
@@ -280,10 +281,6 @@ struct sort_queue_item {
 	unsigned int msg_len;
 };
 
-struct orf_token_mcast_thread_state {
-	char iobuf[9000];
-};
-
 enum memb_state {
 	MEMB_STATE_OPERATIONAL = 1,
 	MEMB_STATE_GATHER = 2,
@@ -372,6 +369,8 @@ struct totemsrp_instance {
 	 */
 	struct cs_queue new_message_queue;
 
+	struct cs_queue new_message_queue_trans;
+
 	struct cs_queue retrans_message_queue;
 
 	struct sq regular_sort_queue;
@@ -429,6 +428,8 @@ struct totemsrp_instance {
 
 	int totemsrp_log_level_debug;
 
+	int totemsrp_log_level_trace;
+
 	int totemsrp_subsys_id;
 
 	void (*totemsrp_log_printf) (
@@ -461,6 +462,9 @@ struct totemsrp_instance {
 		const struct memb_ring_id *ring_id);
 
         void (*totemsrp_service_ready_fn) (void);
+
+	void (*totemsrp_waiting_trans_ack_cb_fn) (
+		int waiting_trans_ack);
 
 	int global_seqno;
 
@@ -503,6 +507,8 @@ struct totemsrp_instance {
 	uint32_t orf_token_discard;
 
 	uint32_t threaded_mode_enabled;
+
+	uint32_t waiting_trans_ack;
 	
 	void * token_recv_event_handle;
 	void * token_sent_event_handle;
@@ -680,6 +686,8 @@ static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 	instance->commit_token = (struct memb_commit_token *)instance->commit_token_storage;
 
 	instance->my_id.no_addrs = INTERFACE_MAX;
+
+	instance->waiting_trans_ack = 1;
 }
 
 static void main_token_seqid_get (
@@ -780,7 +788,9 @@ int totemsrp_initialize (
 		const unsigned int *member_list, size_t member_list_entries,
 		const unsigned int *left_list, size_t left_list_entries,
 		const unsigned int *joined_list, size_t joined_list_entries,
-		const struct memb_ring_id *ring_id))
+		const struct memb_ring_id *ring_id),
+	void (*waiting_trans_ack_cb_fn) (
+		int waiting_trans_ack))
 {
 	struct totemsrp_instance *instance;
 	unsigned int res;
@@ -807,6 +817,9 @@ int totemsrp_initialize (
 
 	totemsrp_instance_initialize (instance);
 
+	instance->totemsrp_waiting_trans_ack_cb_fn = waiting_trans_ack_cb_fn;
+	instance->totemsrp_waiting_trans_ack_cb_fn (1);
+
 	stats->srp = &instance->stats;
 	instance->stats.latest_token = 0;
 	instance->stats.earliest_token = 0;
@@ -821,6 +834,7 @@ int totemsrp_initialize (
 	instance->totemsrp_log_level_warning = totem_config->totem_logging_configuration.log_level_warning;
 	instance->totemsrp_log_level_notice = totem_config->totem_logging_configuration.log_level_notice;
 	instance->totemsrp_log_level_debug = totem_config->totem_logging_configuration.log_level_debug;
+	instance->totemsrp_log_level_trace = totem_config->totem_logging_configuration.log_level_trace;
 	instance->totemsrp_subsys_id = totem_config->totem_logging_configuration.log_subsys_id;
 	instance->totemsrp_log_printf = totem_config->totem_logging_configuration.log_printf;
 
@@ -950,6 +964,10 @@ int totemsrp_initialize (
 		MESSAGE_QUEUE_MAX,
 		sizeof (struct message_item), instance->threaded_mode_enabled);
 
+	cs_queue_init (&instance->new_message_queue_trans,
+		MESSAGE_QUEUE_MAX,
+		sizeof (struct message_item), instance->threaded_mode_enabled);
+
 	totemsrp_callback_token_create (instance,
 		&instance->token_recv_event_handle,
 		TOTEM_CALLBACK_TOKEN_RECEIVED,
@@ -981,6 +999,7 @@ void totemsrp_finalize (
 	memb_leave_message_send (instance);
 	totemrrp_finalize (instance->totemrrp_context);
 	cs_queue_free (&instance->new_message_queue);
+	cs_queue_free (&instance->new_message_queue_trans);
 	cs_queue_free (&instance->retrans_message_queue);
 	sq_free (&instance->regular_sort_queue);
 	sq_free (&instance->recovery_sort_queue);
@@ -1247,6 +1266,16 @@ static int memb_consensus_agreed (
 			break;
 		}
 	}
+
+	if (agreed && instance->failed_to_recv == 1) {
+		/*
+		 * Both nodes agreed on our failure. We don't care how many proc list items left because we
+		 * will create single ring anyway.
+		 */
+
+		 return (agreed);
+	}
+
 	assert (token_memb_entries >= 1);
 
 	return (agreed);
@@ -1774,7 +1803,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 
 	deliver_messages_from_recovery_to_regular (instance);
 
-	log_printf (instance->totemsrp_log_level_debug,
+	log_printf (instance->totemsrp_log_level_trace,
 		"Delivering to app %x to %x",
 		instance->my_high_delivered + 1, instance->old_ring_state_high_seq_received);
 
@@ -1815,6 +1844,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		trans_memb_list_totemip, instance->my_trans_memb_entries,
 		left_list, instance->my_left_memb_entries,
 		0, 0, &instance->my_ring_id);
+	instance->waiting_trans_ack = 1;
+	instance->totemsrp_waiting_trans_ack_cb_fn (1);
 
 // TODO we need to filter to ensure we only deliver those
 // messages which are part of instance->my_deliver_memb
@@ -1904,7 +1935,9 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	log_printf (instance->totemsrp_log_level_debug,
 		"entering OPERATIONAL state.");
 	log_printf (instance->totemsrp_log_level_notice,
-		"A processor joined or left the membership and a new membership was formed.");
+		"A processor joined or left the membership and a new membership (%s:%lld) was formed.",
+		totemip_print (&instance->my_ring_id.rep),
+		instance->my_ring_id.seq);
 	instance->memb_state = MEMB_STATE_OPERATIONAL;
 
 	instance->stats.operational_entered++;
@@ -1984,14 +2017,6 @@ static void memb_state_gather_enter (
 		 * State 3 means gather, so we are continuously gathering.
 		 */
 		instance->stats.continuous_gather++;
-	}
-
-	if (instance->stats.continuous_gather > MAX_NO_CONT_GATHER) {
-		log_printf (instance->totemsrp_log_level_warning,
-			"Totem is unable to form a cluster because of an "
-			"operating system or network fault. The most common "
-			"cause of this message is that the local firewall is "
-			"configured improperly.");
 	}
 
 	return;
@@ -2261,8 +2286,15 @@ int totemsrp_mcast (
 	struct message_item message_item;
 	char *addr;
 	unsigned int addr_idx;
+	struct cs_queue *queue_use;
 
-	if (cs_queue_is_full (&instance->new_message_queue)) {
+	if (instance->waiting_trans_ack) {
+		queue_use = &instance->new_message_queue_trans;
+	} else {
+		queue_use = &instance->new_message_queue;
+	}
+
+	if (cs_queue_is_full (queue_use)) {
 		log_printf (instance->totemsrp_log_level_debug, "queue full");
 		return (-1);
 	}
@@ -2299,9 +2331,9 @@ int totemsrp_mcast (
 
 	message_item.msg_len = addr_idx;
 
-	log_printf (instance->totemsrp_log_level_debug, "mcasted message added to pending queue");
+	log_printf (instance->totemsrp_log_level_trace, "mcasted message added to pending queue");
 	instance->stats.mcast_tx++;
-	cs_queue_item_add (&instance->new_message_queue, &message_item);
+	cs_queue_item_add (queue_use, &message_item);
 
 	return (0);
 
@@ -2316,8 +2348,14 @@ int totemsrp_avail (void *srp_context)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
 	int avail;
+	struct cs_queue *queue_use;
 
-	cs_queue_avail (&instance->new_message_queue, &avail);
+	if (instance->waiting_trans_ack) {
+		queue_use = &instance->new_message_queue_trans;
+	} else {
+		queue_use = &instance->new_message_queue;
+	}
+	cs_queue_avail (queue_use, &avail);
 
 	return (avail);
 }
@@ -2421,7 +2459,7 @@ static void messages_free (
 	instance->last_released += range;
 
  	if (log_release) {
-		log_printf (instance->totemsrp_log_level_debug,
+		log_printf (instance->totemsrp_log_level_trace,
 			"releasing messages up to and including %x", release_to);
 	}
 }
@@ -2479,7 +2517,12 @@ static int orf_token_mcast (
 		sort_queue = &instance->recovery_sort_queue;
 		reset_token_retransmit_timeout (instance); // REVIEWED
 	} else {
-		mcast_queue = &instance->new_message_queue;
+		if (instance->waiting_trans_ack) {
+			mcast_queue = &instance->new_message_queue_trans;
+		} else {
+			mcast_queue = &instance->new_message_queue;
+		}
+
 		sort_queue = &instance->regular_sort_queue;
 	}
 
@@ -3368,13 +3411,23 @@ static void token_callbacks_execute (
 static unsigned int backlog_get (struct totemsrp_instance *instance)
 {
 	unsigned int backlog = 0;
+	struct cs_queue *queue_use = NULL;
 
 	if (instance->memb_state == MEMB_STATE_OPERATIONAL) {
-		backlog = cs_queue_used (&instance->new_message_queue);
+		if (instance->waiting_trans_ack) {
+			queue_use = &instance->new_message_queue_trans;
+		} else {
+			queue_use = &instance->new_message_queue;
+		}
 	} else
 	if (instance->memb_state == MEMB_STATE_RECOVERY) {
-		backlog = cs_queue_used (&instance->retrans_message_queue);
+		queue_use = &instance->retrans_message_queue;
 	}
+
+	if (queue_use != NULL) {
+		backlog = cs_queue_used (queue_use);
+	}
+
 	instance->stats.token[instance->stats.latest_token].backlog_calc = backlog;
 	return (backlog);
 }
@@ -3623,6 +3676,11 @@ printf ("token seq %d\n", token->seq);
 			instance->my_aru_count = 0;
 		}
 
+		/*
+		 * We really don't follow specification there. In specification, OTHER nodes
+		 * detect failure of one node (based on aru_count) and my_id IS NEVER added
+		 * to failed list (so node never mark itself as failed)
+		 */
 		if (instance->my_aru_count > instance->totem_config->fail_to_recv_const &&
 			token->aru_addr == instance->my_id.addr[0].nodeid) {
 
@@ -3761,7 +3819,7 @@ static void messages_deliver_to_app (
 	range = end_point - instance->my_high_delivered;
 
 	if (range) {
-		log_printf (instance->totemsrp_log_level_debug,
+		log_printf (instance->totemsrp_log_level_trace,
 			"Delivering %x to %x", instance->my_high_delivered,
 			end_point);
 	}
@@ -3830,7 +3888,7 @@ static void messages_deliver_to_app (
 		/*
 		 * Message found
 		 */
-		log_printf (instance->totemsrp_log_level_debug,
+		log_printf (instance->totemsrp_log_level_trace,
 			"Delivering MCAST message with seq %x to pending delivery queue",
 			mcast_header.seq);
 
@@ -3920,7 +3978,7 @@ static int message_handler_mcast (
 		return (0);
 	}
 
-	log_printf (instance->totemsrp_log_level_debug,
+	log_printf (instance->totemsrp_log_level_trace,
 		"Received ringid(%s:%lld) seq %x",
 		totemip_print (&mcast_header.ring_id.rep),
 		mcast_header.ring_id.seq,
@@ -4562,4 +4620,12 @@ void totemsrp_threaded_mode_enable (void *context)
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
 
 	instance->threaded_mode_enabled = 1;
+}
+
+void totemsrp_trans_ack (void *context)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
+
+	instance->waiting_trans_ack = 0;
+	instance->totemsrp_waiting_trans_ack_cb_fn (0);
 }

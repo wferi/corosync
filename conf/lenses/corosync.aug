@@ -50,7 +50,9 @@ let totem =
     |kv "rrp_mode" /none|active|passive/
     |kv "vsftype" /none|ykd/
     |kv "secauth" /on|off/
-    |kv "crypto_type" /nss|aes256/
+    |kv "crypto_type" /nss|aes256|aes192|aes128|3des/
+    |kv "crypto_cipher" /none|nss|aes256|aes192|aes128|3des/
+    |kv "crypto_hash" /none|md5|sha1|sha256|sha384|sha512/
     |kv "transport" /udp|iba/
     |kv "version" Rx.integer
     |kv "nodeid" Rx.integer
@@ -81,7 +83,7 @@ let common_logging =
    kv "to_syslog" /yes|no|on|off/
    |kv "to_stderr" /yes|no|on|off/
    |kv "to_logfile" /yes|no|on|off/
-   |kv "debug" /yes|no|on|off/
+   |kv "debug" /yes|no|on|off|trace/
    |kv "logfile_priority" /alert|crit|debug|emerg|err|info|notice|warning/
    |kv "syslog_priority" /alert|crit|debug|emerg|err|info|notice|warning/
    |kv "syslog_facility" /daemon|local0|local1|local2|local3|local4|local5|local6|local7/
@@ -160,6 +162,20 @@ let uidgid =
    qstr /uid|gid/ in
   section "uidgid" setting
 
-let lns = (comment|empty|totem|quorum|logging|resources|service|uidgid)*
+(* The node section *)
+let node =
+  let setting =
+   qstr /ring[0-9]_addr/
+   |kv "nodeid" Rx.integer
+   |kv "quorum_votes" Rx.integer in
+  section "node" setting
+
+(* The nodelist section *)
+let nodelist =
+  let setting =
+    node in
+  section "nodelist" setting
+
+let lns = (comment|empty|totem|quorum|logging|resources|service|uidgid|nodelist)*
 
 let xfm = transform lns (incl "/etc/corosync/corosync.conf")

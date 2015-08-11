@@ -8,15 +8,38 @@ AC_INIT([corosync],
 	m4_esyscmd([build-aux/git-version-gen .tarball-version]),
 	[discuss@lists.corosync.org])
 
+AC_USE_SYSTEM_EXTENSIONS
+
 AM_INIT_AUTOMAKE([-Wno-portability])
+
+LT_PREREQ([2.2.6])
+LT_INIT
+
 AM_SILENT_RULES([yes])
 
 AC_CONFIG_SRCDIR([lib/cpg.c])
 AC_CONFIG_HEADER([include/corosync/config.h])
+AC_CONFIG_MACRO_DIR([m4])
 
 AC_CANONICAL_HOST
 
 AC_LANG([C])
+
+
+#Enable inter-library dependencies
+AC_ARG_ENABLE(interlib-deps,
+    [AC_HELP_STRING([--disable-interlib-deps  ],[disable inter-library dependencies (might break builds)])],
+    [enable_interlib_deps="$enableval"],
+    [enable_interlib_deps="yes"])
+
+AC_MSG_NOTICE([enable inter-library dependencies: $enable_interlib_deps])
+if test "${enable_interlib_deps}" == "yes"; then
+    link_all_deplibs=yes
+    link_all_deplibs_CXX=yes
+else
+    link_all_deplibs=no
+    link_all_deplibs_CXX=no
+fi
 
 dnl Fix default variables - "prefix" variable if not specified
 if test "$prefix" = "NONE"; then
@@ -57,23 +80,77 @@ fi
 sinclude(coroysync-default.m4)
 
 AC_PROG_CC
+AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_RANLIB
+AC_PROG_SED
+AC_PROG_LIBTOOL
+
 AC_CHECK_PROGS([GROFF], [groff])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 AC_CHECK_PROGS([AUGTOOL], [augtool])
 AC_CHECK_PROGS([DOT], [dot])
 AC_CHECK_PROGS([DOXYGEN], [doxygen])
 AC_CHECK_PROGS([AWK], [awk])
+AC_CHECK_PROGS([SED], [sed])
+AC_PATH_PROG([BASHPATH], [bash])
+
+# Checks for compiler characteristics.
+AC_PROG_GCC_TRADITIONAL
+AC_C_CONST
+AC_C_INLINE
+AC_C_VOLATILE
+
+# Checks for header files.
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h \
+		  stdlib.h string.h sys/ioctl.h sys/param.h sys/socket.h \
+		  sys/time.h syslog.h unistd.h sys/types.h getopt.h malloc.h \
+		  utmpx.h ifaddrs.h stddef.h sys/file.h sys/uio.h])
+
+# Check entries in specific structs
+AC_CHECK_MEMBER([struct sockaddr_in.sin_len],
+		[AC_DEFINE_UNQUOTED([HAVE_SOCK_SIN_LEN], [1], [sockaddr_in needs sin_len])],
+		[], [[#include <netinet/in.h>]])
+AC_CHECK_MEMBER([struct sockaddr_in6.sin6_len],
+		[AC_DEFINE_UNQUOTED([HAVE_SOCK_SIN6_LEN], [1], [sockaddr_in6 needs sin6_len])],
+		[], [[#include <netinet/in.h>]])
+AC_CHECK_MEMBER([struct msghdr.msg_control],
+		[AC_DEFINE_UNQUOTED([HAVE_MSGHDR_CONTROL], [1], [msghdr has msg_control])],
+		[], [[#include <sys/socket.h>]])
+AC_CHECK_MEMBER([struct msghdr.msg_controllen],
+		[AC_DEFINE_UNQUOTED([HAVE_MSGHDR_CONTROLLEN], [1], [msghdr has msg_controllen])],
+		[], [[#include <sys/socket.h>]])
+AC_CHECK_MEMBER([struct msghdr.msg_flags],
+		[AC_DEFINE_UNQUOTED([HAVE_MSGHDR_FLAGS], [1], [msghdr has msg_flags])],
+		[], [[#include <sys/socket.h>]])
+AC_CHECK_MEMBER([struct msghdr.msg_accrights],
+		[AC_DEFINE_UNQUOTED([HAVE_MSGHDR_ACCRIGHTS], [1], [msghdr has msg_accrights])],
+		[], [[#include <sys/socket.h>]])
+AC_CHECK_MEMBER([struct msghdr.msg_accrightslen],
+		[AC_DEFINE_UNQUOTED([HAVE_MSGHDR_ACCRIGHTSLEN], [1], [msghdr has msg_accrightslen])],
+		[], [[#include <sys/socket.h>]])
+
+# Checks for typedefs.
+AC_TYPE_UID_T
+AC_TYPE_INT16_T
+AC_TYPE_INT32_T
+AC_TYPE_INT64_T
+AC_TYPE_INT8_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_UINT8_T
+AC_TYPE_SIZE_T
+AC_TYPE_SSIZE_T
+AC_TYPE_SIGNAL
 
 # Checks for libraries.
-AC_CHECK_LIB([dl], [dlopen])
-AC_CHECK_LIB([pthread], [pthread_create])
-AC_CHECK_LIB([socket], [socket])
-AC_CHECK_LIB([nsl], [t_open])
-AC_CHECK_LIB([rt], [sched_getscheduler])
+PKG_CHECK_MODULES([nss],[nss])
 PKG_CHECK_MODULES([LIBQB], [libqb])
 AC_CHECK_LIB([qb], [qb_log_thread_priority_set], \
 	     have_qb_log_thread_priority_set="yes", \
@@ -81,52 +158,29 @@ AC_CHECK_LIB([qb], [qb_log_thread_priority_set], \
 if test "x${have_qb_log_thread_priority_set}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], 1, [have qb_log_thread_priority_set])
 fi
-PKG_CHECK_MODULES([nss],[nss])
-
-# Checks for header files.
-AC_FUNC_ALLOCA
-AC_HEADER_DIRENT
-AC_HEADER_STDC
-AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h \
-		  stdlib.h string.h sys/ioctl.h sys/param.h sys/socket.h \
-		  sys/time.h syslog.h unistd.h sys/types.h getopt.h malloc.h \
-		  sys/sockio.h utmpx.h ifaddrs.h])
-
-# Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
-AC_TYPE_UID_T
-AC_C_INLINE
-AC_TYPE_INT16_T
-AC_TYPE_INT32_T
-AC_TYPE_INT64_T
-AC_TYPE_INT8_T
-AC_TYPE_SIZE_T
-AC_TYPE_SSIZE_T
-AC_HEADER_TIME
-AC_TYPE_UINT16_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
-AC_TYPE_UINT8_T
-AC_C_VOLATILE
+AC_CHECK_LIB([pthread], [pthread_create])
+AC_CHECK_LIB([socket], [socket])
+AC_CHECK_LIB([nsl], [t_open])
+AC_CHECK_LIB([rt], [sched_getscheduler])
 
 # Checks for library functions.
+AC_FUNC_ALLOCA
 AC_FUNC_CLOSEDIR_VOID
 AC_FUNC_ERROR_AT_LINE
-AC_REPLACE_FNMATCH
 AC_FUNC_FORK
-AC_PROG_GCC_TRADITIONAL
 AC_FUNC_MALLOC
 AC_FUNC_MEMCMP
+AC_FUNC_MMAP
 AC_FUNC_REALLOC
 AC_FUNC_SELECT_ARGTYPES
-AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
+
 AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
 		getcwd getpeerucred getpeereid gettimeofday inet_ntoa memmove \
 		memset mkdir scandir select socket strcasecmp strchr strdup \
 		strerror strrchr strspn strstr pthread_setschedparam \
-		sched_get_priority_max sched_setscheduler getifaddrs])
+		sched_get_priority_max sched_setscheduler getifaddrs \
+		clock_gettime ftruncate gethostname localtime_r munmap strtol])
 
 AC_CONFIG_FILES([Makefile
 		 exec/Makefile
@@ -142,7 +196,8 @@ AC_CONFIG_FILES([Makefile
 		 cts/CTSvars.py
 		 tools/Makefile
 		 conf/Makefile
-                 Doxyfile])
+		 qdevices/Makefile
+		 Doxyfile])
 
 ### Local business
 
@@ -181,11 +236,13 @@ LIB_MSG_RESULT(m4_shift(m4_shift($@)))dnl
 
 ## helper for CC stuff
 cc_supports_flag() {
-	local CPPFLAGS="$CPPFLAGS $@"
+	BACKUP="$CPPFLAGS"
+	CPPFLAGS="$CPPFLAGS $@"
 	AC_MSG_CHECKING([whether $CC supports "$@"])
 	AC_PREPROC_IFELSE([AC_LANG_PROGRAM([])],
 			  [RC=0; AC_MSG_RESULT([yes])],
 			  [RC=1; AC_MSG_RESULT([no])])
+	CPPFLAGS="$BACKUP"
 	return $RC
 }
 
@@ -234,6 +291,11 @@ AC_ARG_ENABLE([fatal-warnings],
 AC_ARG_ENABLE([debug],
 	[  --enable-debug                  : enable debug build. ],
 	[ default="no" ])
+
+AC_ARG_ENABLE([secure-build],
+	[  --enable-secure-build           : enable PIE/RELRO build. ],
+	[],
+	[enable_secure_build="yes"])
 
 AC_ARG_ENABLE([user-flags],
 	[  --enable-user-flags             : rely on user environment. ],
@@ -285,90 +347,30 @@ AC_ARG_WITH([initddir],
 	[ INITDDIR="$withval" ],
 	[ INITDDIR="$sysconfdir/init.d" ])
 
+AC_ARG_WITH([systemddir],
+	[  --with-systemddir=DIR   : path to systemd unit files directory. ],
+	[ SYSTEMDDIR="$withval" ],
+	[ SYSTEMDDIR="/lib/systemd/system" ])
+
+AC_ARG_WITH([initwrappersdir],
+	[  --with-initwrappersdir=DIR   : path to init wrappers files directory. ],
+	[ INITWRAPPERSDIR="$withval" ],
+	[ INITWRAPPERSDIR="$datarootdir/corosync" ])
+
 AC_ARG_ENABLE([snmp],
-       [  --enable-snmp                   : SNMP protocol support ],
-       [ default="no" ])
+	[  --enable-snmp                   : SNMP protocol support ],
+	[ default="no" ])
 
 AC_ARG_ENABLE([xmlconf],
-       [  --enable-xmlconf                : XML configuration support ],,
-       [ enable_xmlconf="no" ])
+	[  --enable-xmlconf                : XML configuration support ],,
+	[ enable_xmlconf="no" ])
 AM_CONDITIONAL(INSTALL_XMLCONF, test x$enable_xmlconf = xyes)
 
-# OS detection
-# THIS SECTION MUST DIE!
-CP=cp
-OS_LDL="-ldl"
-have_linux="no"
-case "$host_os" in
-	*linux*)
-		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
-				   [Compiling for Linux platform])
-		OS_CFLAGS=""
-		OS_CPPFLAGS="-D_GNU_SOURCE"
-		OS_LDFLAGS=""
-		OS_DYFLAGS="-rdynamic"
-		DARWIN_OPTS=""
-		have_linux="yes"
-	;;
-	darwin*)
-		AC_DEFINE_UNQUOTED([COROSYNC_DARWIN], [1],
-				   [Compiling for Darwin platform])
-		CP=rsync
-		OS_CFLAGS=""
-		OS_CPPFLAGS=""
-		OS_LDFLAGS=""
-		OS_DYFLAGS=""
-		DARWIN_OPTS="-dynamiclib -bind_at_load \
-			     -current_version ${SONAME} \
-			     -compatibility_version ${SONAME} -install_name \$(libdir)/\$(@)"
-		AC_DEFINE_UNQUOTED([MAP_ANONYMOUS], [MAP_ANON],
-				   [Shared memory define for Darwin platform])
-		AC_DEFINE_UNQUOTED([PATH_MAX], [4096],
-				   [Number of chars in a path name including nul])
-		AC_DEFINE_UNQUOTED([NAME_MAX], [255],
-				   [Number of chars in a file name])
-	;;
-	*bsd*)
-		AC_DEFINE_UNQUOTED([COROSYNC_BSD], [1],
-				   [Compiling for BSD platform])
-		AC_DEFINE_UNQUOTED([MAP_ANONYMOUS], [MAP_ANON],
-				   [Shared memory define for Darwin platform])
-		OS_CFLAGS=""
-		OS_CPPFLAGS="-I/usr/local/include"
-		OS_LDFLAGS="-L/usr/local/lib"
-		OS_DYFLAGS="-export-dynamic"
-		DARWIN_OPTS=""
-		OS_LDL=""
-		case "$host_os" in
-			*freebsd[[234567]]*)
-			;;
-			*freebsd*)
-				AC_DEFINE_UNQUOTED([COROSYNC_FREEBSD_GE_8], [1],
-					   [Compiling for FreeBSD >= 8 platform])
-			;;
-		esac
-	;;
-	*solaris*)
-		AC_DEFINE_UNQUOTED([COROSYNC_SOLARIS], [1],
-				   [Compiling for Solaris platform])
-		AC_DEFINE_UNQUOTED([TS_CLASS], [1],
-				   [Prevent being scheduled RR])
-		AC_DEFINE_UNQUOTED([_SEM_SEMUN_UNDEFINED], [1],
-				   [The semun structure is undefined])
-		CP=rsync
-		OS_CFLAGS=""
-		OS_CPPFLAGS="-D_REENTRANT"
-		OS_LDFLAGS=""
-		OS_DYFLAGS="-Wl,-z,lazyload"
-		DARWIN_OPTS=""
-		SOLARIS_OPTS=" "
-	;;
-	*)
-		AC_MSG_ERROR([Unsupported OS? hmmmm])
-	;;
-esac
+AC_ARG_ENABLE([qdevices],
+	[  --enable-qdevices               : Quorum devices support ],,
+	[ enable_qdevices="no" ])
+AM_CONDITIONAL(BUILD_QDEVICES, test x$enable_qdevices = xyes)
 
-AC_SUBST(CP)
 # *FLAGS handling goes here
 
 ENV_CFLAGS="$CFLAGS"
@@ -411,25 +413,14 @@ if test "x${enable_rdma}" = xyes; then
 fi
 
 if test "x${enable_monitoring}" = xyes; then
-
-	AC_CHECK_LIB([statgrab], [sg_get_mem_stats], have_libstatgrab="yes", have_libstatgrab="no")
-
-	if test "x${have_libstatgrab}" = xyes; then
-		AC_DEFINE_UNQUOTED([HAVE_LIBSTATGRAB], 1, [have libstatgrab])
-		statgrab_LIBS="-lstatgrab"
-	else
-		if test "x${have_linux}" = xno; then
-			AC_MSG_ERROR(monitoring requires libstatgrab on non-linux systems)
-		fi
-	fi
-	AC_SUBST([statgrab_LIBS])
+	PKG_CHECK_MODULES([statgrab], [libstatgrab])
 	AC_DEFINE_UNQUOTED([HAVE_MONITORING], 1, [have resource monitoring])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES monitoring"
 fi
 
 if test "x${enable_watchdog}" = xyes; then
-	AC_CHECK_HEADER(linux/watchdog.h,,AC_MSG_ERROR(watchdog requires linux/watchdog.h))
-	AC_CHECK_HEADER(linux/reboot.h,,AC_MSG_ERROR(watchdog requires linux/reboot.h))
+	AC_CHECK_HEADER([linux/watchdog.h], [], [AC_MSG_ERROR([watchdog requires linux/watchdog.h])])
+	AC_CHECK_HEADER([linux/reboot.h], [], [AC_MSG_ERROR([watchdog requires linux/reboot.h])])
 	AC_DEFINE_UNQUOTED([HAVE_WATCHDOG], 1, [have watchdog])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES watchdog"
 fi
@@ -443,59 +434,55 @@ fi
 if test "x${enable_xmlconf}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES xmlconf"
 fi
-
-if test "x${enable_snmp}" = xyes; then
-       SNMPCONFIG=""
-       AC_CHECK_HEADERS(net-snmp/net-snmp-config.h)
-
-       if test "x${ac_cv_header_net_snmp_net_snmp_config_h}" != "xyes"; then
-               enable_snmp=no
-       fi
-
-       if test $enable_snmp != no; then
-               AC_PATH_PROGS(SNMPCONFIG, net-snmp-config)
-               if test "X${SNMPCONFIG}" = "X"; then
-                       AC_MSG_RESULT(You need the net_snmp development package to continue.)
-                       enable_snmp=no
-               fi
-       fi
-
-       if test $enable_snmp != no; then
-               AC_MSG_CHECKING(for special snmp libraries)
-               SNMPLIBS=`$SNMPCONFIG --libs`
-               AC_MSG_RESULT($SNMPLIBS)
-       fi
-
-       if test $enable_snmp != no; then
-               savedLibs=$LIBS
-               LIBS="$LIBS $SNMPLIBS"
-               AC_CHECK_FUNCS(netsnmp_transport_open_client)
-               if test $ac_cv_func_netsnmp_transport_open_client != yes; then
-                       AC_CHECK_FUNCS(netsnmp_tdomain_transport)
-                       if test $ac_cv_func_netsnmp_tdomain_transport != yes; then
-                               enable_snmp=no
-                       fi
-               else
-                       AC_DEFINE_UNQUOTED([NETSNMPV54], $NETSNMP_NEW_SUPPORT, [have net-snmp5.4 over])
-               fi
-               LIBS=$savedLibs
-       fi
-
-       AC_MSG_CHECKING(for snmp)
-       AC_MSG_RESULT($enable_snmp)
-   if test $enable_snmp = no; then
-               enable_snmp=0
-               AC_MSG_ERROR(Unable to support SNMP)
-   else
-               enable_snmp=1
-               PACKAGE_FEATURES="$PACKAGE_FEATURES snmp"
-               AC_DEFINE_UNQUOTED([ENABLE_SNMP], $enable_snmp, [Build in support for sending SNMP traps])
-   fi
-else
-       enable_snmp=0
+if test "x${enable_qdevices}" = xyes; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES qdevices"
 fi
-AC_SUBST([SNMPLIBS])
-AM_CONDITIONAL(BUILD_SNMP, test "${enable_snmp}" = "1")
+
+do_snmp=0
+if test "x${enable_snmp}" = xyes; then
+	AC_PATH_PROGS([SNMPCONFIG], [net-snmp-config])
+
+	if test "x${SNMPCONFIG}" != "x"; then
+		AC_MSG_CHECKING([for snmp includes])
+		SNMP_PREFIX=`$SNMPCONFIG --prefix`
+		SNMP_INCLUDES="-I$SNMP_PREFIX/include"
+		AC_MSG_RESULT([$SNMP_INCLUDES])
+
+		AC_MSG_CHECKING([for snmp libraries])
+		SNMP_LIBS=`$SNMPCONFIG --libs`
+		AC_MSG_RESULT([$SNMP_LIBS])
+		AC_SUBST([SNMP_LIBS])
+
+		saveCFLAGS="$CFLAGS"
+		CFLAGS="$CFLAGS $SNMP_INCLUDES"
+		AC_CHECK_HEADERS([net-snmp/net-snmp-config.h])
+		CFLAGS="$saveCFLAGS"
+
+		if test "x${ac_cv_header_net_snmp_net_snmp_config_h}" != "xyes"; then
+			AC_MSG_ERROR([Unable to use net-snmp/net-snmp-config.h])
+		fi
+
+		savedLibs=$LIBS
+		LIBS="$LIBS $SNMP_LIBS"
+		AC_CHECK_FUNCS([netsnmp_transport_open_client])
+		if test $ac_cv_func_netsnmp_transport_open_client != yes; then
+			AC_CHECK_FUNCS([netsnmp_tdomain_transport])
+			if test $ac_cv_func_netsnmp_tdomain_transport != yes; then
+				AC_MSG_ERROR([No usable SNMP client transport implementation found])
+			fi
+		else
+			AC_DEFINE_UNQUOTED([NETSNMPV54], $NETSNMP_NEW_SUPPORT, [have net-snmp5.4 over])
+		fi
+		LIBS=$savedLibs
+
+		do_snmp=1
+		PACKAGE_FEATURES="$PACKAGE_FEATURES snmp"
+		AC_DEFINE_UNQUOTED([ENABLE_SNMP], $do_snmp, [Build in support for sending SNMP traps])
+	else
+		AC_MSG_ERROR([You need the net_snmp development package to continue.])
+	fi
+fi
+AM_CONDITIONAL(BUILD_SNMP, test "${do_snmp}" = "1")
 
 # extra warnings
 EXTRA_WARNINGS=""
@@ -540,7 +527,6 @@ else
 	COVERAGE_LDFLAGS=""
 fi
 
-
 if test "x${enable_small_memory_footprint}" = xyes ; then
 	AC_DEFINE_UNQUOTED([HAVE_SMALL_MEMORY_FOOTPRINT], 1, [have small_memory_footprint])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES small-memory-footprint"
@@ -549,7 +535,7 @@ fi
 if test "x${enable_ansi}" = xyes && \
 		cc_supports_flag -std=iso9899:199409 ; then
 	AC_MSG_NOTICE([Enabling ANSI Compatibility])
-	ANSI_CPPFLAGS="-ansi -D_GNU_SOURCE -DANSI_ONLY"
+	ANSI_CPPFLAGS="-ansi -DANSI_ONLY"
 	PACKAGE_FEATURES="$PACKAGE_FEATURES ansi"
 else
 	ANSI_CPPFLAGS=""
@@ -571,32 +557,80 @@ if test "x${enable_user_flags}" = xyes; then
   EXTRA_WARNINGS=""
 fi
 
+if test "x${enable_secure_build}" = xyes; then
+  # stolen from apache configure snippet
+  AC_CACHE_CHECK([whether $CC accepts PIE flags], [ap_cv_cc_pie], [
+    save_CFLAGS=$CFLAGS
+    save_LDFLAGS=$LDFLAGS
+    CFLAGS="$CFLAGS -fPIE"
+    LDFLAGS="$LDFLAGS -pie"
+    AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+      [ap_cv_cc_pie=yes], [ap_cv_cc_pie=no], [ap_cv_cc_pie=yes])
+    CFLAGS=$save_CFLAGS
+    LDFLAGS=$save_LDFLAGS
+  ])
+  if test "$ap_cv_cc_pie" = "yes"; then
+    SEC_FLAGS="$SEC_FLAGS -fPIE"
+    SEC_LDFLAGS="$SEC_LDFLAGS -pie"
+    PACKAGE_FEATURES="$PACKAGE_FEATURES pie"
+  fi
+
+  # similar to above
+  AC_CACHE_CHECK([whether $CC accepts RELRO flags], [ap_cv_cc_relro], [
+    save_LDFLAGS=$LDFLAGS
+    LDFLAGS="$LDFLAGS -Wl,-z,relro"
+    AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+      [ap_cv_cc_relro=yes], [ap_cv_cc_relro=no], [ap_cv_cc_relro=yes])
+    LDFLAGS=$save_LDFLAGS
+  ])
+  if test "$ap_cv_cc_relro" = "yes"; then
+    SEC_LDFLAGS="$SEC_LDFLAGS -Wl,-z,relro"
+    PACKAGE_FEATURES="$PACKAGE_FEATURES relro"
+  fi
+
+  AC_CACHE_CHECK([whether $CC accepts BINDNOW flags], [ap_cv_cc_bindnow], [
+    save_LDFLAGS=$LDFLAGS
+    LDFLAGS="$LDFLAGS -Wl,-z,now"
+    AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+      [ap_cv_cc_bindnow=yes], [ap_cv_cc_bindnow=no], [ap_cv_cc_bindnow=yes])
+    LDFLAGS=$save_LDFLAGS
+  ])
+  if test "$ap_cv_cc_bindnow" = "yes"; then
+    SEC_LDFLAGS="$SEC_LDFLAGS -Wl,-z,now"
+    PACKAGE_FEATURES="$PACKAGE_FEATURES bindnow"
+  fi
+fi
+
+
+# define global include dirs
+INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include -I\$(top_srcdir)/include"
+INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include/corosync -I\$(top_srcdir)/include/corosync"
+
 # final build of *FLAGS
-CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS $OS_CFLAGS \
-	$COVERAGE_CFLAGS $EXTRA_WARNINGS $WERROR_CFLAGS $NSS_CFLAGS"
-CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $OS_CPPFLAGS"
-LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
+CFLAGS="$ENV_CFLAGS $lt_prog_compiler_pic $SEC_FLAGS $OPT_CFLAGS $GDB_FLAGS \
+	$COVERAGE_CFLAGS $EXTRA_WARNINGS \
+	$WERROR_CFLAGS $NSS_CFLAGS $LIBQB_CFLAGS \
+	$SNMP_INCLUDES"
+CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $INCLUDE_DIRS"
+LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic $SEC_LDFLAGS -Wl,--as-needed $COVERAGE_LDFLAGS"
 
 # substitute what we need:
+AC_SUBST([BASHPATH])
 AC_SUBST([INITDDIR])
+AC_SUBST([SYSTEMDDIR])
+INITWRAPPERSDIR=$(eval echo ${INITWRAPPERSDIR})
+AC_SUBST([INITWRAPPERSDIR])
 
 AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
 AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
-AC_SUBST([OS_DYFLAGS])
 
-AC_SUBST([OS_LDL])
 AM_CONDITIONAL(INSTALL_TESTAGENTS, test -n "${enable_testagents}")
-AM_CONDITIONAL(INSTALL_MIB, test "${enable_snmp}" = "1")
-AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "1")
+AM_CONDITIONAL(INSTALL_MIB, test "${do_snmp}" = "1")
+AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "yes")
 AM_CONDITIONAL(AUGTOOL, test -n "${AUGTOOL}")
 AC_SUBST([NSS_LDFLAGS])
-
-AM_CONDITIONAL(BUILD_DARWIN, test -n "${DARWIN_OPTS}")
-AM_CONDITIONAL(BUILD_SOLARIS, test -n "${SOLARIS_OPTS}")
-AC_SUBST([DARWIN_OPTS])
-AC_SUBST([SOLARIS_OPTS])
 
 AM_CONDITIONAL(BUILD_HTML_DOCS, test -n "${GROFF}")
 
@@ -625,6 +659,8 @@ AC_MSG_RESULT([  Arch-independent files   = ${datadir}])
 AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
 AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
+AC_MSG_RESULT([  System systemd directory = ${SYSTEMDDIR}])
+AC_MSG_RESULT([  System init wraps dir    = ${INITWRAPPERSDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
 AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])
 AC_MSG_RESULT([])
@@ -637,11 +673,6 @@ AC_MSG_RESULT([  Extra compiler warnings  = ${EXTRA_WARNING}])
 AC_MSG_RESULT([  Env. defined CFLAG       = ${ENV_CFLAGS}])
 AC_MSG_RESULT([  Env. defined CPPFLAGS    = ${ENV_CPPFLAGS}])
 AC_MSG_RESULT([  Env. defined LDFLAGS     = ${ENV_LDFLAGS}])
-AC_MSG_RESULT([  OS   defined CFLAGS      = ${OS_CFLAGS}])
-AC_MSG_RESULT([  OS   defined CPPFLAGS    = ${OS_CPPFLAGS}])
-AC_MSG_RESULT([  OS   defined LDFLAGS     = ${OS_LDFLAGS}])
-AC_MSG_RESULT([  OS   defined LDL         = ${OS_LDL}])
-AC_MSG_RESULT([  OS   defined DYFLAGS     = ${OS_DYFLAGS}])
 AC_MSG_RESULT([  ANSI defined CPPFLAGS    = ${ANSI_CPPFLAGS}])
 AC_MSG_RESULT([  Coverage     CFLAGS      = ${COVERAGE_CFLAGS}])
 AC_MSG_RESULT([  Coverage     LDFLAGS     = ${COVERAGE_LDFLAGS}])

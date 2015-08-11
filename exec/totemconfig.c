@@ -57,18 +57,11 @@
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
 
-#include <nss.h>
-#include <pk11pub.h>
-#include <pkcs11.h>
-#include <prerror.h>
-
 #include "util.h"
 #include "totemconfig.h"
 
 #define TOKEN_RETRANSMITS_BEFORE_LOSS_CONST	4
 #define TOKEN_TIMEOUT				1000
-#define TOKEN_RETRANSMIT_TIMEOUT		(int)(TOKEN_TIMEOUT / (TOKEN_RETRANSMITS_BEFORE_LOSS_CONST + 0.2))
-#define TOKEN_HOLD_TIMEOUT			(int)(TOKEN_RETRANSMIT_TIMEOUT * 0.8 - (1000/(int)HZ))
 #define JOIN_TIMEOUT				50
 #define MERGE_TIMEOUT				200
 #define DOWNCHECK_TIMEOUT			1000
@@ -121,7 +114,7 @@ static void totem_volatile_config_read (struct totem_config *totem_config)
 }
 
 
-static void totem_get_crypto(struct totem_config *totem_config)
+static int totem_get_crypto(struct totem_config *totem_config)
 {
 	char *str;
 	const char *tmp_cipher;
@@ -144,6 +137,15 @@ static void totem_get_crypto(struct totem_config *totem_config)
 		}
 		if (strcmp(str, "aes256") == 0) {
 			tmp_cipher = "aes256";
+		}
+		if (strcmp(str, "aes192") == 0) {
+			tmp_cipher = "aes192";
+		}
+		if (strcmp(str, "aes128") == 0) {
+			tmp_cipher = "aes128";
+		}
+		if (strcmp(str, "3des") == 0) {
+			tmp_cipher = "3des";
 		}
 		free(str);
 	}
@@ -170,11 +172,18 @@ static void totem_get_crypto(struct totem_config *totem_config)
 		free(str);
 	}
 
+	if ((strcmp(tmp_cipher, "none") != 0) &&
+	    (strcmp(tmp_hash, "none") == 0)) {
+		return -1;
+	}
+
 	free(totem_config->crypto_cipher_type);
 	free(totem_config->crypto_hash_type);
 
 	totem_config->crypto_cipher_type = strdup(tmp_cipher);
 	totem_config->crypto_hash_type = strdup(tmp_hash);
+
+	return 0;
 }
 
 static uint16_t generate_cluster_id (const char *cluster_name)
@@ -194,6 +203,7 @@ static int get_cluster_mcast_addr (
 		const char *cluster_name,
 		const struct totem_ip_address *bindnet,
 		unsigned int ringnumber,
+		int ip_version,
 		struct totem_ip_address *res)
 {
 	uint16_t clusterid;
@@ -221,7 +231,7 @@ static int get_cluster_mcast_addr (
 		return (-1);
 	}
 
-	err = totemip_parse (res, addr, 0);
+	err = totemip_parse (res, addr, ip_version);
 
 	return (err);
 }
@@ -262,7 +272,7 @@ static int find_local_node_in_nodelist(struct totem_config *totem_config)
 			continue;
 		}
 
-		res = totemip_parse (&node_addr, node_addr_str, 0);
+		res = totemip_parse (&node_addr, node_addr_str, totem_config->ip_version);
 		free(node_addr_str);
 		if (res == -1) {
 			continue ;
@@ -315,7 +325,7 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config)
 			member_count = totem_config->interfaces[ringnumber].member_count;
 
 			res = totemip_parse(&totem_config->interfaces[ringnumber].member_list[member_count],
-						node_addr_str, 0);
+						node_addr_str, totem_config->ip_version);
 			if (res != -1) {
 				totem_config->interfaces[ringnumber].member_count++;
 			}
@@ -363,7 +373,7 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 			continue ;
 		}
 
-		if (totemip_parse(&node_addr, node_addr_str, 0) == -1) {
+		if (totemip_parse(&node_addr, node_addr_str, totem_config->ip_version) == -1) {
 			free(node_addr_str);
 			continue ;
 		}
@@ -451,7 +461,10 @@ extern int totem_config_read (
 
 	icmap_get_uint32("totem.version", (uint32_t *)&totem_config->version);
 
-	totem_get_crypto(totem_config);
+	if (totem_get_crypto(totem_config) != 0) {
+		*error_string = "crypto_cipher requires crypto_hash with value other than none";
+		return -1;
+	}
 
 	if (icmap_get_string("totem.rrp_mode", &str) == CS_OK) {
 		strcpy (totem_config->rrp_mode, str);
@@ -473,6 +486,17 @@ extern int totem_config_read (
 	icmap_get_uint32("totem.netmtu", &totem_config->net_mtu);
 
 	icmap_get_string("totem.cluster_name", &cluster_name);
+
+	totem_config->ip_version = AF_INET;
+	if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
+		if (strcmp(str, "ipv4") == 0) {
+			totem_config->ip_version = AF_INET;
+		}
+		if (strcmp(str, "ipv6") == 0) {
+			totem_config->ip_version = AF_INET6;
+		}
+		free(str);
+	}
 
 	/*
 	 * Get things that might change in the future
@@ -502,6 +526,16 @@ extern int totem_config_read (
 		member_count = 0;
 
 		ringnumber = atoi(ringnumber_key);
+
+		if (ringnumber >= INTERFACE_MAX) {
+			snprintf (error_string_response, sizeof(error_string_response),
+			    "parse error in config: interface ring number %u is bigger then allowed maximum %u\n",
+			    ringnumber, INTERFACE_MAX - 1);
+
+			*error_string = error_string_response;
+			return -1;
+		}
+
 		/*
 		 * Get the bind net address
 		 */
@@ -516,7 +550,7 @@ extern int totem_config_read (
 		 */
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", ringnumber);
 		if (icmap_get_string(tmp_key, &str) == CS_OK) {
-			res = totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr, str, 0);
+			res = totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr, str, totem_config->ip_version);
 			free(str);
 		} else {
 			/*
@@ -526,6 +560,7 @@ extern int totem_config_read (
 			res = get_cluster_mcast_addr (cluster_name,
 					&totem_config->interfaces[ringnumber].bindnet,
 					ringnumber,
+					totem_config->ip_version,
 					&totem_config->interfaces[ringnumber].mcast_addr);
 		}
 
@@ -536,7 +571,7 @@ extern int totem_config_read (
 				totem_config->broadcast_use = 1;
 				totemip_parse (
 					&totem_config->interfaces[ringnumber].mcast_addr,
-					"255.255.255.255", 0);
+					"255.255.255.255", totem_config->ip_version);
 			}
 			free(str);
 		}
@@ -579,7 +614,7 @@ extern int totem_config_read (
 
 			if (icmap_get_string(member_iter_key, &str) == CS_OK) {
 				res = totemip_parse (&totem_config->interfaces[ringnumber].member_list[member_count++],
-						str, 0);
+						str, totem_config->ip_version);
 			}
 		}
 		icmap_iter_finalize(member_iter);
@@ -743,20 +778,6 @@ int totem_config_validate (
 	 */
 	if (totem_config->token_timeout == 0) {
 		totem_config->token_timeout = TOKEN_TIMEOUT;
-		if (totem_config->token_retransmits_before_loss_const == 0) {
-			totem_config->token_retransmits_before_loss_const = TOKEN_RETRANSMITS_BEFORE_LOSS_CONST;
-		}
-
-		if (totem_config->token_retransmit_timeout == 0) {
-			totem_config->token_retransmit_timeout =
-				(int)(totem_config->token_timeout /
-				(totem_config->token_retransmits_before_loss_const + 0.2));
-		}
-		if (totem_config->token_hold_timeout == 0) {
-			totem_config->token_hold_timeout =
-				(int)(totem_config->token_retransmit_timeout * 0.8 -
-				(1000/HZ));
-		}
 	}
 
 	if (totem_config->max_network_delay == 0) {
@@ -804,10 +825,6 @@ int totem_config_validate (
 			"The token retransmit timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->token_retransmit_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
-	}
-
-	if (totem_config->token_hold_timeout == 0) {
-		totem_config->token_hold_timeout = TOKEN_HOLD_TIMEOUT;
 	}
 
 	if (totem_config->token_hold_timeout < MINIMUM_TIMEOUT) {

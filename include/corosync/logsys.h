@@ -43,6 +43,7 @@
 #include <pthread.h>
 #include <limits.h>
 
+#include <qb/qbconfig.h>
 #include <qb/qblog.h>
 
 #ifdef __cplusplus
@@ -71,6 +72,7 @@ extern "C" {
 #define LOGSYS_LEVEL_NOTICE		LOG_NOTICE
 #define LOGSYS_LEVEL_INFO		LOG_INFO
 #define LOGSYS_LEVEL_DEBUG		LOG_DEBUG
+#define LOGSYS_LEVEL_TRACE		LOG_TRACE
 
 /*
  * logsys_logger bits
@@ -78,9 +80,16 @@ extern "C" {
  * SUBSYS_COUNT defines the maximum number of subsystems
  * SUBSYS_NAMELEN defines the maximum len of a subsystem name
  */
-#define LOGSYS_MAX_SUBSYS_COUNT		64
+#define LOGSYS_MAX_SUBSYS_COUNT		32
 #define LOGSYS_MAX_SUBSYS_NAMELEN	64
 #define LOGSYS_MAX_PERROR_MSG_LEN	128
+
+/*
+ * Debug levels
+ */
+#define LOGSYS_DEBUG_OFF		0
+#define LOGSYS_DEBUG_ON			1
+#define LOGSYS_DEBUG_TRACE		2
 
 #ifndef LOGSYS_UTILS_ONLY
 
@@ -164,6 +173,8 @@ extern int _logsys_config_subsys_get (
 
 extern int _logsys_subsys_create (const char *subsys, const char *filename);
 
+extern int logsys_thread_start (void);
+
 static int logsys_subsys_id __attribute__((unused)) = LOGSYS_MAX_SUBSYS_COUNT;
 
 #define LOGSYS_DECLARE_SYSTEM(name,mode,syslog_facility,syslog_priority)\
@@ -177,11 +188,17 @@ static void logsys_system_init (void)					\
 	}								\
 }
 
+#ifdef QB_HAVE_ATTRIBUTE_SECTION
+#define LOGSYS_DECLARE_SECTION assert(__start___verbose != __stop___verbose)
+#else
+#define LOGSYS_DECLARE_SECTION
+#endif
+
 #define LOGSYS_DECLARE_SUBSYS(subsys)					\
 __attribute__ ((constructor))						\
 static void logsys_subsys_init (void)					\
 {									\
-	assert(__start___verbose != __stop___verbose);			\
+	LOGSYS_DECLARE_SECTION;						\
 	logsys_subsys_id =						\
 		_logsys_subsys_create ((subsys), __FILE__);		\
 	if (logsys_subsys_id == -1) {					\

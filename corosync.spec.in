@@ -1,6 +1,6 @@
-%global alphatag @alphatag@
-%global numcomm @numcomm@
-%global dirty @dirty@
+@ALPHATAG@
+@NUMCOMM@
+@DIRTY@
 
 # Conditionals
 # Invoke "rpmbuild --without <feature>" or "rpmbuild --with <feature>"
@@ -13,15 +13,19 @@
 %bcond_with rdma
 %bcond_with systemd
 %bcond_with xmlconf
+%bcond_with runautogen
+
+%global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
+%global gittarver %{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
 
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
 Version: @version@
-Release: 1%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
+Release: 1%{?gitver}%{?dist}
 License: BSD
 Group: System Environment/Base
-URL: http://ftp.corosync.org
-Source0: ftp://ftp:user@ftp.corosync.org/downloads/%{name}-%{version}/%{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}.tar.gz
+URL: http://www.corosync.org/
+Source0: https://github.com/downloads/corosync/corosync/%{name}-%{version}%{?gittarver}.tar.gz
 
 # Runtime bits
 Requires: corosynclib = %{version}-%{release}
@@ -32,13 +36,14 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 
 # Build bits
 
-%define buildtrunk 0
-%{?_with_buildtrunk: %define buildtrunk 1}
-
+BuildRequires: groff
 BuildRequires: libqb-devel
 BuildRequires: nss-devel
-%if %{buildtrunk}
-BuildRequires: autoconf automake
+%if %{with runautogen}
+BuildRequires: autoconf automake libtool
+%endif
+%if %{with monitoring}
+BuildRequires: libstatgrab-devel
 %endif
 %if %{with rdma}
 BuildRequires: libibverbs-devel librdmacm-devel
@@ -51,6 +56,9 @@ BuildRequires: dbus-devel
 %endif
 %if %{with systemd}
 BuildRequires: systemd-units
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
 %endif
 %if %{with xmlconf}
 Requires: libxslt
@@ -59,10 +67,10 @@ Requires: libxslt
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 %prep
-%setup -q -n %{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
+%setup -q -n %{name}-%{version}%{?gittarver}
 
 %build
-%if %{buildtrunk}
+%if %{with runautogen}
 ./autogen.sh
 %endif
 
@@ -97,7 +105,8 @@ export rdmacm_LIBS=-lrdmacm \
 %if %{with xmlconf}
 	--enable-xmlconf \
 %endif
-	--with-initddir=%{_initrddir}
+	--with-initddir=%{_initrddir} \
+	--with-systemddir=%{_unitdir}
 
 make %{_smp_mflags}
 
@@ -108,12 +117,13 @@ make install DESTDIR=%{buildroot}
 
 %if %{with dbus}
 mkdir -p -m 0700 %{buildroot}/%{_sysconfdir}/dbus-1/system.d
-install -m 644 %{_builddir}/%{name}-%{version}/conf/corosync-signals.conf %{buildroot}/%{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
+install -m 644 %{_builddir}/%{name}-%{version}%{?gittarver}/conf/corosync-signals.conf %{buildroot}/%{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
 %endif
 
 ## tree fixup
 # drop static libs
 rm -f %{buildroot}%{_libdir}/*.a
+rm -f %{buildroot}%{_libdir}/*.la
 # drop docs and html docs for now
 rm -rf %{buildroot}%{_docdir}/*
 
@@ -125,15 +135,28 @@ This package contains the Corosync Cluster Engine Executive, several default
 APIs and libraries, default configuration files, and an init script.
 
 %post
+%if %{with systemd} && 0%{?systemd_post:1}
+%systemd_post corosync.service
+%else
 if [ $1 -eq 1 ]; then
 	/sbin/chkconfig --add corosync || :
 fi
+%endif
 
 %preun
+%if %{with systemd} && 0%{?systemd_preun:1}
+%systemd_preun corosync.service
+%else
 if [ $1 -eq 0 ]; then
 	/sbin/service corosync stop &>/dev/null || :
 	/sbin/chkconfig --del corosync || :
 fi
+%endif
+
+%postun
+%if %{with systemd} && 0%{?systemd_postun:1}
+%systemd_postun
+%endif
 
 %files
 %defattr(-,root,root,-)
@@ -142,7 +165,6 @@ fi
 %{_sbindir}/corosync-keygen
 %{_sbindir}/corosync-cmapctl
 %{_sbindir}/corosync-cfgtool
-%{_sbindir}/corosync-fplay
 %{_sbindir}/corosync-cpgtool
 %{_sbindir}/corosync-quorumtool
 %{_sbindir}/corosync-notifyd
@@ -168,6 +190,9 @@ fi
 %if %{with systemd}
 %{_unitdir}/corosync.service
 %{_unitdir}/corosync-notifyd.service
+%dir %{_datadir}/corosync
+%{_datadir}/corosync/corosync
+%{_datadir}/corosync/corosync-notifyd
 %else
 %{_initrddir}/corosync
 %{_initrddir}/corosync-notifyd
@@ -181,11 +206,11 @@ fi
 %{_mandir}/man8/corosync-keygen.8*
 %{_mandir}/man8/corosync-cfgtool.8*
 %{_mandir}/man8/corosync-cpgtool.8*
-%{_mandir}/man8/corosync-fplay.8*
 %{_mandir}/man8/corosync-notifyd.8*
 %{_mandir}/man8/corosync-quorumtool.8*
 %{_mandir}/man5/corosync.conf.5*
 %{_mandir}/man5/votequorum.5*
+%{_mandir}/man8/cmap_keys.8*
 
 # optional testagent rpm
 #

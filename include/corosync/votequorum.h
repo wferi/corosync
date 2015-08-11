@@ -42,20 +42,24 @@ extern "C" {
 
 typedef uint64_t votequorum_handle_t;
 
-#define VOTEQUORUM_INFO_FLAG_TWONODE            1
-#define VOTEQUORUM_INFO_FLAG_QUORATE            2
+#define VOTEQUORUM_INFO_TWONODE                 1
+#define VOTEQUORUM_INFO_QUORATE                 2
 #define VOTEQUORUM_INFO_WAIT_FOR_ALL            4
 #define VOTEQUORUM_INFO_LAST_MAN_STANDING       8
 #define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
-#define VOTEQUORUM_INFO_LEAVE_REMOVE           32
-#define VOTEQUORUM_INFO_QDEVICE                64
+#define VOTEQUORUM_INFO_ALLOW_DOWNSCALE        32
+#define VOTEQUORUM_INFO_QDEVICE_REGISTERED     64
+#define VOTEQUORUM_INFO_QDEVICE_ALIVE         128
+#define VOTEQUORUM_INFO_QDEVICE_CAST_VOTE     256
+#define VOTEQUORUM_INFO_QDEVICE_MASTER_WINS   512
 
-#define VOTEQUORUM_NODEID_QDEVICE 0
-#define VOTEQUORUM_MAX_QDEVICE_NAME_LEN 255
+#define VOTEQUORUM_QDEVICE_NODEID               0
+#define VOTEQUORUM_QDEVICE_MAX_NAME_LEN       255
+#define VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT  10000
 
-#define NODESTATE_MEMBER     1
-#define NODESTATE_DEAD       2
-#define NODESTATE_LEAVING    3
+#define VOTEQUORUM_NODESTATE_MEMBER             1
+#define VOTEQUORUM_NODESTATE_DEAD               2
+#define VOTEQUORUM_NODESTATE_LEAVING            3
 
 /** @} */
 
@@ -68,15 +72,9 @@ struct votequorum_info {
 	unsigned int total_votes;
 	unsigned int quorum;
 	unsigned int flags;
+	unsigned int qdevice_votes;
+	char qdevice_name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 };
-
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
-struct votequorum_qdevice_info {
-	unsigned int votes;
-	unsigned int state;
-	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
-};
-#endif
 
 typedef struct {
 	uint32_t nodeid;
@@ -177,7 +175,6 @@ cs_error_t votequorum_context_set (
 	votequorum_handle_t handle,
 	void *context);
 
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 /**
  * Register a quorum device
  *
@@ -208,17 +205,15 @@ cs_error_t votequorum_qdevice_update (
 cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
 	const char *name,
-	unsigned int state);
+	unsigned int cast_vote);
 
 /**
- * Get quorum device information
+ * Allow qdevice to tell votequorum if master_wins can be enabled or not
  */
-cs_error_t votequorum_qdevice_getinfo (
+cs_error_t votequorum_qdevice_master_wins (
 	votequorum_handle_t handle,
-	unsigned int nodeid,
-	struct votequorum_qdevice_info *info);
-
-#endif
+	const char *name,
+	unsigned int allow);
 
 #ifdef __cplusplus
 }

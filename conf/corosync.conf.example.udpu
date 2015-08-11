@@ -18,7 +18,6 @@ logging {
 	fileline: off
 	to_logfile: yes
 	to_syslog: yes
-	debug: on
 	logfile: /var/log/cluster/corosync.log
 	debug: off
 	timestamp: on
@@ -50,4 +49,10 @@ nodelist {
 	node {
 		ring0_addr: 10.16.35.105
 	}
+}
+
+quorum {
+	# Enable and configure quorum subsystem (default: off)
+	# see also corosync.conf.5 and votequorum.5
+	#provider: corosync_votequorum
 }

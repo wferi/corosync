@@ -93,7 +93,7 @@ extern void corosync_recheck_the_q_level(void *data);
 
 extern void cs_ipcs_init(void);
 
-extern void cs_ipcs_service_init(struct corosync_service_engine *service);
+extern const char *cs_ipcs_service_init(struct corosync_service_engine *service);
 
 extern void cs_ipcs_stats_update(void);
 
@@ -118,6 +118,8 @@ extern void *cs_ipcs_private_data_get(void *conn);
 extern void cs_ipc_refcnt_inc(void *conn);
 
 extern void cs_ipc_refcnt_dec(void *conn);
+
+extern void cs_ipc_allow_connections(int32_t allow);
 
 int coroparse_configparse (const char **error_string);
 
