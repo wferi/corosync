@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006-2010 Red Hat, Inc.
+.\" * Copyright (c) 2006-2012 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2006-03-28 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2012-01-12 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -52,20 +52,11 @@ This top level directive contains configuration options for the totem protocol.
 logging { }
 This top level directive contains configuration options for logging.
 .TP
-event { }
-This top level directive contains configuration options for the event service.
-
-.PP
-.PP
-It is also possible to specify the top level parameter
-.B compatibility.
-This directive indicates the level of compatibility requested by the user.  The
-option whitetank can be specified to remain backward compatable with
-openais-0.80.z.  The option none can be specified to only be compatable
-with corosync-1.Y.Z.  Extra processing during configuration changes is
-required to remain backward compatable.
-
-The default is whitetank. (backwards compatibility)
+quorum { }
+This top level directive contains configuration options for quorum.
+.TP
+nodelist { }
+This top level directive contains configuration options for nodes in cluster.
 
 .PP
 .PP
@@ -99,7 +90,7 @@ This may also be an IPV6 address, in which case IPV6 networking will be used.
 In this case, the full address must be specified and there is no automatic
 selection of the network interface within a specific subnet as with IPv4.
 
-If IPv6 networking is used, the nodeid field must be specified.
+If IPv6 networking is used, the nodeid field in nodelist must be specified.
 
 .TP
 broadcast
@@ -115,7 +106,11 @@ about a multicast address to use.  Avoid 224.x.x.x because this is a "config"
 multicast address.
 
 This may also be an IPV6 multicast address, in which case IPV6 networking
-will be used.  If IPv6 networking is used, the nodeid field must be specified.
+will be used.  If IPv6 networking is used, the nodeid field in nodelist must
+be specified.
+
+It's not needed to use this option if cluster_name option is used. If both options
+are used, mcastaddr has higher priority.
 
 .TP
 mcastport
@@ -134,13 +129,6 @@ network then the default of "1" will be too small. This option provides
 a way to increase this up to 255. The valid range is 0..255.
 Note that this is only valid on multicast transport types.
 
-.TP
-member
-This specifies a member on the interface and used with the udpu transport only.
-Every node that should be a member of the membership should be specified as
-a separate member directive.  Within the member directive there is a parameter
-memberaddr which specifies the ip address of one of the nodes.
-
 .PP
 .PP
 Within the
@@ -150,8 +138,8 @@ five are optional, and one is required when IPV6 is configured in the interface
 subdirective.  The required directive controls the version of the totem
 configuration.  The optional option unless using IPV6 directive controls
 identification of the processor.  The optional options control secrecy and
-authentication, the redundant ring mode of operation, maximum network MTU,
-and number of sending threads, and the nodeid field.
+authentication, the redundant ring mode of operation and maximum network MTU
+field.
 
 .TP
 version
@@ -159,21 +147,10 @@ This specifies the version of the configuration file.  Currently the only
 valid version for this directive is 2.
 
 .PP
-.PP
-.TP
-nodeid
-This configuration option is optional when using IPv4 and required when using
-IPv6.  This is a 32 bit value specifying the node identifier delivered to the
-cluster membership service.  If this is not specified with IPv4, the node id
-will be determined from the 32 bit IP address the system to which the system
-is bound with ring identifier of 0.  The node identifier value of zero is
-reserved and should not be used.
-
-.TP
 clear_node_high_bit
 This configuration option is optional and is only relevant when no nodeid is
-specified.  Some openais clients require a signed 32 bit nodeid that is greater
-than zero however by default openais uses all 32 bits of the IPv4 address space
+specified.  Some corosync clients require a signed 32 bit nodeid that is greater
+than zero however by default corosync uses all 32 bits of the IPv4 address space
 when generating a nodeid.  Set this option to yes to force the high bit to be
 zero and therefor ensure the nodeid is a positive signed 32 bit integer.
 
@@ -181,28 +158,34 @@ WARNING: The clusters behavior is undefined if this option is enabled on only
 a subset of the cluster (for example during a rolling upgrade).
 
 .TP
+crypto_hash
+This specifies which HMAC authentication should be used to authenticate all
+messages. Valid values are none (no authentication), md5, sha1, sha256,
+sha384 and sha512.
+
+The default is sha1.
+
+.TP
+crypto_cipher
+This specifies which cipher should be used to encrypt all messages.
+Valid values are none (no encryption) and aes256.
+
+The default is aes256.
+
+.TP
 secauth
 This specifies that HMAC/SHA1 authentication should be used to authenticate
 all messages.  It further specifies that all data should be encrypted with the
-sober128 encryption algorithm to protect data from eavesdropping.
+nss library and aes256 encryption algorithm to protect data from eavesdropping.
 
-Enabling this option adds a 36 byte header to every message sent by totem which
-reduces total throughput.  Encryption and authentication consume 75% of CPU
-cycles in aisexec as measured with gprof when enabled.
-
-For 100mbit networks with 1500 MTU frame transmissions:
-A throughput of 9mb/sec is possible with 100% cpu utilization when this
-option is enabled on 3ghz cpus.
-A throughput of 10mb/sec is possible wth 20% cpu utilization when this
-optin is disabled on 3ghz cpus.
-
-For gig-e networks with large frame transmissions:
-A throughput of 20mb/sec is possible when this option is enabled on
-3ghz cpus.
-A throughput of 60mb/sec is possible when this option is disabled on
-3ghz cpus.
+Enabling this option adds a encryption header to every message sent by totem which
+reduces total throughput. Also encryption and authentication consume extra CPU
+cycles in corosync.
 
 The default is on.
+
+WARNING: This parameter is deprecated. It's recomended to use combination of
+crypto_cipher and crypto_hash.
 
 .TP
 rrp_mode
@@ -235,28 +218,12 @@ of 8982 seems to work for the few large frame devices that have been tested.
 Some manufacturers claim large frame support when in fact they support frame
 sizes of 4500 bytes.
 
-Increasing the MTU from 1500 to 8982 doubles throughput performance from 30MB/sec
-to 60MB/sec as measured with evsbench with 175000 byte messages with the secauth
-directive set to off.
-
 When sending multicast traffic, if the network frequently reconfigures, chances are
 that some device in the network doesn't support large frames.
 
 Choose hardware carefully if intending to use large frame support.
 
 The default is 1500.
-
-.TP
-threads
-This directive controls how many threads are used to encrypt and send multicast
-messages.  If secauth is off, the protocol will never use threaded sending.
-If secauth is on, this directive allows systems to be configured to use
-multiple threads to encrypt and send multicast messages.
-
-A thread directive of 0 indicates that no threaded send should be used.  This
-mode offers best performance for non-SMP systems.
-
-The default is 0.
 
 .TP
 vsftype
@@ -276,10 +243,15 @@ This directive controls the transport mechanism used.  If the interface to
 which corosync is binding is an RDMA interface such as RoCEE or Infiniband, the
 "iba" parameter may be specified.  To avoid the use of multicast entirely, a
 unicast transport parameter "udpu" can be specified.  This requires specifying
-the list of members that could potentially make up the membership before
-deployment.
+the list of members in nodelist directive, that could potentially make up
+the membership before deployment.
 
 The default is udp.  The transport type can also be set to udpu or iba.
+
+.TP
+cluster_name
+This specifies the name of cluster and it's used for automatic generating
+of multicast address.
 
 Within the
 .B totem
@@ -385,7 +357,7 @@ The default is 2500 failures to receive a message.
 .TP
 seqno_unchanged_const
 This constant specifies how many rotations of the token without any multicast
-traffic should occur before the hold timer is started.
+traffic should occur before the merge detection timeout is started.
 
 The default is 30 rotations.
 
@@ -601,22 +573,9 @@ The default is: info.
 
 .TP
 debug
-This specifies whether debug output is logged for this particular logger. Also can contain
-value trace, what is highest level of debug informations.
+This specifies whether debug output is logged for this particular logger.
 
 The default is off.
-
-.TP
-tags
-This specifies which tags should be traced for this particular logger.
-Set debug directive to
-.B on
-in order to enable tracing using tags.
-Values are specified using a vertical bar as a logical OR separator:
-
-enter|leave|trace1|trace2|trace3|...
-
-The default is none.
 
 .PP
 Within the
@@ -633,8 +592,46 @@ The subsys entry, described below, is mandatory to identify the subsystem.
 .TP
 subsys
 This specifies the subsystem identity (name) for which logging is specified. This is the
-name used by a service in the log_init () call. E.g. 'CKPT'. This directive is
+name used by a service in the log_init () call. E.g. 'CPG'. This directive is
 required.
+
+.PP
+Within the
+.B quorum
+directive it is possible to specify the quorum algorithm to use with the
+
+.TP
+provider
+directive. At the time of writing only corosync_votequorum is supported. Please refer
+to quorum modules man pages (8) for specific config options.
+
+.PP
+Within the
+.B nodelist
+directive it is possible to specify specific informations about nodes in cluster. Directive
+can contain only
+.B node
+sub-directive, which specifies every node that should be a member of the membership, and where
+non-default options are needed. Every node must have at least ring0_addr field filled.
+
+For UDPU, every node that should be a member of the membership must be specified.
+
+Possible options are:
+.TP
+ringX_addr
+This specifies ip address of one of the nodes. X is ring number.
+
+.TP
+nodeid
+This configuration option is optional when using IPv4 and required when using
+IPv6.  This is a 32 bit value specifying the node identifier delivered to the
+cluster membership service.  If this is not specified with IPv4, the node id
+will be determined from the 32 bit IP address the system to which the system
+is bound with ring identifier of 0.  The node identifier value of zero is
+reserved and should not be used.
+
+.TP
+quorum_votes
 
 .SH "FILES"
 .TP
@@ -643,5 +640,6 @@ The corosync executive configuration file.
 
 .SH "SEE ALSO"
 .BR corosync_overview (8),
+.BR votequorum (5),
 .BR logrotate (8)
 .PP

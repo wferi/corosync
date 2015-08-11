@@ -1,10 +1,9 @@
 #
-# See "man corosync-notifyd" for detailed descriptions of
+# See "man corosync-notifyd" for descriptions of
 # the options below.
 #
 # OPTIONS="-d -s -l -m <snmp manager address>"
 #
 
-# Send DBUS signals on all events (for SNMP traps, use -s)
-OPTIONS="-d"
+OPTIONS=""
 

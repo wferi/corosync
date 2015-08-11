@@ -34,34 +34,47 @@ INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include \
                           -I$(top_builddir)/include/corosync
 
 sbin_PROGRAMS		= corosync-fplay corosync-cfgtool \
-			  corosync-keygen corosync-objctl \
-			  corosync-pload corosync-cpgtool corosync-quorumtool \
-			  corosync-notifyd
+			  corosync-keygen \
+			  corosync-cpgtool corosync-quorumtool \
+			  corosync-notifyd corosync-cmapctl
 
 bin_SCRIPTS		= corosync-blackbox
 
-EXTRA_DIST		= $(bin_SCRIPTS) corosync-notifyd.sysconfig.example
+if INSTALL_XMLCONF
+bin_SCRIPTS		+= corosync-xmlproc
+endif
 
-corosync_pload_LDADD	= -lpload -lcoroipcc
-corosync_pload_LDFLAGS	= -L../lib
-corosync_objctl_LDADD	= -lconfdb ../lcr/liblcr.a -lcoroipcc
-corosync_objctl_LDFLAGS	= -L../lib
-corosync_cfgtool_LDADD	= -lcfg -lcoroipcc
-corosync_cfgtool_LDFLAGS= -L../lib
-corosync_cpgtool_LDADD	= -lcfg -lcpg -lcoroipcc
-corosync_cpgtool_LDFLAGS= -L../lib
-corosync_quorumtool_LDADD = -lconfdb -lcfg -lquorum \
-			    -lvotequorum -lcoroipcc ../lcr/liblcr.a
-corosync_quorumtool_LDFLAGS = -L../lib
+corosync-xmlproc: corosync-xmlproc.sh
+	sed -e 's#@''DATADIR@#${datadir}#g' $< > $@
 
-corosync_notifyd_LDADD = -lcfg -lconfdb ../lcr/liblcr.a -lcoroipcc \
-			   ../exec/coropoll.o $(DBUS_LIBS) $(SNMPLIBS) \
-			   -lquorum
-corosync_notifyd_LDFLAGS = -L../lib
+EXTRA_DIST		= $(bin_SCRIPTS) corosync-xmlproc.sh corosync-notifyd.sysconfig.example
+
+COMMON_OPTS		= -L../lib -L../common_lib -Wl,-rpath,../common_lib
+
+corosync_cmapctl_LDFLAGS= $(COMMON_OPTS)
+corosync_cmapctl_LDADD	= -lcorosync_common -lcmap $(LIBQB_LIBS)
+
+corosync_fplay_LDADD	= $(LIBQB_LIBS)
+
+corosync_cfgtool_LDFLAGS= $(COMMON_OPTS)
+corosync_cfgtool_LDADD	= -lcfg $(LIBQB_LIBS)
+
+corosync_cpgtool_LDFLAGS= $(COMMON_OPTS)
+corosync_cpgtool_LDADD	= -lcfg -lcpg $(LIBQB_LIBS)
+
+corosync_quorumtool_LDFLAGS = $(COMMON_OPTS)
+corosync_quorumtool_LDADD   = -lcmap -lcfg -lquorum -lcorosync_common \
+			      -lvotequorum $(LIBQB_LIBS)
+
 corosync_notifyd_CPPFLAGS = $(DBUS_CFLAGS)
-
+corosync_notifyd_LDFLAGS  = $(COMMON_OPTS)
+corosync_notifyd_LDADD    = -lcfg -lcmap \
+			    $(LIBQB_LIBS) $(DBUS_LIBS) $(SNMPLIBS) \
+			    -lquorum
 
 lint:
 	-splint $(LINT_FLAGS) $(DBUS_CFLAGS) $(INCLUDES) $(CFLAGS) *.c
 
+clean-local:
+	rm -f corosync-xmlproc
 

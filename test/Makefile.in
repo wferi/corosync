@@ -47,6 +47,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkgincludedir = $(includedir)/@PACKAGE@
@@ -66,174 +67,135 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-noinst_PROGRAMS = testevs$(EXEEXT) evsbench$(EXEEXT) \
-	evsverify$(EXEEXT) cpgverify$(EXEEXT) testcpg$(EXEEXT) \
-	testcpg2$(EXEEXT) cpgbench$(EXEEXT) testconfdb$(EXEEXT) \
-	logsysbench$(EXEEXT) logsysrec$(EXEEXT) testquorum$(EXEEXT) \
+noinst_PROGRAMS = cpgverify$(EXEEXT) testcpg$(EXEEXT) \
+	testcpg2$(EXEEXT) cpgbench$(EXEEXT) testquorum$(EXEEXT) \
 	testvotequorum1$(EXEEXT) testvotequorum2$(EXEEXT) \
-	logsys_s$(EXEEXT) logsys_t1$(EXEEXT) logsys_t2$(EXEEXT) \
-	testcpgzc$(EXEEXT) cpgbenchzc$(EXEEXT) testzcgc$(EXEEXT) \
-	stress_cpgzc$(EXEEXT) stress_cpgfdget$(EXEEXT) \
-	stress_cpgcontext$(EXEEXT) cpgbound$(EXEEXT) testsam$(EXEEXT)
+	stress_cpgfdget$(EXEEXT) stress_cpgcontext$(EXEEXT) \
+	cpgbound$(EXEEXT) testsam$(EXEEXT) testcpgzc$(EXEEXT) \
+	cpgbenchzc$(EXEEXT) testzcgc$(EXEEXT) stress_cpgzc$(EXEEXT)
 subdir = test
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/lib/libcfg.verso \
-	$(top_srcdir)/lib/libconfdb.verso \
-	$(top_srcdir)/lib/libcpg.verso $(top_srcdir)/lib/libevs.verso \
-	$(top_srcdir)/lib/libpload.verso \
+	$(top_srcdir)/lib/libcpg.verso \
 	$(top_srcdir)/lib/libquorum.verso \
 	$(top_srcdir)/lib/libsam.verso \
 	$(top_srcdir)/lib/libvotequorum.verso \
-	$(top_srcdir)/configure.ac
+	$(top_srcdir)/lib/libcmap.verso $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = $(top_builddir)/include/corosync/config.h \
-	$(top_builddir)/include/corosync/cs_config.h
+CONFIG_HEADER = $(top_builddir)/include/corosync/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 PROGRAMS = $(noinst_PROGRAMS)
 cpgbench_SOURCES = cpgbench.c
 cpgbench_OBJECTS = cpgbench.$(OBJEXT)
-cpgbench_DEPENDENCIES =
+am__DEPENDENCIES_1 =
+cpgbench_DEPENDENCIES = $(am__DEPENDENCIES_1)
 cpgbench_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(cpgbench_LDFLAGS) \
 	$(LDFLAGS) -o $@
 cpgbenchzc_SOURCES = cpgbenchzc.c
 cpgbenchzc_OBJECTS = cpgbenchzc.$(OBJEXT)
-cpgbenchzc_DEPENDENCIES =
+cpgbenchzc_DEPENDENCIES = $(am__DEPENDENCIES_1)
 cpgbenchzc_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(cpgbenchzc_LDFLAGS) \
 	$(LDFLAGS) -o $@
 cpgbound_SOURCES = cpgbound.c
 cpgbound_OBJECTS = cpgbound.$(OBJEXT)
-cpgbound_DEPENDENCIES =
+cpgbound_DEPENDENCIES = $(am__DEPENDENCIES_1)
 cpgbound_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(cpgbound_LDFLAGS) \
 	$(LDFLAGS) -o $@
 cpgverify_SOURCES = cpgverify.c
-cpgverify_OBJECTS = cpgverify.$(OBJEXT)
-cpgverify_DEPENDENCIES =
-cpgverify_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(cpgverify_LDFLAGS) \
-	$(LDFLAGS) -o $@
-evsbench_SOURCES = evsbench.c
-evsbench_OBJECTS = evsbench.$(OBJEXT)
-evsbench_DEPENDENCIES =
-evsbench_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(evsbench_LDFLAGS) \
-	$(LDFLAGS) -o $@
-evsverify_SOURCES = evsverify.c
-evsverify_OBJECTS = evsverify.$(OBJEXT)
-evsverify_DEPENDENCIES =
-evsverify_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(evsverify_LDFLAGS) \
-	$(LDFLAGS) -o $@
-am_logsys_s_OBJECTS = logsys_s.$(OBJEXT) logsys_s1.$(OBJEXT) \
-	logsys_s2.$(OBJEXT)
-logsys_s_OBJECTS = $(am_logsys_s_OBJECTS)
-logsys_s_DEPENDENCIES =
-logsys_s_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(logsys_s_LDFLAGS) \
-	$(LDFLAGS) -o $@
-logsys_t1_SOURCES = logsys_t1.c
-logsys_t1_OBJECTS = logsys_t1.$(OBJEXT)
-logsys_t1_DEPENDENCIES =
-logsys_t1_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(logsys_t1_LDFLAGS) \
-	$(LDFLAGS) -o $@
-logsys_t2_SOURCES = logsys_t2.c
-logsys_t2_OBJECTS = logsys_t2.$(OBJEXT)
-logsys_t2_DEPENDENCIES =
-logsys_t2_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(logsys_t2_LDFLAGS) \
-	$(LDFLAGS) -o $@
-logsysbench_SOURCES = logsysbench.c
-logsysbench_OBJECTS = logsysbench.$(OBJEXT)
-logsysbench_DEPENDENCIES =
-logsysbench_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-	$(logsysbench_LDFLAGS) $(LDFLAGS) -o $@
-logsysrec_SOURCES = logsysrec.c
-logsysrec_OBJECTS = logsysrec.$(OBJEXT)
-logsysrec_DEPENDENCIES =
-logsysrec_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(logsysrec_LDFLAGS) \
-	$(LDFLAGS) -o $@
+cpgverify_OBJECTS = cpgverify-cpgverify.$(OBJEXT)
+cpgverify_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+cpgverify_LINK = $(CCLD) $(cpgverify_CFLAGS) $(CFLAGS) \
+	$(cpgverify_LDFLAGS) $(LDFLAGS) -o $@
 stress_cpgcontext_SOURCES = stress_cpgcontext.c
 stress_cpgcontext_OBJECTS = stress_cpgcontext.$(OBJEXT)
-stress_cpgcontext_DEPENDENCIES =
+stress_cpgcontext_DEPENDENCIES = $(am__DEPENDENCIES_1)
 stress_cpgcontext_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(stress_cpgcontext_LDFLAGS) $(LDFLAGS) -o $@
 stress_cpgfdget_SOURCES = stress_cpgfdget.c
 stress_cpgfdget_OBJECTS = stress_cpgfdget.$(OBJEXT)
-stress_cpgfdget_DEPENDENCIES =
+stress_cpgfdget_DEPENDENCIES = $(am__DEPENDENCIES_1)
 stress_cpgfdget_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(stress_cpgfdget_LDFLAGS) $(LDFLAGS) -o $@
 stress_cpgzc_SOURCES = stress_cpgzc.c
 stress_cpgzc_OBJECTS = stress_cpgzc.$(OBJEXT)
-stress_cpgzc_DEPENDENCIES =
+stress_cpgzc_DEPENDENCIES = $(am__DEPENDENCIES_1)
 stress_cpgzc_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(stress_cpgzc_LDFLAGS) $(LDFLAGS) -o $@
-testconfdb_SOURCES = testconfdb.c
-testconfdb_OBJECTS = testconfdb.$(OBJEXT)
-testconfdb_DEPENDENCIES = ../lcr/liblcr.a
-testconfdb_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(testconfdb_LDFLAGS) \
-	$(LDFLAGS) -o $@
 testcpg_SOURCES = testcpg.c
 testcpg_OBJECTS = testcpg.$(OBJEXT)
-testcpg_DEPENDENCIES =
+testcpg_DEPENDENCIES = $(am__DEPENDENCIES_1)
 testcpg_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(testcpg_LDFLAGS) \
 	$(LDFLAGS) -o $@
 testcpg2_SOURCES = testcpg2.c
 testcpg2_OBJECTS = testcpg2.$(OBJEXT)
-testcpg2_DEPENDENCIES =
+testcpg2_DEPENDENCIES = $(am__DEPENDENCIES_1)
 testcpg2_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(testcpg2_LDFLAGS) \
 	$(LDFLAGS) -o $@
 testcpgzc_SOURCES = testcpgzc.c
 testcpgzc_OBJECTS = testcpgzc.$(OBJEXT)
-testcpgzc_DEPENDENCIES =
+testcpgzc_DEPENDENCIES = $(am__DEPENDENCIES_1)
 testcpgzc_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(testcpgzc_LDFLAGS) \
-	$(LDFLAGS) -o $@
-testevs_SOURCES = testevs.c
-testevs_OBJECTS = testevs.$(OBJEXT)
-testevs_DEPENDENCIES =
-testevs_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(testevs_LDFLAGS) \
 	$(LDFLAGS) -o $@
 testquorum_SOURCES = testquorum.c
 testquorum_OBJECTS = testquorum.$(OBJEXT)
-testquorum_DEPENDENCIES =
+testquorum_DEPENDENCIES = $(am__DEPENDENCIES_1)
 testquorum_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(testquorum_LDFLAGS) \
 	$(LDFLAGS) -o $@
 testsam_SOURCES = testsam.c
 testsam_OBJECTS = testsam.$(OBJEXT)
-testsam_DEPENDENCIES =
+testsam_DEPENDENCIES = $(am__DEPENDENCIES_1)
 testsam_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(testsam_LDFLAGS) \
 	$(LDFLAGS) -o $@
 testvotequorum1_SOURCES = testvotequorum1.c
 testvotequorum1_OBJECTS = testvotequorum1.$(OBJEXT)
-testvotequorum1_DEPENDENCIES =
+testvotequorum1_DEPENDENCIES = $(am__DEPENDENCIES_1)
 testvotequorum1_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(testvotequorum1_LDFLAGS) $(LDFLAGS) -o $@
 testvotequorum2_SOURCES = testvotequorum2.c
 testvotequorum2_OBJECTS = testvotequorum2.$(OBJEXT)
-testvotequorum2_DEPENDENCIES =
+testvotequorum2_DEPENDENCIES = $(am__DEPENDENCIES_1)
 testvotequorum2_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(testvotequorum2_LDFLAGS) $(LDFLAGS) -o $@
 testzcgc_SOURCES = testzcgc.c
 testzcgc_OBJECTS = testzcgc.$(OBJEXT)
-testzcgc_DEPENDENCIES =
+testzcgc_DEPENDENCIES = $(am__DEPENDENCIES_1)
 testzcgc_LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(testzcgc_LDFLAGS) \
 	$(LDFLAGS) -o $@
+SCRIPTS = $(noinst_SCRIPTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/include/corosync
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
+AM_V_lt = $(am__v_lt_$(V))
+am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
+am__v_lt_0 = --silent
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+AM_V_CC = $(am__v_CC_$(V))
+am__v_CC_ = $(am__v_CC_$(AM_DEFAULT_VERBOSITY))
+am__v_CC_0 = @echo "  CC    " $@;
+AM_V_at = $(am__v_at_$(V))
+am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
+am__v_at_0 = @
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = cpgbench.c cpgbenchzc.c cpgbound.c cpgverify.c evsbench.c \
-	evsverify.c $(logsys_s_SOURCES) logsys_t1.c logsys_t2.c \
-	logsysbench.c logsysrec.c stress_cpgcontext.c \
-	stress_cpgfdget.c stress_cpgzc.c testconfdb.c testcpg.c \
-	testcpg2.c testcpgzc.c testevs.c testquorum.c testsam.c \
+AM_V_CCLD = $(am__v_CCLD_$(V))
+am__v_CCLD_ = $(am__v_CCLD_$(AM_DEFAULT_VERBOSITY))
+am__v_CCLD_0 = @echo "  CCLD  " $@;
+AM_V_GEN = $(am__v_GEN_$(V))
+am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
+am__v_GEN_0 = @echo "  GEN   " $@;
+SOURCES = cpgbench.c cpgbenchzc.c cpgbound.c cpgverify.c \
+	stress_cpgcontext.c stress_cpgfdget.c stress_cpgzc.c testcpg.c \
+	testcpg2.c testcpgzc.c testquorum.c testsam.c \
 	testvotequorum1.c testvotequorum2.c testzcgc.c
 DIST_SOURCES = cpgbench.c cpgbenchzc.c cpgbound.c cpgverify.c \
-	evsbench.c evsverify.c $(logsys_s_SOURCES) logsys_t1.c \
-	logsys_t2.c logsysbench.c logsysrec.c stress_cpgcontext.c \
-	stress_cpgfdget.c stress_cpgzc.c testconfdb.c testcpg.c \
-	testcpg2.c testcpgzc.c testevs.c testquorum.c testsam.c \
+	stress_cpgcontext.c stress_cpgfdget.c stress_cpgzc.c testcpg.c \
+	testcpg2.c testcpgzc.c testquorum.c testsam.c \
 	testvotequorum1.c testvotequorum2.c testzcgc.c
 ETAGS = etags
 CTAGS = ctags
@@ -241,6 +203,8 @@ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
+AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
+AUGTOOL = @AUGTOOL@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -249,25 +213,24 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFG_SONAME = @CFG_SONAME@
 CFLAGS = @CFLAGS@
-CONFDB_SONAME = @CONFDB_SONAME@
+CMAP_SONAME = @CMAP_SONAME@
 COROSYSCONFDIR = @COROSYSCONFDIR@
-COVERAGE_LCRSO_EXTRA_LDFLAGS = @COVERAGE_LCRSO_EXTRA_LDFLAGS@
 CP = @CP@
 CPG_SONAME = @CPG_SONAME@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CP_ARGS = @CP_ARGS@
 CYGPATH_W = @CYGPATH_W@
 DARWIN_OPTS = @DARWIN_OPTS@
 DBUS_CFLAGS = @DBUS_CFLAGS@
 DBUS_LIBS = @DBUS_LIBS@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DOT = @DOT@
+DOXYGEN = @DOXYGEN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
-EVS_SONAME = @EVS_SONAME@
 EXEEXT = @EXEEXT@
 GREP = @GREP@
 GROFF = @GROFF@
@@ -277,9 +240,10 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-LCRSODIR = @LCRSODIR@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
+LIBQB_CFLAGS = @LIBQB_CFLAGS@
+LIBQB_LIBS = @LIBQB_LIBS@
 LIBS = @LIBS@
 LINT_FLAGS = @LINT_FLAGS@
 LN_S = @LN_S@
@@ -299,7 +263,6 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKGCONFIG = @PKGCONFIG@
 PKG_CONFIG = @PKG_CONFIG@
-PLOAD_SONAME = @PLOAD_SONAME@
 QUORUM_SONAME = @QUORUM_SONAME@
 RANLIB = @RANLIB@
 SAM_SONAME = @SAM_SONAME@
@@ -307,8 +270,6 @@ SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SNMPCONFIG = @SNMPCONFIG@
 SNMPLIBS = @SNMPLIBS@
-SNMP_LCRSO = @SNMP_LCRSO@
-SOCKETDIR = @SOCKETDIR@
 SOLARIS_OPTS = @SOLARIS_OPTS@
 SOMAJOR = @SOMAJOR@
 SOMICRO = @SOMICRO@
@@ -376,58 +337,42 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in
 INCLUDES = -I$(top_builddir)/include/corosync -I$(top_srcdir)/include
-testevs_LDADD = -levs -lcoroipcc
-testevs_LDFLAGS = -L../lib
-testcpg_LDADD = -lcpg -lcoroipcc
-testcpg_LDFLAGS = -L../lib
-testcpg2_LDADD = -lcpg -lcoroipcc
-testcpg2_LDFLAGS = -L../lib
-testcpgzc_LDADD = -lcpg -lcoroipcc
-testcpgzc_LDFLAGS = -L../lib
-testzcgc_LDADD = -lcpg -lcoroipcc
-testzcgc_LDFLAGS = -L../lib
-stress_cpgzc_LDADD = -lcpg -lcoroipcc
-stress_cpgzc_LDFLAGS = -L../lib
-stress_cpgfdget_LDADD = -lcpg -lcoroipcc
-stress_cpgfdget_LDFLAGS = -L../lib
-stress_cpgcontext_LDADD = -lcpg -lcoroipcc
-stress_cpgcontext_LDFLAGS = -L../lib
-testconfdb_LDADD = -lconfdb ../lcr/liblcr.a -lcoroipcc
-testconfdb_LDFLAGS = -L../lib
-testquorum_LDADD = -lquorum -lcoroipcc
-testquorum_LDFLAGS = -L../lib
-testvotequorum1_LDADD = -lvotequorum -lcoroipcc
-testvotequorum1_LDFLAGS = -L../lib
-testvotequorum2_LDADD = -lvotequorum -lcoroipcc
-testvotequorum2_LDFLAGS = -L../lib
-evsverify_LDADD = -levs -ltotem_pg -lcoroipcc
-evsverify_LDFLAGS = -L../lib -L../exec
-cpgverify_LDADD = -lcpg -ltotem_pg -lcoroipcc
-cpgverify_LDFLAGS = -L../lib -L../exec
-cpgbound_LDADD = -lcpg -lcoroipcc
-cpgbound_LDFLAGS = -L../lib
-evsbench_LDADD = -levs -lcoroipcc
-evsbench_LDFLAGS = -L../lib
-cpgbench_LDADD = -lcpg -lcoroipcc
-cpgbench_LDFLAGS = -L../lib
-cpgbenchzc_LDADD = -lcpg -lcoroipcc
-cpgbenchzc_LDFLAGS = -L../lib
-logsysbench_LDADD = -llogsys
-logsysbench_LDFLAGS = -L../exec
-logsysrec_LDADD = -llogsys
-logsysrec_LDFLAGS = -L../exec
-logsys_s_SOURCES = logsys_s.c logsys_s1.c logsys_s2.c
-logsys_s_LDADD = -llogsys
-logsys_s_LDFLAGS = -L../exec
-logsys_t1_LDADD = -llogsys
-logsys_t1_LDFLAGS = -L../exec
-logsys_t2_LDADD = -llogsys
-logsys_t2_LDFLAGS = -L../exec
-testsam_LDADD = -lsam -lconfdb -lquorum -lcoroipcc
-testsam_LDFLAGS = -L../lib
+EXTRA_DIST = ploadstart.sh
+noinst_SCRIPTS = ploadstart
+COMMON_OPTS = -L../lib -L../common_lib -Wl,-rpath,../common_lib
+testcpg_LDADD = -lcpg $(LIBQB_LIBS)
+testcpg_LDFLAGS = $(COMMON_OPTS)
+testcpg2_LDADD = -lcpg $(LIBQB_LIBS)
+testcpg2_LDFLAGS = $(COMMON_OPTS)
+testcpgzc_LDADD = -lcpg $(LIBQB_LIBS)
+testcpgzc_LDFLAGS = $(COMMON_OPTS)
+testzcgc_LDADD = -lcpg $(LIBQB_LIBS)
+testzcgc_LDFLAGS = $(COMMON_OPTS)
+stress_cpgzc_LDADD = -lcpg $(LIBQB_LIBS)
+stress_cpgzc_LDFLAGS = $(COMMON_OPTS)
+stress_cpgfdget_LDADD = -lcpg $(LIBQB_LIBS)
+stress_cpgfdget_LDFLAGS = $(COMMON_OPTS)
+stress_cpgcontext_LDADD = -lcpg $(LIBQB_LIBS)
+stress_cpgcontext_LDFLAGS = $(COMMON_OPTS)
+testquorum_LDADD = -lquorum $(LIBQB_LIBS)
+testquorum_LDFLAGS = $(COMMON_OPTS)
+testvotequorum1_LDADD = -lvotequorum $(LIBQB_LIBS)
+testvotequorum1_LDFLAGS = $(COMMON_OPTS)
+testvotequorum2_LDADD = -lvotequorum $(LIBQB_LIBS)
+testvotequorum2_LDFLAGS = $(COMMON_OPTS)
+cpgverify_CFLAGS = $(nss_CFLAGS)
+cpgverify_LDADD = -lcpg -ltotem_pg $(LIBQB_LIBS) $(nss_LIBS)
+cpgverify_LDFLAGS = $(COMMON_OPTS) -L../exec
+cpgbound_LDADD = -lcpg $(LIBQB_LIBS)
+cpgbound_LDFLAGS = $(COMMON_OPTS)
+cpgbench_LDADD = -lcpg $(LIBQB_LIBS)
+cpgbench_LDFLAGS = $(COMMON_OPTS)
+cpgbenchzc_LDADD = -lcpg -lcorosync_common $(LIBQB_LIBS)
+cpgbenchzc_LDFLAGS = $(COMMON_OPTS)
+testsam_LDADD = -lsam -lcmap -lquorum $(LIBQB_LIBS)
+testsam_LDFLAGS = $(COMMON_OPTS)
 LINT_FILES1 := $(filter-out sa_error.c, $(wildcard *.c))
-LINT_FILES2 := $(filter-out testevsth.c, $(LINT_FILES1))
-LINT_FILES := $(filter-out testparse.c, $(LINT_FILES2))
+LINT_FILES := $(filter-out testparse.c, $(LINT_FILES1))
 all: all-am
 
 .SUFFIXES:
@@ -467,76 +412,49 @@ clean-noinstPROGRAMS:
 	-test -z "$(noinst_PROGRAMS)" || rm -f $(noinst_PROGRAMS)
 cpgbench$(EXEEXT): $(cpgbench_OBJECTS) $(cpgbench_DEPENDENCIES) 
 	@rm -f cpgbench$(EXEEXT)
-	$(cpgbench_LINK) $(cpgbench_OBJECTS) $(cpgbench_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(cpgbench_LINK) $(cpgbench_OBJECTS) $(cpgbench_LDADD) $(LIBS)
 cpgbenchzc$(EXEEXT): $(cpgbenchzc_OBJECTS) $(cpgbenchzc_DEPENDENCIES) 
 	@rm -f cpgbenchzc$(EXEEXT)
-	$(cpgbenchzc_LINK) $(cpgbenchzc_OBJECTS) $(cpgbenchzc_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(cpgbenchzc_LINK) $(cpgbenchzc_OBJECTS) $(cpgbenchzc_LDADD) $(LIBS)
 cpgbound$(EXEEXT): $(cpgbound_OBJECTS) $(cpgbound_DEPENDENCIES) 
 	@rm -f cpgbound$(EXEEXT)
-	$(cpgbound_LINK) $(cpgbound_OBJECTS) $(cpgbound_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(cpgbound_LINK) $(cpgbound_OBJECTS) $(cpgbound_LDADD) $(LIBS)
 cpgverify$(EXEEXT): $(cpgverify_OBJECTS) $(cpgverify_DEPENDENCIES) 
 	@rm -f cpgverify$(EXEEXT)
-	$(cpgverify_LINK) $(cpgverify_OBJECTS) $(cpgverify_LDADD) $(LIBS)
-evsbench$(EXEEXT): $(evsbench_OBJECTS) $(evsbench_DEPENDENCIES) 
-	@rm -f evsbench$(EXEEXT)
-	$(evsbench_LINK) $(evsbench_OBJECTS) $(evsbench_LDADD) $(LIBS)
-evsverify$(EXEEXT): $(evsverify_OBJECTS) $(evsverify_DEPENDENCIES) 
-	@rm -f evsverify$(EXEEXT)
-	$(evsverify_LINK) $(evsverify_OBJECTS) $(evsverify_LDADD) $(LIBS)
-logsys_s$(EXEEXT): $(logsys_s_OBJECTS) $(logsys_s_DEPENDENCIES) 
-	@rm -f logsys_s$(EXEEXT)
-	$(logsys_s_LINK) $(logsys_s_OBJECTS) $(logsys_s_LDADD) $(LIBS)
-logsys_t1$(EXEEXT): $(logsys_t1_OBJECTS) $(logsys_t1_DEPENDENCIES) 
-	@rm -f logsys_t1$(EXEEXT)
-	$(logsys_t1_LINK) $(logsys_t1_OBJECTS) $(logsys_t1_LDADD) $(LIBS)
-logsys_t2$(EXEEXT): $(logsys_t2_OBJECTS) $(logsys_t2_DEPENDENCIES) 
-	@rm -f logsys_t2$(EXEEXT)
-	$(logsys_t2_LINK) $(logsys_t2_OBJECTS) $(logsys_t2_LDADD) $(LIBS)
-logsysbench$(EXEEXT): $(logsysbench_OBJECTS) $(logsysbench_DEPENDENCIES) 
-	@rm -f logsysbench$(EXEEXT)
-	$(logsysbench_LINK) $(logsysbench_OBJECTS) $(logsysbench_LDADD) $(LIBS)
-logsysrec$(EXEEXT): $(logsysrec_OBJECTS) $(logsysrec_DEPENDENCIES) 
-	@rm -f logsysrec$(EXEEXT)
-	$(logsysrec_LINK) $(logsysrec_OBJECTS) $(logsysrec_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(cpgverify_LINK) $(cpgverify_OBJECTS) $(cpgverify_LDADD) $(LIBS)
 stress_cpgcontext$(EXEEXT): $(stress_cpgcontext_OBJECTS) $(stress_cpgcontext_DEPENDENCIES) 
 	@rm -f stress_cpgcontext$(EXEEXT)
-	$(stress_cpgcontext_LINK) $(stress_cpgcontext_OBJECTS) $(stress_cpgcontext_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(stress_cpgcontext_LINK) $(stress_cpgcontext_OBJECTS) $(stress_cpgcontext_LDADD) $(LIBS)
 stress_cpgfdget$(EXEEXT): $(stress_cpgfdget_OBJECTS) $(stress_cpgfdget_DEPENDENCIES) 
 	@rm -f stress_cpgfdget$(EXEEXT)
-	$(stress_cpgfdget_LINK) $(stress_cpgfdget_OBJECTS) $(stress_cpgfdget_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(stress_cpgfdget_LINK) $(stress_cpgfdget_OBJECTS) $(stress_cpgfdget_LDADD) $(LIBS)
 stress_cpgzc$(EXEEXT): $(stress_cpgzc_OBJECTS) $(stress_cpgzc_DEPENDENCIES) 
 	@rm -f stress_cpgzc$(EXEEXT)
-	$(stress_cpgzc_LINK) $(stress_cpgzc_OBJECTS) $(stress_cpgzc_LDADD) $(LIBS)
-testconfdb$(EXEEXT): $(testconfdb_OBJECTS) $(testconfdb_DEPENDENCIES) 
-	@rm -f testconfdb$(EXEEXT)
-	$(testconfdb_LINK) $(testconfdb_OBJECTS) $(testconfdb_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(stress_cpgzc_LINK) $(stress_cpgzc_OBJECTS) $(stress_cpgzc_LDADD) $(LIBS)
 testcpg$(EXEEXT): $(testcpg_OBJECTS) $(testcpg_DEPENDENCIES) 
 	@rm -f testcpg$(EXEEXT)
-	$(testcpg_LINK) $(testcpg_OBJECTS) $(testcpg_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(testcpg_LINK) $(testcpg_OBJECTS) $(testcpg_LDADD) $(LIBS)
 testcpg2$(EXEEXT): $(testcpg2_OBJECTS) $(testcpg2_DEPENDENCIES) 
 	@rm -f testcpg2$(EXEEXT)
-	$(testcpg2_LINK) $(testcpg2_OBJECTS) $(testcpg2_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(testcpg2_LINK) $(testcpg2_OBJECTS) $(testcpg2_LDADD) $(LIBS)
 testcpgzc$(EXEEXT): $(testcpgzc_OBJECTS) $(testcpgzc_DEPENDENCIES) 
 	@rm -f testcpgzc$(EXEEXT)
-	$(testcpgzc_LINK) $(testcpgzc_OBJECTS) $(testcpgzc_LDADD) $(LIBS)
-testevs$(EXEEXT): $(testevs_OBJECTS) $(testevs_DEPENDENCIES) 
-	@rm -f testevs$(EXEEXT)
-	$(testevs_LINK) $(testevs_OBJECTS) $(testevs_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(testcpgzc_LINK) $(testcpgzc_OBJECTS) $(testcpgzc_LDADD) $(LIBS)
 testquorum$(EXEEXT): $(testquorum_OBJECTS) $(testquorum_DEPENDENCIES) 
 	@rm -f testquorum$(EXEEXT)
-	$(testquorum_LINK) $(testquorum_OBJECTS) $(testquorum_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(testquorum_LINK) $(testquorum_OBJECTS) $(testquorum_LDADD) $(LIBS)
 testsam$(EXEEXT): $(testsam_OBJECTS) $(testsam_DEPENDENCIES) 
 	@rm -f testsam$(EXEEXT)
-	$(testsam_LINK) $(testsam_OBJECTS) $(testsam_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(testsam_LINK) $(testsam_OBJECTS) $(testsam_LDADD) $(LIBS)
 testvotequorum1$(EXEEXT): $(testvotequorum1_OBJECTS) $(testvotequorum1_DEPENDENCIES) 
 	@rm -f testvotequorum1$(EXEEXT)
-	$(testvotequorum1_LINK) $(testvotequorum1_OBJECTS) $(testvotequorum1_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(testvotequorum1_LINK) $(testvotequorum1_OBJECTS) $(testvotequorum1_LDADD) $(LIBS)
 testvotequorum2$(EXEEXT): $(testvotequorum2_OBJECTS) $(testvotequorum2_DEPENDENCIES) 
 	@rm -f testvotequorum2$(EXEEXT)
-	$(testvotequorum2_LINK) $(testvotequorum2_OBJECTS) $(testvotequorum2_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(testvotequorum2_LINK) $(testvotequorum2_OBJECTS) $(testvotequorum2_LDADD) $(LIBS)
 testzcgc$(EXEEXT): $(testzcgc_OBJECTS) $(testzcgc_DEPENDENCIES) 
 	@rm -f testzcgc$(EXEEXT)
-	$(testzcgc_LINK) $(testzcgc_OBJECTS) $(testzcgc_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(testzcgc_LINK) $(testzcgc_OBJECTS) $(testzcgc_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -547,24 +465,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpgbench.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpgbenchzc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpgbound.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpgverify.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/evsbench.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/evsverify.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/logsys_s.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/logsys_s1.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/logsys_s2.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/logsys_t1.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/logsys_t2.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/logsysbench.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/logsysrec.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpgverify-cpgverify.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stress_cpgcontext.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stress_cpgfdget.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stress_cpgzc.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testconfdb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testcpg.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testcpg2.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testcpgzc.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testevs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testquorum.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testsam.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testvotequorum1.Po@am__quote@
@@ -572,18 +479,36 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testzcgc.Po@am__quote@
 
 .c.o:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
+
+cpgverify-cpgverify.o: cpgverify.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cpgverify_CFLAGS) $(CFLAGS) -MT cpgverify-cpgverify.o -MD -MP -MF $(DEPDIR)/cpgverify-cpgverify.Tpo -c -o cpgverify-cpgverify.o `test -f 'cpgverify.c' || echo '$(srcdir)/'`cpgverify.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/cpgverify-cpgverify.Tpo $(DEPDIR)/cpgverify-cpgverify.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cpgverify.c' object='cpgverify-cpgverify.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cpgverify_CFLAGS) $(CFLAGS) -c -o cpgverify-cpgverify.o `test -f 'cpgverify.c' || echo '$(srcdir)/'`cpgverify.c
+
+cpgverify-cpgverify.obj: cpgverify.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cpgverify_CFLAGS) $(CFLAGS) -MT cpgverify-cpgverify.obj -MD -MP -MF $(DEPDIR)/cpgverify-cpgverify.Tpo -c -o cpgverify-cpgverify.obj `if test -f 'cpgverify.c'; then $(CYGPATH_W) 'cpgverify.c'; else $(CYGPATH_W) '$(srcdir)/cpgverify.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/cpgverify-cpgverify.Tpo $(DEPDIR)/cpgverify-cpgverify.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cpgverify.c' object='cpgverify-cpgverify.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cpgverify_CFLAGS) $(CFLAGS) -c -o cpgverify-cpgverify.obj `if test -f 'cpgverify.c'; then $(CYGPATH_W) 'cpgverify.c'; else $(CYGPATH_W) '$(srcdir)/cpgverify.c'; fi`
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
@@ -669,7 +594,7 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(PROGRAMS)
+all-am: Makefile $(PROGRAMS) $(SCRIPTS)
 installdirs:
 install: install-am
 install-exec: install-exec-am
@@ -783,11 +708,15 @@ uninstall-am:
 	uninstall-am
 
 
+ploadstart: ploadstart.sh
+	cp $^ $@
+	chmod 755 $@
+
 lint:
 	-for f in $(LINT_FILES) ; do echo Splint $$f ; splint $(INCLUDES) $(LINT_FLAGS) $(CFLAGS) $$f ; done
 
 clean-local:
-	rm -f fdata
+	rm -f fdata ploadstart
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

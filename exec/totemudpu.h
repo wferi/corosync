@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2010 Red Hat, Inc.
+ * Copyright (c) 2006-2011 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -37,18 +37,17 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <corosync/hdb.h>
+#include <qb/qbloop.h>
 
 #include <corosync/totem/totem.h>
 
-/*
+/**
  * Create an instance
  */
 extern int totemudpu_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	void **udpu_context,
 	struct totem_config *totem_config,
-	totemsrp_stats_t *stats,
 	int interface_no,
 	void *context,
 
@@ -63,6 +62,10 @@ extern int totemudpu_initialize (
 
 	void (*target_set_completed) (
 		void *context));
+
+extern void *totemudpu_buffer_alloc (void);
+
+extern void totemudpu_buffer_release (void *ptr);
 
 extern int totemudpu_processor_count_set (
 	void *udpu_context,
@@ -105,7 +108,8 @@ extern int totemudpu_token_target_set (
 
 extern int totemudpu_crypto_set (
 	void *udpu_context,
-	unsigned int type);
+	const char *cipher_type,
+	const char *hash_type);
 
 extern int totemudpu_recv_mcast_empty (
 	void *udpu_context);

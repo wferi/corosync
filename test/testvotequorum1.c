@@ -48,20 +48,11 @@ static votequorum_handle_t g_handle;
 static const char *node_state(int state)
 {
 	switch (state) {
-	case NODESTATE_JOINING:
-		return "Joining";
-		break;
 	case NODESTATE_MEMBER:
 		return "Member";
 		break;
 	case NODESTATE_DEAD:
 		return "Dead";
-		break;
-	case NODESTATE_LEAVING:
-		return "Leaving";
-		break;
-	case NODESTATE_DISALLOWED:
-		return "Disallowed";
 		break;
 	default:
 		return "UNKNOWN";
@@ -131,10 +122,13 @@ int main(int argc, char *argv[])
 		printf("total votes      %d\n", info.total_votes);
 		printf("quorum           %d\n", info.quorum);
 		printf("flags            ");
-		if (info.flags & VOTEQUORUM_INFO_FLAG_HASSTATE) printf("HasState ");
-		if (info.flags & VOTEQUORUM_INFO_FLAG_DISALLOWED) printf("Disallowed ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
+		if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
+		if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
+		if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
+		if (info.flags & VOTEQUORUM_INFO_LEAVE_REMOVE) printf("LeaveRemove ");
+
 		printf("\n");
 	}
 
@@ -158,10 +152,12 @@ int main(int argc, char *argv[])
 			printf("total votes      %d\n", info.total_votes);
 			printf("votequorum           %d\n", info.quorum);
 			printf("flags            ");
-			if (info.flags & VOTEQUORUM_INFO_FLAG_HASSTATE) printf("HasState ");
-			if (info.flags & VOTEQUORUM_INFO_FLAG_DISALLOWED) printf("Disallowed ");
 			if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
 			if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
+			if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
+			if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
+			if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
+			if (info.flags & VOTEQUORUM_INFO_LEAVE_REMOVE) printf("LeaveRemove ");
 			printf("\n");
 		}
 	}
@@ -169,8 +165,12 @@ int main(int argc, char *argv[])
 	printf("Waiting for votequorum events, press ^C to finish\n");
 	printf("-------------------\n");
 
-	while (1)
-		votequorum_dispatch(g_handle, CS_DISPATCH_ALL);
+	while (1) {
+		if (votequorum_dispatch(g_handle, CS_DISPATCH_ALL) != CS_OK) {
+			fprintf(stderr, "votequorum_dispatch error\n");
+			return -1;
+		}
+	}
 
 	return 0;
 }

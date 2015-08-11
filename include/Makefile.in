@@ -70,20 +70,23 @@ DIST_COMMON = $(nobase_include_HEADERS) $(noinst_HEADERS) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/lib/libcfg.verso \
-	$(top_srcdir)/lib/libconfdb.verso \
-	$(top_srcdir)/lib/libcpg.verso $(top_srcdir)/lib/libevs.verso \
-	$(top_srcdir)/lib/libpload.verso \
+	$(top_srcdir)/lib/libcpg.verso \
 	$(top_srcdir)/lib/libquorum.verso \
 	$(top_srcdir)/lib/libsam.verso \
 	$(top_srcdir)/lib/libvotequorum.verso \
-	$(top_srcdir)/configure.ac
+	$(top_srcdir)/lib/libcmap.verso $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = $(top_builddir)/include/corosync/config.h \
-	$(top_builddir)/include/corosync/cs_config.h
+CONFIG_HEADER = $(top_builddir)/include/corosync/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+AM_V_GEN = $(am__v_GEN_$(V))
+am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
+am__v_GEN_0 = @echo "  GEN   " $@;
+AM_V_at = $(am__v_at_$(V))
+am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
+am__v_at_0 = @
 SOURCES =
 DIST_SOURCES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -115,6 +118,8 @@ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
+AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
+AUGTOOL = @AUGTOOL@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -123,25 +128,24 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFG_SONAME = @CFG_SONAME@
 CFLAGS = @CFLAGS@
-CONFDB_SONAME = @CONFDB_SONAME@
+CMAP_SONAME = @CMAP_SONAME@
 COROSYSCONFDIR = @COROSYSCONFDIR@
-COVERAGE_LCRSO_EXTRA_LDFLAGS = @COVERAGE_LCRSO_EXTRA_LDFLAGS@
 CP = @CP@
 CPG_SONAME = @CPG_SONAME@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CP_ARGS = @CP_ARGS@
 CYGPATH_W = @CYGPATH_W@
 DARWIN_OPTS = @DARWIN_OPTS@
 DBUS_CFLAGS = @DBUS_CFLAGS@
 DBUS_LIBS = @DBUS_LIBS@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DOT = @DOT@
+DOXYGEN = @DOXYGEN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
-EVS_SONAME = @EVS_SONAME@
 EXEEXT = @EXEEXT@
 GREP = @GREP@
 GROFF = @GROFF@
@@ -151,9 +155,10 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-LCRSODIR = @LCRSODIR@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
+LIBQB_CFLAGS = @LIBQB_CFLAGS@
+LIBQB_LIBS = @LIBQB_LIBS@
 LIBS = @LIBS@
 LINT_FLAGS = @LINT_FLAGS@
 LN_S = @LN_S@
@@ -173,7 +178,6 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKGCONFIG = @PKGCONFIG@
 PKG_CONFIG = @PKG_CONFIG@
-PLOAD_SONAME = @PLOAD_SONAME@
 QUORUM_SONAME = @QUORUM_SONAME@
 RANLIB = @RANLIB@
 SAM_SONAME = @SAM_SONAME@
@@ -181,8 +185,6 @@ SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SNMPCONFIG = @SNMPCONFIG@
 SNMPLIBS = @SNMPLIBS@
-SNMP_LCRSO = @SNMP_LCRSO@
-SOCKETDIR = @SOCKETDIR@
 SOLARIS_OPTS = @SOLARIS_OPTS@
 SOMAJOR = @SOMAJOR@
 SOMICRO = @SOMICRO@
@@ -249,21 +251,17 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in corosync/config.h.in
-CS_H = hdb.h cs_config.h cpg.h cfg.h evs.h mar_gen.h swab.h 	\
-			coroipcc.h coroipcs.h coroipc_types.h corodefs.h \
-			confdb.h list.h corotypes.h quorum.h votequorum.h sam.h
+CS_H = hdb.h cpg.h cfg.h corodefs.h \
+			corotypes.h quorum.h votequorum.h sam.h cmap.h
 
-CS_INTERNAL_H = ipc_cfg.h ipc_confdb.h ipc_cpg.h ipc_evs.h ipc_pload.h ipc_quorum.h 	\
-			jhash.h pload.h cs_queue.h quorum.h sq.h ipc_votequorum.h coroipc_ipc.h
+CS_INTERNAL_H = ipc_cfg.h ipc_cpg.h ipc_quorum.h 	\
+			quorum.h sq.h ipc_votequorum.h ipc_cmap.h \
+			logsys.h coroapi.h icmap.h mar_gen.h list.h swab.h
 
-LCR_H = lcr_ckpt.h lcr_comp.h	lcr_ifact.h
-ENGINE_H = config.h coroapi.h logsys.h objdb.h quorum.h
-TOTEM_H = coropoll.h totem.h totemip.h totempg.h
+TOTEM_H = totem.h totemip.h totempg.h
 EXTRA_DIST = $(noinst_HEADERS)
 noinst_HEADERS = $(CS_INTERNAL_H:%=corosync/%)
-nobase_include_HEADERS = $(CS_H:%=corosync/%) $(LCR_H:%=corosync/lcr/%) 			\
-			$(ENGINE_H:%=corosync/engine/%) $(TOTEM_H:%=corosync/totem/%)
-
+nobase_include_HEADERS = $(CS_H:%=corosync/%) $(TOTEM_H:%=corosync/totem/%)
 all: all-am
 
 .SUFFIXES:

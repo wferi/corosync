@@ -72,18 +72,15 @@ DIST_COMMON = $(noinst_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/lib/libcfg.verso \
-	$(top_srcdir)/lib/libconfdb.verso \
-	$(top_srcdir)/lib/libcpg.verso $(top_srcdir)/lib/libevs.verso \
-	$(top_srcdir)/lib/libpload.verso \
+	$(top_srcdir)/lib/libcpg.verso \
 	$(top_srcdir)/lib/libquorum.verso \
 	$(top_srcdir)/lib/libsam.verso \
 	$(top_srcdir)/lib/libvotequorum.verso \
-	$(top_srcdir)/configure.ac
+	$(top_srcdir)/lib/libcmap.verso $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = $(top_builddir)/include/corosync/config.h \
-	$(top_builddir)/include/corosync/cs_config.h
+CONFIG_HEADER = $(top_builddir)/include/corosync/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -111,30 +108,24 @@ am__installdirs = "$(DESTDIR)$(libdir)"
 LIBRARIES = $(lib_LIBRARIES)
 AR = ar
 ARFLAGS = cru
+AM_V_AR = $(am__v_AR_$(V))
+am__v_AR_ = $(am__v_AR_$(AM_DEFAULT_VERBOSITY))
+am__v_AR_0 = @echo "  AR    " $@;
+AM_V_at = $(am__v_at_$(V))
+am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
+am__v_at_0 = @
 libcfg_a_AR = $(AR) $(ARFLAGS)
 libcfg_a_LIBADD =
 am_libcfg_a_OBJECTS = cfg.$(OBJEXT)
 libcfg_a_OBJECTS = $(am_libcfg_a_OBJECTS)
-libconfdb_a_AR = $(AR) $(ARFLAGS)
-libconfdb_a_DEPENDENCIES = ../lcr/lcr_ifact.o
-am_libconfdb_a_OBJECTS = confdb.$(OBJEXT) sa-confdb.$(OBJEXT)
-libconfdb_a_OBJECTS = $(am_libconfdb_a_OBJECTS)
-libcoroipcc_a_AR = $(AR) $(ARFLAGS)
-libcoroipcc_a_LIBADD =
-am_libcoroipcc_a_OBJECTS = coroipcc.$(OBJEXT)
-libcoroipcc_a_OBJECTS = $(am_libcoroipcc_a_OBJECTS)
+libcmap_a_AR = $(AR) $(ARFLAGS)
+libcmap_a_LIBADD =
+am_libcmap_a_OBJECTS = cmap.$(OBJEXT)
+libcmap_a_OBJECTS = $(am_libcmap_a_OBJECTS)
 libcpg_a_AR = $(AR) $(ARFLAGS)
 libcpg_a_LIBADD =
 am_libcpg_a_OBJECTS = cpg.$(OBJEXT)
 libcpg_a_OBJECTS = $(am_libcpg_a_OBJECTS)
-libevs_a_AR = $(AR) $(ARFLAGS)
-libevs_a_LIBADD =
-am_libevs_a_OBJECTS = evs.$(OBJEXT)
-libevs_a_OBJECTS = $(am_libevs_a_OBJECTS)
-libpload_a_AR = $(AR) $(ARFLAGS)
-libpload_a_LIBADD =
-am_libpload_a_OBJECTS = pload.$(OBJEXT)
-libpload_a_OBJECTS = $(am_libpload_a_OBJECTS)
 libquorum_a_AR = $(AR) $(ARFLAGS)
 libquorum_a_LIBADD =
 am_libquorum_a_OBJECTS = quorum.$(OBJEXT)
@@ -153,17 +144,22 @@ am__depfiles_maybe = depfiles
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+AM_V_CC = $(am__v_CC_$(V))
+am__v_CC_ = $(am__v_CC_$(AM_DEFAULT_VERBOSITY))
+am__v_CC_0 = @echo "  CC    " $@;
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(libcfg_a_SOURCES) $(libconfdb_a_SOURCES) \
-	$(libcoroipcc_a_SOURCES) $(libcpg_a_SOURCES) \
-	$(libevs_a_SOURCES) $(libpload_a_SOURCES) \
+AM_V_CCLD = $(am__v_CCLD_$(V))
+am__v_CCLD_ = $(am__v_CCLD_$(AM_DEFAULT_VERBOSITY))
+am__v_CCLD_0 = @echo "  CCLD  " $@;
+AM_V_GEN = $(am__v_GEN_$(V))
+am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
+am__v_GEN_0 = @echo "  GEN   " $@;
+SOURCES = $(libcfg_a_SOURCES) $(libcmap_a_SOURCES) $(libcpg_a_SOURCES) \
 	$(libquorum_a_SOURCES) $(libsam_a_SOURCES) \
 	$(libvotequorum_a_SOURCES)
-DIST_SOURCES = $(libcfg_a_SOURCES) $(libconfdb_a_SOURCES) \
-	$(libcoroipcc_a_SOURCES) $(libcpg_a_SOURCES) \
-	$(libevs_a_SOURCES) $(libpload_a_SOURCES) \
-	$(libquorum_a_SOURCES) $(libsam_a_SOURCES) \
+DIST_SOURCES = $(libcfg_a_SOURCES) $(libcmap_a_SOURCES) \
+	$(libcpg_a_SOURCES) $(libquorum_a_SOURCES) $(libsam_a_SOURCES) \
 	$(libvotequorum_a_SOURCES)
 HEADERS = $(noinst_HEADERS)
 ETAGS = etags
@@ -172,6 +168,8 @@ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
+AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
+AUGTOOL = @AUGTOOL@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
@@ -180,25 +178,24 @@ CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFG_SONAME = @CFG_SONAME@
 CFLAGS = @CFLAGS@
-CONFDB_SONAME = @CONFDB_SONAME@
+CMAP_SONAME = @CMAP_SONAME@
 COROSYSCONFDIR = @COROSYSCONFDIR@
-COVERAGE_LCRSO_EXTRA_LDFLAGS = @COVERAGE_LCRSO_EXTRA_LDFLAGS@
 CP = @CP@
 CPG_SONAME = @CPG_SONAME@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CP_ARGS = @CP_ARGS@
 CYGPATH_W = @CYGPATH_W@
 DARWIN_OPTS = @DARWIN_OPTS@
 DBUS_CFLAGS = @DBUS_CFLAGS@
 DBUS_LIBS = @DBUS_LIBS@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DOT = @DOT@
+DOXYGEN = @DOXYGEN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
-EVS_SONAME = @EVS_SONAME@
 EXEEXT = @EXEEXT@
 GREP = @GREP@
 GROFF = @GROFF@
@@ -208,9 +205,10 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-LCRSODIR = @LCRSODIR@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
+LIBQB_CFLAGS = @LIBQB_CFLAGS@
+LIBQB_LIBS = @LIBQB_LIBS@
 LIBS = @LIBS@
 LINT_FLAGS = @LINT_FLAGS@
 LN_S = @LN_S@
@@ -230,7 +228,6 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKGCONFIG = @PKGCONFIG@
 PKG_CONFIG = @PKG_CONFIG@
-PLOAD_SONAME = @PLOAD_SONAME@
 QUORUM_SONAME = @QUORUM_SONAME@
 RANLIB = @RANLIB@
 SAM_SONAME = @SAM_SONAME@
@@ -238,8 +235,6 @@ SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SNMPCONFIG = @SNMPCONFIG@
 SNMPLIBS = @SNMPLIBS@
-SNMP_LCRSO = @SNMP_LCRSO@
-SOCKETDIR = @SOCKETDIR@
 SOLARIS_OPTS = @SOLARIS_OPTS@
 SOMAJOR = @SOMAJOR@
 SOMICRO = @SOMICRO@
@@ -312,35 +307,27 @@ get_soname = $(if $($(call uc,$1)_SONAME),$($(call uc,$1)_SONAME),$(SONAME))
 get_major = $(firstword $(subst ., ,$(call get_soname,$1)))
 get_sharedlibs = $(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_soname,$(lib)))
 get_sharedlibs_two = $(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_major,$(lib)))
-get_explicit_sharedlibs = $(foreach lib,$(EXPLICIT_SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_soname,$(lib)))
-get_explicit_sharedlibs_two = $(foreach lib,$(EXPLICIT_SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_major,$(lib)))
 get_linker_add = $(if $($(call uc,$1)_LINKER_ADD),$($(call uc,$1)_LINKER_ADD))
 MAINTAINERCLEANFILES = Makefile.in
 AM_CFLAGS = -fPIC
-AM_LDFLAGS = -lpthread
+AM_LDFLAGS = -lpthread -L../common_lib -lcorosync_common
 INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include
-lib_LIBRARIES = libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a \
-			  libvotequorum.a libpload.a libcoroipcc.a libsam.a
+lib_LIBRARIES = libcpg.a libquorum.a libcfg.a \
+			  libvotequorum.a libsam.a libcmap.a
 
-SHARED_LIBS_SO = $(filter-out $(EXPLICIT_SHARED_LIBS_SO), $(lib_LIBRARIES:%.a=%.so))
-EXPLICIT_SHARED_LIBS_SO = libcoroipcc.so
+SHARED_LIBS_SO = $(lib_LIBRARIES:%.a=%.so)
 libcpg_a_SOURCES = cpg.c
 libcfg_a_SOURCES = cfg.c
-libevs_a_SOURCES = evs.c
-libpload_a_SOURCES = pload.c
 libquorum_a_SOURCES = quorum.c
 libvotequorum_a_SOURCES = votequorum.c
-libconfdb_a_SOURCES = confdb.c sa-confdb.c
-libconfdb_a_LIBADD = ../lcr/lcr_ifact.o
-CONFDB_LINKER_ADD = $(OS_DYFLAGS) $(OS_LDL)
-libcoroipcc_a_SOURCES = coroipcc.c
+libcmap_a_SOURCES = cmap.c
+SAM_LINKER_ADD = -L. -lquorum -lcmap
 libsam_a_SOURCES = sam.c
-noinst_HEADERS = sa-confdb.h util.h \
-			  libcfg.versions libconfdb.versions \
-			  libcoroipcc.versions libcpg.versions \
-			  libevs.versions libpload.versions \
+noinst_HEADERS = util.h \
+			  libcfg.versions \
+			  libcpg.versions \
 			  libquorum.versions libvotequorum.versions \
-			  libsam.versions
+			  libsam.versions libcmap.versions
 
 all: all-am
 
@@ -409,41 +396,29 @@ uninstall-libLIBRARIES:
 clean-libLIBRARIES:
 	-test -z "$(lib_LIBRARIES)" || rm -f $(lib_LIBRARIES)
 libcfg.a: $(libcfg_a_OBJECTS) $(libcfg_a_DEPENDENCIES) 
-	-rm -f libcfg.a
-	$(libcfg_a_AR) libcfg.a $(libcfg_a_OBJECTS) $(libcfg_a_LIBADD)
-	$(RANLIB) libcfg.a
-libconfdb.a: $(libconfdb_a_OBJECTS) $(libconfdb_a_DEPENDENCIES) 
-	-rm -f libconfdb.a
-	$(libconfdb_a_AR) libconfdb.a $(libconfdb_a_OBJECTS) $(libconfdb_a_LIBADD)
-	$(RANLIB) libconfdb.a
-libcoroipcc.a: $(libcoroipcc_a_OBJECTS) $(libcoroipcc_a_DEPENDENCIES) 
-	-rm -f libcoroipcc.a
-	$(libcoroipcc_a_AR) libcoroipcc.a $(libcoroipcc_a_OBJECTS) $(libcoroipcc_a_LIBADD)
-	$(RANLIB) libcoroipcc.a
+	$(AM_V_at)-rm -f libcfg.a
+	$(AM_V_AR)$(libcfg_a_AR) libcfg.a $(libcfg_a_OBJECTS) $(libcfg_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libcfg.a
+libcmap.a: $(libcmap_a_OBJECTS) $(libcmap_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f libcmap.a
+	$(AM_V_AR)$(libcmap_a_AR) libcmap.a $(libcmap_a_OBJECTS) $(libcmap_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libcmap.a
 libcpg.a: $(libcpg_a_OBJECTS) $(libcpg_a_DEPENDENCIES) 
-	-rm -f libcpg.a
-	$(libcpg_a_AR) libcpg.a $(libcpg_a_OBJECTS) $(libcpg_a_LIBADD)
-	$(RANLIB) libcpg.a
-libevs.a: $(libevs_a_OBJECTS) $(libevs_a_DEPENDENCIES) 
-	-rm -f libevs.a
-	$(libevs_a_AR) libevs.a $(libevs_a_OBJECTS) $(libevs_a_LIBADD)
-	$(RANLIB) libevs.a
-libpload.a: $(libpload_a_OBJECTS) $(libpload_a_DEPENDENCIES) 
-	-rm -f libpload.a
-	$(libpload_a_AR) libpload.a $(libpload_a_OBJECTS) $(libpload_a_LIBADD)
-	$(RANLIB) libpload.a
+	$(AM_V_at)-rm -f libcpg.a
+	$(AM_V_AR)$(libcpg_a_AR) libcpg.a $(libcpg_a_OBJECTS) $(libcpg_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libcpg.a
 libquorum.a: $(libquorum_a_OBJECTS) $(libquorum_a_DEPENDENCIES) 
-	-rm -f libquorum.a
-	$(libquorum_a_AR) libquorum.a $(libquorum_a_OBJECTS) $(libquorum_a_LIBADD)
-	$(RANLIB) libquorum.a
+	$(AM_V_at)-rm -f libquorum.a
+	$(AM_V_AR)$(libquorum_a_AR) libquorum.a $(libquorum_a_OBJECTS) $(libquorum_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libquorum.a
 libsam.a: $(libsam_a_OBJECTS) $(libsam_a_DEPENDENCIES) 
-	-rm -f libsam.a
-	$(libsam_a_AR) libsam.a $(libsam_a_OBJECTS) $(libsam_a_LIBADD)
-	$(RANLIB) libsam.a
+	$(AM_V_at)-rm -f libsam.a
+	$(AM_V_AR)$(libsam_a_AR) libsam.a $(libsam_a_OBJECTS) $(libsam_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libsam.a
 libvotequorum.a: $(libvotequorum_a_OBJECTS) $(libvotequorum_a_DEPENDENCIES) 
-	-rm -f libvotequorum.a
-	$(libvotequorum_a_AR) libvotequorum.a $(libvotequorum_a_OBJECTS) $(libvotequorum_a_LIBADD)
-	$(RANLIB) libvotequorum.a
+	$(AM_V_at)-rm -f libvotequorum.a
+	$(AM_V_AR)$(libvotequorum_a_AR) libvotequorum.a $(libvotequorum_a_OBJECTS) $(libvotequorum_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libvotequorum.a
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -452,26 +427,24 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cfg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/confdb.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/coroipcc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cmap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/evs.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pload.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/quorum.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sa-confdb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sam.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/votequorum.Po@am__quote@
 
 .c.o:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c $<
 
 .c.obj:
-@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
@@ -677,42 +650,21 @@ uninstall-am: uninstall-libLIBRARIES uninstall-local
 	uninstall-am uninstall-libLIBRARIES uninstall-local
 
 
-../lcr/lcr_ifact.o:
-	$(MAKE) -C ../lcr lcr_ifact.o
-
-@BUILD_DARWIN_TRUE@libcoroipcc.so.$(SONAME): coroipcc.o
-@BUILD_DARWIN_TRUE@	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipcc.o -o $@ $(AM_LDFLAGS)
-@BUILD_DARWIN_TRUE@	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
-@BUILD_DARWIN_TRUE@	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
-
-@BUILD_DARWIN_TRUE@lib%.so: lib%.a libcoroipcc.so.$(SONAME)
+@BUILD_DARWIN_TRUE@lib%.so: lib%.a $(LIBQB_LIBS)
 @BUILD_DARWIN_TRUE@	$(CC) $(DARWIN_OPTS) $(call get_linker_add,$*) -Wl,-whole-archive $^ -Wl,-no-whole-archive -o $@
 @BUILD_DARWIN_TRUE@	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
 @BUILD_DARWIN_TRUE@	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
 
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@libcoroipcc.so.$(SONAME): coroipcc.o
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) $(LDFLAGS) $(SOLARIS_OPTS) -G coroipcc.o -o $@ $(AM_LDFLAGS) -lsocket -lnsl
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
-
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@lib%.so.$(SONAME): lib%.a libcoroipcc.so.$(SONAME)
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@lib%.so.$(SONAME): lib%.a
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	$(LD) $(SOLARIS_OPTS) $(call get_linker_add,$*) -G -whole-archive $^ -no-whole-archive -o $@
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_TRUE@	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
 
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@libcoroipcc.so.$(SONAME): coroipcc.o
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) -shared -o $@ \
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		-Wl,-soname=libcoroipcc.so.$(SOMAJOR) \
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		-Wl,-version-script=$(srcdir)/libcoroipcc.versions \
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		$(LDFLAGS) $^ $(AM_LDFLAGS)
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
-
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@lib%.so: lib%.a libcoroipcc.so.$(SONAME)
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@lib%.so: lib%.a
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	$(CC) -shared -o $@.$(call get_soname,$*) \
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		-Wl,-soname=lib$*.so.$(call get_major,$*) \
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		-Wl,-version-script=$(srcdir)/lib$*.versions \
-@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(AM_LDFLAGS) $(call get_linker_add,$*)
+@BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(LIBQB_LIBS) $(AM_LDFLAGS) $(call get_linker_add,$*)
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
 @BUILD_DARWIN_FALSE@@BUILD_SOLARIS_FALSE@	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
 
@@ -721,8 +673,8 @@ all-local: $(get_explicit_sharedlibs) $(SHARED_LIBS_SO)
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)
-	$(INSTALL) -m 755 $(get_sharedlibs) $(get_explicit_sharedlibs) $(DESTDIR)/$(libdir)
-	$(CP) $(CP_ARGS) $(SHARED_LIBS_SO) $(EXPLICIT_SHARED_LIBS_SO) $(get_sharedlibs_two) $(get_explicit_sharedlibs_two) $(DESTDIR)/$(libdir)
+	$(INSTALL) -m 755 $(get_sharedlibs) $(DESTDIR)/$(libdir)
+	$(CP) -a $(SHARED_LIBS_SO) $(get_sharedlibs_two) $(DESTDIR)/$(libdir)
 
 uninstall-local:
 	cd $(DESTDIR)/$(libdir)/ && \

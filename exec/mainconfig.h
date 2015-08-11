@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007 Red Hat, Inc.
+ * Copyright (c) 2006-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -35,40 +35,21 @@
 #ifndef MAINCONFIG_H_DEFINED
 #define MAINCONFIG_H_DEFINED
 
-#include <corosync/engine/objdb.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include <corosync/list.h>
-#include <corosync/engine/coroapi.h>
+#include <corosync/coroapi.h>
 
-/*
- * All service handlers in the AIS
+/**
+ * All service handlers
  */
 struct dynamic_service {
 	char *name;
 	unsigned int ver;
 	unsigned int handle;
-	struct corosync_service_engine_iface_ver0 *iface_ver0;
 };
 #define MAX_DYNAMIC_SERVICES 128
 
-/*
- * Structure describing cached uidgid item
- */
-struct uidgid_item {
-	struct list_head list;
-	int uid;
-	int gid;
-};
-
-extern struct list_head uidgid_list_head;
-
 extern int corosync_main_config_read (
-	struct objdb_iface_ver0 *objdb,
-	const char **error_string);
-
-extern int corosync_main_config_compatibility_read (
-	struct objdb_iface_ver0 *objdb,
-	enum cs_sync_mode *minimum_sync_mode,
 	const char **error_string);
 
 #endif /* MAINCONFIG_H_DEFINED */

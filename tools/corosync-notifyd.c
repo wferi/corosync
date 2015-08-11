@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Red Hat
+ * Copyright (c) 2011-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -49,13 +49,18 @@
 #include <ctype.h>
 #include <poll.h>
 #include <signal.h>
-#include <syslog.h>
+
+#include <qb/qbdefs.h>
+#include <qb/qbloop.h>
+#include <qb/qblog.h>
+
+#include <qb/qbdefs.h>
+#include <qb/qbloop.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/totem/coropoll.h>
-#include <corosync/confdb.h>
 #include <corosync/cfg.h>
 #include <corosync/quorum.h>
+#include <corosync/cmap.h>
 
 /*
  * generic declarations
@@ -75,11 +80,13 @@ static int32_t _cs_is_quorate = 0;
 typedef void (*node_membership_fn_t)(char *nodename, uint32_t nodeid, char *state, char* ip);
 typedef void (*node_quorum_fn_t)(char *nodename, uint32_t nodeid, const char *state);
 typedef void (*application_connection_fn_t)(char *nodename, uint32_t nodeid, char *app_name, const char *state);
+typedef void (*rrp_faulty_fn_t)(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state);
 
 struct notify_callbacks {
 	node_membership_fn_t node_membership_fn;
 	node_quorum_fn_t node_quorum_fn;
 	application_connection_fn_t application_connection_fn;
+	rrp_faulty_fn_t rrp_faulty_fn;
 };
 
 #define MAX_NOTIFIERS 5
@@ -87,12 +94,13 @@ static int num_notifiers = 0;
 static struct notify_callbacks notifiers[MAX_NOTIFIERS];
 static uint32_t local_nodeid = 0;
 static char local_nodename[CS_MAX_NAME_LENGTH];
-static hdb_handle_t poll_handle;
+static qb_loop_t *main_loop;
 static quorum_handle_t quorum_handle;
 
 static void _cs_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip);
 static void _cs_node_quorum_event(const char *state);
 static void _cs_application_connection_event(char *app_name, const char *state);
+static void _cs_rrp_faulty_event(uint32_t iface_no, const char *state);
 
 #ifdef HAVE_DBUS
 #include <dbus/dbus.h>
@@ -137,10 +145,14 @@ enum snmp_node_status {
 #define SNMP_OID_OBJECT_APP_NAME	SNMP_OID_OBJECT_ROOT ".40"
 #define SNMP_OID_OBJECT_APP_STATUS	SNMP_OID_OBJECT_ROOT ".41"
 
+#define SNMP_OID_OBJECT_RRP_IFACE_NO	SNMP_OID_OBJECT_ROOT ".60"
+#define SNMP_OID_OBJECT_RRP_STATUS	SNMP_OID_OBJECT_ROOT ".61"
+
 #define SNMP_OID_TRAPS_ROOT		SNMP_OID_COROSYNC ".0"
 #define SNMP_OID_TRAPS_NODE		SNMP_OID_TRAPS_ROOT ".1"
 #define SNMP_OID_TRAPS_QUORUM		SNMP_OID_TRAPS_ROOT ".2"
 #define SNMP_OID_TRAPS_APP		SNMP_OID_TRAPS_ROOT ".3"
+#define SNMP_OID_TRAPS_RRP		SNMP_OID_TRAPS_ROOT ".4"
 
 #define CS_TIMESTAMP_STR_LEN 20
 static const char *local_host = "localhost";
@@ -148,36 +160,12 @@ static const char *local_host = "localhost";
 static char snmp_manager_buf[CS_MAX_NAME_LENGTH];
 static char *snmp_manager = NULL;
 
+#define CMAP_MAX_RETRIES 10
 
 /*
- * confdb
+ * cmap
  */
-#define SEPERATOR_STR "."
-
-static confdb_handle_t confdb_handle;
-
-static void _cs_confdb_key_changed(confdb_handle_t handle,
-	confdb_change_type_t change_type,
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *object_name, size_t object_name_len,
-	const void *key_name, size_t key_name_len,
-	const void *key_value, size_t key_value_len);
-
-static void _cs_confdb_object_created(confdb_handle_t handle,
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *name_pt, size_t name_len);
-
-static void _cs_confdb_object_deleted(confdb_handle_t handle,
-	hdb_handle_t parent_object_handle,
-	const void *name_pt, size_t name_len);
-
-static confdb_callbacks_t callbacks = {
-	.confdb_key_change_notify_fn = _cs_confdb_key_changed,
-	.confdb_object_create_change_notify_fn = _cs_confdb_object_created,
-	.confdb_object_delete_change_notify_fn = _cs_confdb_object_deleted,
-};
+static cmap_handle_t cmap_handle;
 
 static int32_t _cs_ip_to_hostname(char* ip, char* name_out)
 {
@@ -198,169 +186,146 @@ static int32_t _cs_ip_to_hostname(char* ip, char* name_out)
 	rc = getnameinfo((struct sockaddr*)&sa, sizeof(sa),
 			name_out, CS_MAX_NAME_LENGTH, NULL, 0, 0);
 	if (rc != 0) {
-		syslog (LOG_ERR, "error looking up %s : %s\n", ip, gai_strerror(rc));
+		qb_log(LOG_ERR, 0, "error looking up %s : %s", ip, gai_strerror(rc));
 		return -EINVAL;
 	}
 	return 0;
 }
 
-static void
-_cs_confdb_key_changed(confdb_handle_t handle,
-	confdb_change_type_t change_type,
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *object_name_pt, size_t  object_name_len,
-	const void *key_name_pt, size_t key_name_len,
-	const void *key_value_pt, size_t key_value_len)
+static void _cs_cmap_members_key_changed (
+	cmap_handle_t cmap_handle_c,
+	cmap_track_handle_t cmap_track_handle,
+	int32_t event,
+	const char *key_name,
+	struct cmap_notify_value new_value,
+	struct cmap_notify_value old_value,
+	void *user_data)
 {
-	char parent_name[CS_MAX_NAME_LENGTH];
-	size_t len = 0;
-	hdb_handle_t real_parent_object_handle;
-	cs_error_t rc = CS_OK;
 	char nodename[CS_MAX_NAME_LENGTH];
-	char nodeid_str[CS_MAX_NAME_LENGTH];
-	uint32_t nodeid;
-	char status[CS_MAX_NAME_LENGTH];
-	char ip[CS_MAX_NAME_LENGTH];
-	size_t ip_len;
-	confdb_value_types_t type;
 	char* open_bracket = NULL;
 	char* close_bracket = NULL;
+	int res;
+	uint32_t nodeid;
+	char *ip_str;
+	char tmp_key[CMAP_KEYNAME_MAXLEN];
+	cs_error_t err;
+	int no_retries;
 
-	rc = confdb_object_parent_get (handle,
-		parent_object_handle, &real_parent_object_handle);
-	assert(rc == CS_OK);
-
-	rc = confdb_object_name_get (handle,
-		real_parent_object_handle,
-		parent_name,
-		&len);
-	parent_name[len] = '\0';
-	assert(rc == CS_OK);
-
-	if (strcmp(parent_name, "members") == 0) {
-		if (strncmp(key_name_pt, "status", strlen("status")) == 0) {
-
-			memcpy(nodeid_str, object_name_pt, object_name_len);
-			nodeid_str[object_name_len] = '\0';
-			nodeid = atoi(nodeid_str);
-
-			memcpy(status, key_value_pt, key_value_len);
-			status[key_value_len] = '\0';
-
-			rc = confdb_key_get_typed(handle, parent_object_handle,
-				"ip", ip, &ip_len, &type);
-			assert(rc == CS_OK);
-			ip[ip_len-1] = '\0';
-
-			/*
-			 * We want the ip out of: "r(0) ip(192.168.100.92)"
-			 */
-			open_bracket = strrchr(ip, '(');
-			open_bracket++;
-			close_bracket = strrchr(open_bracket, ')');
-			*close_bracket = '\0';
-			_cs_ip_to_hostname(open_bracket, nodename);
-
-			_cs_node_membership_event(nodename, nodeid, status, open_bracket);
-		}
+	if (event != CMAP_TRACK_MODIFY) {
+		return ;
 	}
+
+	res = sscanf(key_name, "runtime.totem.pg.mrp.srp.members.%u.%s", &nodeid, tmp_key);
+	if (res != 2)
+		return ;
+
+	if (strcmp(tmp_key, "status") != 0) {
+		return ;
+	}
+
+	snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.ip", nodeid);
+	no_retries = 0;
+	while ((err = cmap_get_string(cmap_handle, tmp_key, &ip_str)) == CS_ERR_TRY_AGAIN &&
+			no_retries++ < CMAP_MAX_RETRIES) {
+		sleep(1);
+	}
+
+	if (err != CS_OK) {
+		return ;
+	}
+	/*
+	 * We want the ip out of: "r(0) ip(192.168.100.92)"
+	 */
+	open_bracket = strrchr(ip_str, '(');
+	open_bracket++;
+	close_bracket = strrchr(open_bracket, ')');
+	*close_bracket = '\0';
+	_cs_ip_to_hostname(open_bracket, nodename);
+
+	_cs_node_membership_event(nodename, nodeid, (char *)new_value.data, open_bracket);
+	free(ip_str);
 }
 
-static void
-_cs_confdb_object_created(confdb_handle_t handle,
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *name_pt,
-	size_t name_len)
+static void _cs_cmap_connections_key_changed (
+	cmap_handle_t cmap_handle_c,
+	cmap_track_handle_t cmap_track_handle,
+	int32_t event,
+	const char *key_name,
+	struct cmap_notify_value new_value,
+	struct cmap_notify_value old_value,
+	void *user_data)
 {
-	char parent_name[CS_MAX_NAME_LENGTH];
-	size_t len = 0;
 	char obj_name[CS_MAX_NAME_LENGTH];
-	cs_error_t rc = CS_OK;
+	char conn_str[CMAP_KEYNAME_MAXLEN];
+	char tmp_key[CMAP_KEYNAME_MAXLEN];
+	int res;
 
-	memcpy(obj_name, name_pt, name_len);
-	obj_name[name_len] = '\0';
-
-	rc = confdb_object_name_get (handle,
-		object_handle, parent_name, &len);
-	parent_name[len] = '\0';
-	if (rc != CS_OK) {
-		return;
+	res = sscanf(key_name, "runtime.connections.%[^.].%s", conn_str, tmp_key);
+	if (res != 2) {
+		return ;
 	}
 
-	if (strcmp(parent_name, "connections") == 0) {
+	if (strcmp(tmp_key, "service_id") != 0) {
+		return ;
+	}
+
+	snprintf(obj_name, CS_MAX_NAME_LENGTH, "%s", conn_str);
+
+	if (event == CMAP_TRACK_ADD) {
 		_cs_application_connection_event(obj_name, "connected");
 	}
-}
 
-static void
-_cs_confdb_object_deleted(confdb_handle_t handle,
-	hdb_handle_t parent_object_handle,
-	const void *name_pt,
-	size_t name_len)
-{
-	char obj_name[CS_MAX_NAME_LENGTH];
-	char parent_name[CS_MAX_NAME_LENGTH];
-	size_t len = 0;
-	cs_error_t rc;
-
-	memcpy(obj_name, name_pt, name_len);
-	obj_name[name_len] = '\0';
-
-	rc = confdb_object_name_get (handle,
-		parent_object_handle, parent_name, &len);
-	parent_name[len] = '\0';
-	assert(rc == CS_OK);
-
-	if (strcmp(parent_name, "connections") == 0) {
+	if (event == CMAP_TRACK_DELETE) {
 		_cs_application_connection_event(obj_name, "disconnected");
 	}
 }
 
-static cs_error_t
-_cs_confdb_find_object (confdb_handle_t handle,
-	const char * name_pt,
-	hdb_handle_t * out_handle)
+static void _cs_cmap_rrp_faulty_key_changed (
+	cmap_handle_t cmap_handle_c,
+	cmap_track_handle_t cmap_track_handle,
+	int32_t event,
+	const char *key_name,
+	struct cmap_notify_value new_value,
+	struct cmap_notify_value old_value,
+	void *user_data)
 {
-	char * obj_name_pt;
-	char * save_pt;
-	hdb_handle_t obj_handle;
-	confdb_handle_t parent_object_handle = OBJECT_PARENT_HANDLE;
-	char tmp_name[CS_MAX_NAME_LENGTH];
-	cs_error_t res = CS_OK;
+	uint32_t iface_no;
+	char tmp_key[CMAP_KEYNAME_MAXLEN];
+	int res;
+	int no_retries;
+	uint8_t faulty;
+	cs_error_t err;
 
-	strncpy (tmp_name, name_pt, sizeof (tmp_name));
-	tmp_name[sizeof (tmp_name) - 1] = '\0';
-	obj_name_pt = strtok_r(tmp_name, SEPERATOR_STR, &save_pt);
-
-	while (obj_name_pt != NULL) {
-		res = confdb_object_find_start(handle, parent_object_handle);
-		if (res != CS_OK) {
-			syslog (LOG_ERR, "Could not start object_find %d\n", res);
-			exit (EXIT_FAILURE);
-		}
-
-		res = confdb_object_find(handle, parent_object_handle,
-				obj_name_pt, strlen (obj_name_pt), &obj_handle);
-		if (res != CS_OK) {
-			return res;
-		}
-		confdb_object_find_destroy(handle, parent_object_handle);
-
-		parent_object_handle = obj_handle;
-		obj_name_pt = strtok_r (NULL, SEPERATOR_STR, &save_pt);
+	res = sscanf(key_name, "runtime.totem.pg.mrp.rrp.%u.%s", &iface_no, tmp_key);
+	if (res != 2) {
+		return ;
 	}
 
-	*out_handle = parent_object_handle;
-	return res;
+	if (strcmp(tmp_key, "faulty") != 0) {
+		return ;
+	}
+
+	no_retries = 0;
+	while ((err = cmap_get_uint8(cmap_handle, key_name, &faulty)) == CS_ERR_TRY_AGAIN &&
+			no_retries++ < CMAP_MAX_RETRIES) {
+		sleep(1);
+	}
+
+	if (err != CS_OK) {
+		return ;
+	}
+
+	if (faulty) {
+		_cs_rrp_faulty_event(iface_no, "faulty");
+	} else {
+		_cs_rrp_faulty_event(iface_no, "operational");
+	}
 }
 
 static int
-_cs_confdb_dispatch(hdb_handle_t handle,
-	int fd,	int revents, void *data)
+_cs_cmap_dispatch(int fd, int revents, void *data)
 {
-	confdb_dispatch(confdb_handle, CS_DISPATCH_ONE);
+	cmap_dispatch(cmap_handle, CS_DISPATCH_ONE);
 	return 0;
 }
 
@@ -381,8 +346,7 @@ static void _cs_quorum_notification(quorum_handle_t handle,
 }
 
 static int
-_cs_quorum_dispatch(hdb_handle_t handle,
-	int fd,	int revents, void *data)
+_cs_quorum_dispatch(int fd, int revents, void *data)
 {
 	quorum_dispatch(quorum_handle, CS_DISPATCH_ONE);
 	return 0;
@@ -392,21 +356,27 @@ static void
 _cs_quorum_init(void)
 {
 	cs_error_t rc;
+	uint32_t quorum_type;
 	int fd;
 
 	quorum_callbacks_t quorum_callbacks = {
 		.quorum_notify_fn = _cs_quorum_notification,
 	};
 
-	rc = quorum_initialize (&quorum_handle, &quorum_callbacks);
+	rc = quorum_initialize (&quorum_handle, &quorum_callbacks,
+			        &quorum_type);
 	if (rc != CS_OK) {
-		syslog(LOG_ERR, "Could not connect to corosync(quorum)");
+		qb_log(LOG_ERR, "Could not connect to corosync(quorum)");
 		return;
 	}
 	quorum_fd_get(quorum_handle, &fd);
-	poll_dispatch_add (poll_handle, fd, POLLIN|POLLNVAL, NULL,
+	qb_loop_poll_add(main_loop, QB_LOOP_MED, fd, POLLIN|POLLNVAL, NULL,
 		_cs_quorum_dispatch);
-	quorum_trackstart(quorum_handle, CS_TRACK_CHANGES);
+	rc = quorum_trackstart(quorum_handle, CS_TRACK_CHANGES);
+	if (rc != CS_OK) {
+		qb_log(LOG_ERR, "Could not start tracking");
+		return;
+	}
 }
 
 static void
@@ -424,14 +394,7 @@ static void
 _cs_dbus_auto_flush(void)
 {
 	dbus_connection_ref(db);
-	while (dbus_connection_get_dispatch_status(db) == DBUS_DISPATCH_DATA_REMAINS) {
-		dbus_connection_dispatch(db);
-	}
-
-	while (dbus_connection_has_messages_to_send(db)) {
-		dbus_connection_flush(db);
-	}
-
+	dbus_connection_read_write(db, 500);
 	dbus_connection_unref(db);
 }
 
@@ -454,10 +417,9 @@ static void
 _cs_dbus_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 {
 	DBusMessage *msg = NULL;
-	int ret = -1;
 
 	if (err_set) {
-		syslog (LOG_ERR, "%s\n", _err);
+		qb_log(LOG_ERR, "%s", _err);
 		err_set = 0;
 	}
 
@@ -477,7 +439,7 @@ _cs_dbus_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 	if (!(msg = dbus_message_new_signal(DBUS_CS_PATH,
 					    DBUS_CS_IFACE,
 					    "QuorumStateChange"))) {
-		syslog (LOG_ERR, "%s(%d) error\n", __func__, __LINE__);
+		qb_log(LOG_ERR, "error creating dbus signal");
 		goto out_unlock;
 	}
 
@@ -486,19 +448,16 @@ _cs_dbus_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 			DBUS_TYPE_UINT32, &nodeid,
 			DBUS_TYPE_STRING, &state,
 			DBUS_TYPE_INVALID)) {
-		syslog (LOG_ERR, "%s(%d) error\n", __func__, __LINE__);
+		qb_log(LOG_ERR, "error adding args to quorum signal");
 		goto out_unlock;
 	}
 
 	dbus_connection_send(db, msg, NULL);
-	ret = 0;
 
 out_unlock:
-	if (ret == -1) {
-		syslog (LOG_ERR, "%s() error\n", __func__);
-	}
-	if (msg)
+	if (msg) {
 		dbus_message_unref(msg);
+	}
 out_free:
 	return;
 }
@@ -507,10 +466,9 @@ static void
 _cs_dbus_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip)
 {
 	DBusMessage *msg = NULL;
-	int ret = -1;
 
 	if (err_set) {
-		syslog (LOG_ERR, "%s\n", _err);
+		qb_log(LOG_ERR, "%s", _err);
 		err_set = 0;
 	}
 
@@ -530,7 +488,7 @@ _cs_dbus_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	if (!(msg = dbus_message_new_signal(DBUS_CS_PATH,
 					    DBUS_CS_IFACE,
 					    "NodeStateChange"))) {
-		syslog (LOG_ERR, "%s(%d) error\n", __func__, __LINE__);
+		qb_log(LOG_ERR, "error creating NodeStateChange signal");
 		goto out_unlock;
 	}
 
@@ -540,19 +498,16 @@ _cs_dbus_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 			DBUS_TYPE_STRING, &ip,
 			DBUS_TYPE_STRING, &state,
 			DBUS_TYPE_INVALID)) {
-		syslog (LOG_ERR, "%s(%d) error\n", __func__, __LINE__);
+		qb_log(LOG_ERR, "error adding args to NodeStateChange signal");
 		goto out_unlock;
 	}
 
 	dbus_connection_send(db, msg, NULL);
-	ret = 0;
 
 out_unlock:
-	if (ret == -1) {
-		syslog (LOG_ERR, "%s() error\n", __func__);
-	}
-	if (msg)
+	if (msg) {
 		dbus_message_unref(msg);
+	}
 out_free:
 	return;
 }
@@ -561,10 +516,9 @@ static void
 _cs_dbus_application_connection_event(char *nodename, uint32_t nodeid, char *app_name, const char *state)
 {
 	DBusMessage *msg = NULL;
-	int ret = -1;
 
 	if (err_set) {
-		syslog (LOG_ERR, "%s\n", _err);
+		qb_log(LOG_ERR, "%s", _err);
 		err_set = 0;
 	}
 
@@ -584,7 +538,7 @@ _cs_dbus_application_connection_event(char *nodename, uint32_t nodeid, char *app
 	if (!(msg = dbus_message_new_signal(DBUS_CS_PATH,
 				DBUS_CS_IFACE,
 				"ConnectionStateChange"))) {
-		syslog (LOG_ERR, "%s(%d) error\n", __func__, __LINE__);
+		qb_log(LOG_ERR, "error creating ConnectionStateChange signal");
 		goto out_unlock;
 	}
 
@@ -594,16 +548,66 @@ _cs_dbus_application_connection_event(char *nodename, uint32_t nodeid, char *app
 			DBUS_TYPE_STRING, &app_name,
 			DBUS_TYPE_STRING, &state,
 			DBUS_TYPE_INVALID)) {
-		syslog (LOG_ERR, "%s(%d) error\n", __func__, __LINE__);
+		qb_log(LOG_ERR, "error adding args to ConnectionStateChange signal");
 		goto out_unlock;
 	}
 
 	dbus_connection_send(db, msg, NULL);
-	ret = 0;
 
 out_unlock:
-	if (msg)
+	if (msg) {
 		dbus_message_unref(msg);
+	}
+out_free:
+	return;
+}
+
+static void
+_cs_dbus_rrp_faulty_event(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state)
+{
+	DBusMessage *msg = NULL;
+
+	if (err_set) {
+		qb_log(LOG_ERR, "%s", _err);
+		err_set = 0;
+	}
+
+	if (!db) {
+		goto out_free;
+	}
+
+	if (dbus_connection_get_is_connected(db) != TRUE) {
+		err_set = 1;
+		snprintf(_err, sizeof(_err), "DBus connection lost");
+		_cs_dbus_release();
+		goto out_unlock;
+	}
+
+	_cs_dbus_auto_flush();
+
+	if (!(msg = dbus_message_new_signal(DBUS_CS_PATH,
+					    DBUS_CS_IFACE,
+					    "QuorumStateChange"))) {
+		qb_log(LOG_ERR, "error creating dbus signal");
+		goto out_unlock;
+	}
+
+	if (!dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &nodename,
+			DBUS_TYPE_UINT32, &nodeid,
+			DBUS_TYPE_UINT32, &iface_no,
+			DBUS_TYPE_STRING, &state,
+			DBUS_TYPE_INVALID)) {
+		qb_log(LOG_ERR, "error adding args to rrp signal");
+		goto out_unlock;
+	}
+
+	dbus_connection_send(db, msg, NULL);
+
+out_unlock:
+	if (msg) {
+		dbus_message_unref(msg);
+	}
 out_free:
 	return;
 }
@@ -635,6 +639,9 @@ _cs_dbus_init(void)
 		_cs_dbus_node_quorum_event;
 	notifiers[num_notifiers].application_connection_fn =
 		_cs_dbus_application_connection_event;
+	notifiers[num_notifiers].rrp_faulty_fn =
+		_cs_dbus_rrp_faulty_event;
+
 	num_notifiers++;
 }
 
@@ -671,7 +678,7 @@ static netsnmp_session *snmp_init (const char *target)
 		NULL, NULL);
 
 	if (session == NULL) {
-		syslog(LOG_ERR, "Could not create snmp transport");
+		qb_log(LOG_ERR, 0, "Could not create snmp transport");
 	}
 	return (session);
 }
@@ -702,13 +709,13 @@ _cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	netsnmp_pdu *trap_pdu;
 	netsnmp_session *session = snmp_init (snmp_manager);
 	if (session == NULL) {
-		syslog (LOG_NOTICE, "Failed to init SNMP session.\n");
+		qb_log(LOG_NOTICE, "Failed to init SNMP session.");
 		return ;
 	}
 
 	trap_pdu = snmp_pdu_create (SNMP_MSG_TRAP2);
 	if (!trap_pdu) {
-		syslog (LOG_NOTICE, "Failed to create SNMP notification.\n");
+		qb_log(LOG_NOTICE, "Failed to create SNMP notification.");
 		return ;
 	}
 
@@ -727,7 +734,7 @@ _cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	ret = snmp_send (session, trap_pdu);
 	if (ret == 0) {
 		/* error */
-		syslog (LOG_ERR, "Could not send SNMP trap");
+		qb_log(LOG_ERR, "Could not send SNMP trap");
 		snmp_free_pdu (trap_pdu);
 	}
 }
@@ -745,20 +752,20 @@ _cs_snmp_node_quorum_event(char *nodename, uint32_t nodeid,
 	netsnmp_pdu *trap_pdu;
 	netsnmp_session *session = snmp_init (snmp_manager);
 	if (session == NULL) {
-		syslog (LOG_NOTICE, "Failed to init SNMP session.\n");
+		qb_log(LOG_NOTICE, "Failed to init SNMP session.");
 		return ;
 	}
 
 	trap_pdu = snmp_pdu_create (SNMP_MSG_TRAP2);
 	if (!trap_pdu) {
-		syslog (LOG_NOTICE, "Failed to create SNMP notification.\n");
+		qb_log(LOG_NOTICE, "Failed to create SNMP notification.");
 		return ;
 	}
 
 	/* send uptime */
 	sprintf (csysuptime, "%ld", now);
 	snmp_add_var (trap_pdu, sysuptime_oid, sizeof (sysuptime_oid) / sizeof (oid), 't', csysuptime);
-	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_NODE);
+	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_QUORUM);
 
 	/* Add extries to the trap */
 	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
@@ -769,11 +776,53 @@ _cs_snmp_node_quorum_event(char *nodename, uint32_t nodeid,
 	ret = snmp_send (session, trap_pdu);
 	if (ret == 0) {
 		/* error */
-		syslog (LOG_ERR, "Could not send SNMP trap");
+		qb_log(LOG_ERR, "Could not send SNMP trap");
 		snmp_free_pdu (trap_pdu);
 	}
 }
 
+static void
+_cs_snmp_rrp_faulty_event(char *nodename, uint32_t nodeid,
+		uint32_t iface_no, const char *state)
+{
+	int ret;
+	char csysuptime[20];
+	static oid snmptrap_oid[]  = { 1,3,6,1,6,3,1,1,4,1,0 };
+	static oid sysuptime_oid[] = { 1,3,6,1,2,1,1,3,0 };
+	time_t now = time (NULL);
+
+	netsnmp_pdu *trap_pdu;
+	netsnmp_session *session = snmp_init (snmp_manager);
+	if (session == NULL) {
+		qb_log(LOG_NOTICE, "Failed to init SNMP session.");
+		return ;
+	}
+
+	trap_pdu = snmp_pdu_create (SNMP_MSG_TRAP2);
+	if (!trap_pdu) {
+		qb_log(LOG_NOTICE, "Failed to create SNMP notification.");
+		return ;
+	}
+
+	/* send uptime */
+	sprintf (csysuptime, "%ld", now);
+	snmp_add_var (trap_pdu, sysuptime_oid, sizeof (sysuptime_oid) / sizeof (oid), 't', csysuptime);
+	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_RRP);
+
+	/* Add extries to the trap */
+	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
+	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
+	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_RRP_IFACE_NO, (void*)&iface_no, sizeof (iface_no));
+	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_RRP_STATUS, (void*)state, strlen (state));
+
+	/* Send and cleanup */
+	ret = snmp_send (session, trap_pdu);
+	if (ret == 0) {
+		/* error */
+		qb_log(LOG_ERR, "Could not send SNMP trap");
+		snmp_free_pdu (trap_pdu);
+	}
+}
 
 static void
 _cs_snmp_init(void)
@@ -784,9 +833,11 @@ _cs_snmp_init(void)
 
 	notifiers[num_notifiers].node_membership_fn =
 		_cs_snmp_node_membership_event;
-	notifiers[num_notifiers].node_quorum_fn = 
+	notifiers[num_notifiers].node_quorum_fn =
 		_cs_snmp_node_quorum_event;
 	notifiers[num_notifiers].application_connection_fn = NULL;
+	notifiers[num_notifiers].rrp_faulty_fn =
+		_cs_snmp_rrp_faulty_event;
 	num_notifiers++;
 }
 
@@ -795,16 +846,16 @@ _cs_snmp_init(void)
 static void
 _cs_syslog_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip)
 {
-	syslog (LOG_NOTICE, "%s[%d] ip:%s %s\n", nodename, nodeid, ip, state);
+	qb_log(LOG_NOTICE, "%s[%d] ip:%s %s", nodename, nodeid, ip, state);
 }
 
 static void
 _cs_syslog_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 {
 	if (strcmp(state, "quorate") == 0) {
-		syslog (LOG_NOTICE, "%s[%d] is now %s\n", nodename, nodeid, state);
+		qb_log(LOG_NOTICE, "%s[%d] is now %s", nodename, nodeid, state);
 	} else {
-		syslog (LOG_NOTICE, "%s[%d] has lost quorum\n", nodename, nodeid);
+		qb_log(LOG_NOTICE, "%s[%d] has lost quorum", nodename, nodeid);
 	}
 }
 
@@ -812,10 +863,16 @@ static void
 _cs_syslog_application_connection_event(char *nodename, uint32_t nodeid, char* app_name, const char *state)
 {
 	if (strcmp(state, "connected") == 0) {
-		syslog (LOG_ERR, "%s[%d] %s is now %s to corosync\n", nodename, nodeid, app_name, state);
+		qb_log(LOG_NOTICE, "%s[%d] %s is now %s to corosync", nodename, nodeid, app_name, state);
 	} else {
-		syslog (LOG_ERR, "%s[%d] %s is now %s from corosync\n", nodename, nodeid, app_name, state);
+		qb_log(LOG_NOTICE, "%s[%d] %s is now %s from corosync", nodename, nodeid, app_name, state);
 	}
+}
+
+static void
+_cs_syslog_rrp_faulty_event(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state)
+{
+	qb_log(LOG_NOTICE, "%s[%d] interface %u is now %s", nodename, nodeid, iface_no, state);
 }
 
 static void
@@ -890,96 +947,114 @@ _cs_application_connection_event(char *app_name, const char *state)
 }
 
 static void
-sig_exit_handler (int num)
+_cs_rrp_faulty_event(uint32_t iface_no, const char *state)
 {
-	poll_stop(poll_handle);
+	int i;
+	char *nodename;
+	uint32_t nodeid;
+
+	_cs_local_node_info_get(&nodename, &nodeid);
+
+	for (i = 0; i < num_notifiers; i++) {
+		if (notifiers[i].application_connection_fn) {
+			notifiers[i].rrp_faulty_fn(nodename, nodeid, iface_no, state);
+		}
+	}
+}
+
+static int32_t
+sig_exit_handler(int32_t num, void *data)
+{
+	qb_loop_stop(main_loop);
+	return 0;
 }
 
 static void
-_cs_confdb_init(void)
+_cs_cmap_init(void)
 {
-	hdb_handle_t obj_handle;
 	cs_error_t rc;
-	int conf_fd = 0;
+	int cmap_fd = 0;
+	cmap_track_handle_t track_handle;
 
-	rc = confdb_initialize (&confdb_handle, &callbacks);
+	rc = cmap_initialize (&cmap_handle);
 	if (rc != CS_OK) {
-		syslog (LOG_ERR, "Failed to initialize the objdb API. Error %d\n", rc);
+		qb_log(LOG_ERR, "Failed to initialize the cmap API. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
-	confdb_fd_get(confdb_handle, &conf_fd);
+	cmap_fd_get(cmap_handle, &cmap_fd);
 
-	poll_dispatch_add (poll_handle, conf_fd, POLLIN|POLLNVAL, NULL,
-		_cs_confdb_dispatch);
+	qb_loop_poll_add(main_loop, QB_LOOP_MED, cmap_fd, POLLIN|POLLNVAL, NULL,
+		_cs_cmap_dispatch);
 
-	rc = _cs_confdb_find_object (confdb_handle, "runtime.connections.",
-		&obj_handle);
+	rc = cmap_track_add(cmap_handle, "runtime.connections.",
+			CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_PREFIX,
+			_cs_cmap_connections_key_changed,
+			NULL,
+			&track_handle);
 	if (rc != CS_OK) {
-		syslog (LOG_ERR,
-			"Failed to find the connections object. Error %d\n", rc);
-		exit (EXIT_FAILURE);
-	}
-
-	rc = confdb_track_changes (confdb_handle, obj_handle,
-		CONFDB_TRACK_DEPTH_ONE);
-	if (rc != CS_OK) {
-		syslog (LOG_ERR,
-			"Failed to track the connections object. Error %d\n", rc);
-		exit (EXIT_FAILURE);
-	}
-	rc = _cs_confdb_find_object(confdb_handle,
-		"runtime.totem.pg.mrp.srp.members.", &obj_handle);
-	if (rc != CS_OK) {
-		syslog (LOG_ERR, "Failed to find the object. Error %d\n", rc);
+		qb_log(LOG_ERR,
+			"Failed to track the connections key. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 
-	rc = confdb_track_changes(confdb_handle,
-		obj_handle, CONFDB_TRACK_DEPTH_RECURSIVE);
+	rc = cmap_track_add(cmap_handle, "runtime.totem.pg.mrp.srp.members.",
+			CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
+			_cs_cmap_members_key_changed,
+			NULL,
+			&track_handle);
 	if (rc != CS_OK) {
-		syslog (LOG_ERR,
-			"Failed to track the object. Error %d\n", rc);
+		qb_log(LOG_ERR,
+			"Failed to track the members key. Error %d", rc);
+		exit (EXIT_FAILURE);
+	}
+	rc = cmap_track_add(cmap_handle, "runtime.totem.pg.mrp.rrp.",
+			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
+			_cs_cmap_rrp_faulty_key_changed,
+			NULL,
+			&track_handle);
+	if (rc != CS_OK) {
+		qb_log(LOG_ERR,
+			"Failed to track the rrp key. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 }
 
 static void
-_cs_confdb_finalize(void)
+_cs_cmap_finalize(void)
 {
-	confdb_stop_track_changes (confdb_handle);
-	confdb_finalize (confdb_handle);
+	cmap_finalize (cmap_handle);
 }
 
 static void
 _cs_check_config(void)
 {
-	if (conf[CS_NTF_LOG] == 0 &&
-		conf[CS_NTF_STDOUT] == 0 &&
-		conf[CS_NTF_SNMP] == 0 &&
-		conf[CS_NTF_DBUS] == 0) {
-		syslog(LOG_ERR, "no event type enabled, see corosync-notifyd -h, exiting.");
+	if (conf[CS_NTF_LOG] == QB_FALSE &&
+		conf[CS_NTF_STDOUT] == QB_FALSE &&
+		conf[CS_NTF_SNMP] == QB_FALSE &&
+		conf[CS_NTF_DBUS] == QB_FALSE) {
+		qb_log(LOG_ERR, "no event type enabled, see corosync-notifyd -h, exiting.");
 		exit(EXIT_FAILURE);
 	}
 
 #ifndef ENABLE_SNMP
 	if (conf[CS_NTF_SNMP]) {
-		syslog(LOG_ERR, "Not compiled with SNMP support enabled, exiting.");
+		qb_log(LOG_ERR, "Not compiled with SNMP support enabled, exiting.");
 		exit(EXIT_FAILURE);
 	}
 #endif
 #ifndef HAVE_DBUS
 	if (conf[CS_NTF_DBUS]) {
-		syslog(LOG_ERR, "Not compiled with DBus support enabled, exiting.");
+		qb_log(LOG_ERR, "Not compiled with DBus support enabled, exiting.");
 		exit(EXIT_FAILURE);
 	}
 #endif
 
 	if (conf[CS_NTF_STDOUT] && !conf[CS_NTF_FG]) {
-		syslog(LOG_ERR, "configured to print to stdout and run in the background, exiting");
+		qb_log(LOG_ERR, "configured to print to stdout and run in the background, exiting");
 		exit(EXIT_FAILURE);
 	}
 	if (conf[CS_NTF_SNMP] && conf[CS_NTF_DBUS]) {
-		syslog(LOG_ERR, "configured to send snmp traps and dbus signals - are you sure?.");
+		qb_log(LOG_ERR, "configured to send snmp traps and dbus signals - are you sure?.");
 	}
 }
 
@@ -1001,35 +1076,35 @@ main(int argc, char *argv[])
 {
 	int ch;
 
-	conf[CS_NTF_FG] = 0;
-	conf[CS_NTF_LOG] = 0;
-	conf[CS_NTF_STDOUT] = 0;
-	conf[CS_NTF_SNMP] = 0;
-	conf[CS_NTF_DBUS] = 0;
+	conf[CS_NTF_FG] = QB_FALSE;
+	conf[CS_NTF_LOG] = QB_FALSE;
+	conf[CS_NTF_STDOUT] = QB_FALSE;
+	conf[CS_NTF_SNMP] = QB_FALSE;
+	conf[CS_NTF_DBUS] = QB_FALSE;
 
 	while ((ch = getopt (argc, argv, "floshdm:")) != EOF) {
 		switch (ch) {
 			case 'f':
-				conf[CS_NTF_FG] = 1;
+				conf[CS_NTF_FG] = QB_TRUE;
 				break;
 			case 'l':
-				conf[CS_NTF_LOG] = 1;
+				conf[CS_NTF_LOG] = QB_TRUE;
 				break;
 			case 'm':
-				conf[CS_NTF_SNMP] = 1;
+				conf[CS_NTF_SNMP] = QB_TRUE;
 				strncpy(snmp_manager_buf, optarg, sizeof (snmp_manager_buf));
 				snmp_manager_buf[sizeof (snmp_manager_buf) - 1] = '\0';
 				snmp_manager = snmp_manager_buf;
 				break;
 			case 'o':
-				conf[CS_NTF_LOG] = 1;
-				conf[CS_NTF_STDOUT] = 1;
+				conf[CS_NTF_LOG] = QB_TRUE;
+				conf[CS_NTF_STDOUT] = QB_TRUE;
 				break;
 			case 's':
-				conf[CS_NTF_SNMP] = 1;
+				conf[CS_NTF_SNMP] = QB_TRUE;
 				break;
 			case 'd':
-				conf[CS_NTF_DBUS] = 1;
+				conf[CS_NTF_DBUS] = QB_TRUE;
 				break;
 			case 'h':
 			default:
@@ -1038,10 +1113,12 @@ main(int argc, char *argv[])
 		}
 	}
 
+	qb_log_init("notifyd", LOG_DAEMON, LOG_INFO);
+
 	if (conf[CS_NTF_STDOUT]) {
-		openlog(NULL, LOG_PID|LOG_PERROR, LOG_DAEMON);
-	} else {
-		openlog(NULL, LOG_PID, LOG_DAEMON);
+		qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
+			  QB_LOG_FILTER_FILE, "*", LOG_DEBUG);
+		qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, conf[CS_NTF_STDOUT]);
 	}
 	_cs_check_config();
 
@@ -1061,12 +1138,14 @@ main(int argc, char *argv[])
 			_cs_syslog_node_quorum_event;
 		notifiers[num_notifiers].application_connection_fn =
 			_cs_syslog_application_connection_event;
+		notifiers[num_notifiers].rrp_faulty_fn =
+			_cs_syslog_rrp_faulty_event;
 		num_notifiers++;
 	}
 
-	poll_handle = poll_create();
+	main_loop = qb_loop_create();
 
-	_cs_confdb_init();
+	_cs_cmap_init();
 	_cs_quorum_init();
 
 #ifdef HAVE_DBUS
@@ -1081,11 +1160,26 @@ main(int argc, char *argv[])
 	}
 #endif /* ENABLE_SNMP */
 
-	(void)signal (SIGINT, sig_exit_handler);
-	(void)signal (SIGQUIT, sig_exit_handler);
-	(void)signal (SIGTERM, sig_exit_handler);
+	qb_loop_signal_add(main_loop,
+			   QB_LOOP_HIGH,
+			   SIGINT,
+			   NULL,
+			   sig_exit_handler,
+			   NULL);
+	qb_loop_signal_add(main_loop,
+			   QB_LOOP_HIGH,
+			   SIGQUIT,
+			   NULL,
+			   sig_exit_handler,
+			   NULL);
+	qb_loop_signal_add(main_loop,
+			   QB_LOOP_HIGH,
+			   SIGTERM,
+			   NULL,
+			   sig_exit_handler,
+			   NULL);
 
-	poll_run(poll_handle);
+	qb_loop_run(main_loop);
 
 #ifdef HAVE_DBUS
 	if (conf[CS_NTF_DBUS]) {
@@ -1094,7 +1188,7 @@ main(int argc, char *argv[])
 #endif /* HAVE_DBUS */
 
 	_cs_quorum_finalize();
-	_cs_confdb_finalize();
+	_cs_cmap_finalize();
 
 	return 0;
 }
