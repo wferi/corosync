@@ -553,7 +553,7 @@ static int nullcheck_strcmp(const char* left, const char *right)
 {
 	if (!left && right)
 		return -1;
-	if (left && ! right)
+	if (left && !right)
 		return 1;
 
 	if (!left && !right)
@@ -1040,8 +1040,7 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
 		    i < num_interfaces; i++, addr_buf += TOTEMIP_ADDRLEN) {
 			memcpy(addr_buf, node_ifs[i].addr, TOTEMIP_ADDRLEN);
 		}
-	}
-	else {
+	} else {
 		res_lib_cfg_get_node_addrs->header.error = CS_ERR_NOT_EXIST;
 	}
 	api->ipc_response_send(conn, res_lib_cfg_get_node_addrs, res_lib_cfg_get_node_addrs->header.size);

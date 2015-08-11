@@ -154,6 +154,9 @@ am_corosync_OBJECTS = corosync-vsf_ykd.$(OBJEXT) \
 	corosync-logconfig.$(OBJEXT) corosync-totemconfig.$(OBJEXT) \
 	$(am__objects_3) $(am__objects_4)
 corosync_OBJECTS = $(am_corosync_OBJECTS)
+corosync_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(corosync_CFLAGS) \
+	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/include/corosync
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -339,6 +342,8 @@ sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 statgrab_CFLAGS = @statgrab_CFLAGS@
 statgrab_LIBS = @statgrab_LIBS@
+statgrabge090_CFLAGS = @statgrabge090_CFLAGS@
+statgrabge090_LIBS = @statgrabge090_LIBS@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
@@ -358,12 +363,15 @@ lib_LTLIBRARIES = libtotem_pg.la
 libtotem_pg_la_SOURCES = $(TOTEM_SRC)
 libtotem_pg_la_CFLAGS = $(nss_CFLAGS) $(rdmacm_CFLAGS) $(ibverbs_CFLAGS)
 libtotem_pg_la_LDFLAGS = -version-number $(subst .,:,$(SONAME))
-libtotem_pg_la_LIBADD = -lpthread $(LIBQB_LIBS) $(nss_LIBS) $(rdmacm_LIBS) $(ibverbs_LIBS)
+libtotem_pg_la_LIBADD = -lpthread $(LIBQB_LIBS) $(nss_LIBS) \
+			  $(rdmacm_LIBS) $(ibverbs_LIBS)
+
 corosync_SOURCES = vsf_ykd.c coroparse.c vsf_quorum.c sync.c logsys.c \
 	cfg.c cmap.c cpg.c pload.c votequorum.c util.c schedwrk.c \
 	main.c apidef.c quorum.c icmap.c timer.c ipc_glue.c service.c \
 	logconfig.c totemconfig.c $(am__append_2) $(am__append_3)
 corosync_CPPFLAGS = -DLOGCONFIG_USE_ICMAP=1
+corosync_CFLAGS = $(statgrab_CFLAGS)
 corosync_LDADD = libtotem_pg.la ../common_lib/libcorosync_common.la \
 			  $(LIBQB_LIBS) $(statgrab_LIBS)
 
@@ -480,7 +488,7 @@ clean-sbinPROGRAMS:
 	rm -f $$list
 corosync$(EXEEXT): $(corosync_OBJECTS) $(corosync_DEPENDENCIES) 
 	@rm -f corosync$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(corosync_OBJECTS) $(corosync_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(corosync_LINK) $(corosync_OBJECTS) $(corosync_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -627,372 +635,372 @@ libtotem_pg_la-totemiba.lo: totemiba.c
 @am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libtotem_pg_la_CFLAGS) $(CFLAGS) -c -o libtotem_pg_la-totemiba.lo `test -f 'totemiba.c' || echo '$(srcdir)/'`totemiba.c
 
 corosync-vsf_ykd.o: vsf_ykd.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-vsf_ykd.o -MD -MP -MF $(DEPDIR)/corosync-vsf_ykd.Tpo -c -o corosync-vsf_ykd.o `test -f 'vsf_ykd.c' || echo '$(srcdir)/'`vsf_ykd.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-vsf_ykd.o -MD -MP -MF $(DEPDIR)/corosync-vsf_ykd.Tpo -c -o corosync-vsf_ykd.o `test -f 'vsf_ykd.c' || echo '$(srcdir)/'`vsf_ykd.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-vsf_ykd.Tpo $(DEPDIR)/corosync-vsf_ykd.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='vsf_ykd.c' object='corosync-vsf_ykd.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-vsf_ykd.o `test -f 'vsf_ykd.c' || echo '$(srcdir)/'`vsf_ykd.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-vsf_ykd.o `test -f 'vsf_ykd.c' || echo '$(srcdir)/'`vsf_ykd.c
 
 corosync-vsf_ykd.obj: vsf_ykd.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-vsf_ykd.obj -MD -MP -MF $(DEPDIR)/corosync-vsf_ykd.Tpo -c -o corosync-vsf_ykd.obj `if test -f 'vsf_ykd.c'; then $(CYGPATH_W) 'vsf_ykd.c'; else $(CYGPATH_W) '$(srcdir)/vsf_ykd.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-vsf_ykd.obj -MD -MP -MF $(DEPDIR)/corosync-vsf_ykd.Tpo -c -o corosync-vsf_ykd.obj `if test -f 'vsf_ykd.c'; then $(CYGPATH_W) 'vsf_ykd.c'; else $(CYGPATH_W) '$(srcdir)/vsf_ykd.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-vsf_ykd.Tpo $(DEPDIR)/corosync-vsf_ykd.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='vsf_ykd.c' object='corosync-vsf_ykd.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-vsf_ykd.obj `if test -f 'vsf_ykd.c'; then $(CYGPATH_W) 'vsf_ykd.c'; else $(CYGPATH_W) '$(srcdir)/vsf_ykd.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-vsf_ykd.obj `if test -f 'vsf_ykd.c'; then $(CYGPATH_W) 'vsf_ykd.c'; else $(CYGPATH_W) '$(srcdir)/vsf_ykd.c'; fi`
 
 corosync-coroparse.o: coroparse.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-coroparse.o -MD -MP -MF $(DEPDIR)/corosync-coroparse.Tpo -c -o corosync-coroparse.o `test -f 'coroparse.c' || echo '$(srcdir)/'`coroparse.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-coroparse.o -MD -MP -MF $(DEPDIR)/corosync-coroparse.Tpo -c -o corosync-coroparse.o `test -f 'coroparse.c' || echo '$(srcdir)/'`coroparse.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-coroparse.Tpo $(DEPDIR)/corosync-coroparse.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='coroparse.c' object='corosync-coroparse.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-coroparse.o `test -f 'coroparse.c' || echo '$(srcdir)/'`coroparse.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-coroparse.o `test -f 'coroparse.c' || echo '$(srcdir)/'`coroparse.c
 
 corosync-coroparse.obj: coroparse.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-coroparse.obj -MD -MP -MF $(DEPDIR)/corosync-coroparse.Tpo -c -o corosync-coroparse.obj `if test -f 'coroparse.c'; then $(CYGPATH_W) 'coroparse.c'; else $(CYGPATH_W) '$(srcdir)/coroparse.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-coroparse.obj -MD -MP -MF $(DEPDIR)/corosync-coroparse.Tpo -c -o corosync-coroparse.obj `if test -f 'coroparse.c'; then $(CYGPATH_W) 'coroparse.c'; else $(CYGPATH_W) '$(srcdir)/coroparse.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-coroparse.Tpo $(DEPDIR)/corosync-coroparse.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='coroparse.c' object='corosync-coroparse.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-coroparse.obj `if test -f 'coroparse.c'; then $(CYGPATH_W) 'coroparse.c'; else $(CYGPATH_W) '$(srcdir)/coroparse.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-coroparse.obj `if test -f 'coroparse.c'; then $(CYGPATH_W) 'coroparse.c'; else $(CYGPATH_W) '$(srcdir)/coroparse.c'; fi`
 
 corosync-vsf_quorum.o: vsf_quorum.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-vsf_quorum.o -MD -MP -MF $(DEPDIR)/corosync-vsf_quorum.Tpo -c -o corosync-vsf_quorum.o `test -f 'vsf_quorum.c' || echo '$(srcdir)/'`vsf_quorum.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-vsf_quorum.o -MD -MP -MF $(DEPDIR)/corosync-vsf_quorum.Tpo -c -o corosync-vsf_quorum.o `test -f 'vsf_quorum.c' || echo '$(srcdir)/'`vsf_quorum.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-vsf_quorum.Tpo $(DEPDIR)/corosync-vsf_quorum.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='vsf_quorum.c' object='corosync-vsf_quorum.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-vsf_quorum.o `test -f 'vsf_quorum.c' || echo '$(srcdir)/'`vsf_quorum.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-vsf_quorum.o `test -f 'vsf_quorum.c' || echo '$(srcdir)/'`vsf_quorum.c
 
 corosync-vsf_quorum.obj: vsf_quorum.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-vsf_quorum.obj -MD -MP -MF $(DEPDIR)/corosync-vsf_quorum.Tpo -c -o corosync-vsf_quorum.obj `if test -f 'vsf_quorum.c'; then $(CYGPATH_W) 'vsf_quorum.c'; else $(CYGPATH_W) '$(srcdir)/vsf_quorum.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-vsf_quorum.obj -MD -MP -MF $(DEPDIR)/corosync-vsf_quorum.Tpo -c -o corosync-vsf_quorum.obj `if test -f 'vsf_quorum.c'; then $(CYGPATH_W) 'vsf_quorum.c'; else $(CYGPATH_W) '$(srcdir)/vsf_quorum.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-vsf_quorum.Tpo $(DEPDIR)/corosync-vsf_quorum.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='vsf_quorum.c' object='corosync-vsf_quorum.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-vsf_quorum.obj `if test -f 'vsf_quorum.c'; then $(CYGPATH_W) 'vsf_quorum.c'; else $(CYGPATH_W) '$(srcdir)/vsf_quorum.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-vsf_quorum.obj `if test -f 'vsf_quorum.c'; then $(CYGPATH_W) 'vsf_quorum.c'; else $(CYGPATH_W) '$(srcdir)/vsf_quorum.c'; fi`
 
 corosync-sync.o: sync.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-sync.o -MD -MP -MF $(DEPDIR)/corosync-sync.Tpo -c -o corosync-sync.o `test -f 'sync.c' || echo '$(srcdir)/'`sync.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-sync.o -MD -MP -MF $(DEPDIR)/corosync-sync.Tpo -c -o corosync-sync.o `test -f 'sync.c' || echo '$(srcdir)/'`sync.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-sync.Tpo $(DEPDIR)/corosync-sync.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sync.c' object='corosync-sync.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-sync.o `test -f 'sync.c' || echo '$(srcdir)/'`sync.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-sync.o `test -f 'sync.c' || echo '$(srcdir)/'`sync.c
 
 corosync-sync.obj: sync.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-sync.obj -MD -MP -MF $(DEPDIR)/corosync-sync.Tpo -c -o corosync-sync.obj `if test -f 'sync.c'; then $(CYGPATH_W) 'sync.c'; else $(CYGPATH_W) '$(srcdir)/sync.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-sync.obj -MD -MP -MF $(DEPDIR)/corosync-sync.Tpo -c -o corosync-sync.obj `if test -f 'sync.c'; then $(CYGPATH_W) 'sync.c'; else $(CYGPATH_W) '$(srcdir)/sync.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-sync.Tpo $(DEPDIR)/corosync-sync.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='sync.c' object='corosync-sync.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-sync.obj `if test -f 'sync.c'; then $(CYGPATH_W) 'sync.c'; else $(CYGPATH_W) '$(srcdir)/sync.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-sync.obj `if test -f 'sync.c'; then $(CYGPATH_W) 'sync.c'; else $(CYGPATH_W) '$(srcdir)/sync.c'; fi`
 
 corosync-logsys.o: logsys.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-logsys.o -MD -MP -MF $(DEPDIR)/corosync-logsys.Tpo -c -o corosync-logsys.o `test -f 'logsys.c' || echo '$(srcdir)/'`logsys.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-logsys.o -MD -MP -MF $(DEPDIR)/corosync-logsys.Tpo -c -o corosync-logsys.o `test -f 'logsys.c' || echo '$(srcdir)/'`logsys.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-logsys.Tpo $(DEPDIR)/corosync-logsys.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='logsys.c' object='corosync-logsys.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-logsys.o `test -f 'logsys.c' || echo '$(srcdir)/'`logsys.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-logsys.o `test -f 'logsys.c' || echo '$(srcdir)/'`logsys.c
 
 corosync-logsys.obj: logsys.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-logsys.obj -MD -MP -MF $(DEPDIR)/corosync-logsys.Tpo -c -o corosync-logsys.obj `if test -f 'logsys.c'; then $(CYGPATH_W) 'logsys.c'; else $(CYGPATH_W) '$(srcdir)/logsys.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-logsys.obj -MD -MP -MF $(DEPDIR)/corosync-logsys.Tpo -c -o corosync-logsys.obj `if test -f 'logsys.c'; then $(CYGPATH_W) 'logsys.c'; else $(CYGPATH_W) '$(srcdir)/logsys.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-logsys.Tpo $(DEPDIR)/corosync-logsys.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='logsys.c' object='corosync-logsys.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-logsys.obj `if test -f 'logsys.c'; then $(CYGPATH_W) 'logsys.c'; else $(CYGPATH_W) '$(srcdir)/logsys.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-logsys.obj `if test -f 'logsys.c'; then $(CYGPATH_W) 'logsys.c'; else $(CYGPATH_W) '$(srcdir)/logsys.c'; fi`
 
 corosync-cfg.o: cfg.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-cfg.o -MD -MP -MF $(DEPDIR)/corosync-cfg.Tpo -c -o corosync-cfg.o `test -f 'cfg.c' || echo '$(srcdir)/'`cfg.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-cfg.o -MD -MP -MF $(DEPDIR)/corosync-cfg.Tpo -c -o corosync-cfg.o `test -f 'cfg.c' || echo '$(srcdir)/'`cfg.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-cfg.Tpo $(DEPDIR)/corosync-cfg.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cfg.c' object='corosync-cfg.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-cfg.o `test -f 'cfg.c' || echo '$(srcdir)/'`cfg.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-cfg.o `test -f 'cfg.c' || echo '$(srcdir)/'`cfg.c
 
 corosync-cfg.obj: cfg.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-cfg.obj -MD -MP -MF $(DEPDIR)/corosync-cfg.Tpo -c -o corosync-cfg.obj `if test -f 'cfg.c'; then $(CYGPATH_W) 'cfg.c'; else $(CYGPATH_W) '$(srcdir)/cfg.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-cfg.obj -MD -MP -MF $(DEPDIR)/corosync-cfg.Tpo -c -o corosync-cfg.obj `if test -f 'cfg.c'; then $(CYGPATH_W) 'cfg.c'; else $(CYGPATH_W) '$(srcdir)/cfg.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-cfg.Tpo $(DEPDIR)/corosync-cfg.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cfg.c' object='corosync-cfg.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-cfg.obj `if test -f 'cfg.c'; then $(CYGPATH_W) 'cfg.c'; else $(CYGPATH_W) '$(srcdir)/cfg.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-cfg.obj `if test -f 'cfg.c'; then $(CYGPATH_W) 'cfg.c'; else $(CYGPATH_W) '$(srcdir)/cfg.c'; fi`
 
 corosync-cmap.o: cmap.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-cmap.o -MD -MP -MF $(DEPDIR)/corosync-cmap.Tpo -c -o corosync-cmap.o `test -f 'cmap.c' || echo '$(srcdir)/'`cmap.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-cmap.o -MD -MP -MF $(DEPDIR)/corosync-cmap.Tpo -c -o corosync-cmap.o `test -f 'cmap.c' || echo '$(srcdir)/'`cmap.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-cmap.Tpo $(DEPDIR)/corosync-cmap.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cmap.c' object='corosync-cmap.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-cmap.o `test -f 'cmap.c' || echo '$(srcdir)/'`cmap.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-cmap.o `test -f 'cmap.c' || echo '$(srcdir)/'`cmap.c
 
 corosync-cmap.obj: cmap.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-cmap.obj -MD -MP -MF $(DEPDIR)/corosync-cmap.Tpo -c -o corosync-cmap.obj `if test -f 'cmap.c'; then $(CYGPATH_W) 'cmap.c'; else $(CYGPATH_W) '$(srcdir)/cmap.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-cmap.obj -MD -MP -MF $(DEPDIR)/corosync-cmap.Tpo -c -o corosync-cmap.obj `if test -f 'cmap.c'; then $(CYGPATH_W) 'cmap.c'; else $(CYGPATH_W) '$(srcdir)/cmap.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-cmap.Tpo $(DEPDIR)/corosync-cmap.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cmap.c' object='corosync-cmap.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-cmap.obj `if test -f 'cmap.c'; then $(CYGPATH_W) 'cmap.c'; else $(CYGPATH_W) '$(srcdir)/cmap.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-cmap.obj `if test -f 'cmap.c'; then $(CYGPATH_W) 'cmap.c'; else $(CYGPATH_W) '$(srcdir)/cmap.c'; fi`
 
 corosync-cpg.o: cpg.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-cpg.o -MD -MP -MF $(DEPDIR)/corosync-cpg.Tpo -c -o corosync-cpg.o `test -f 'cpg.c' || echo '$(srcdir)/'`cpg.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-cpg.o -MD -MP -MF $(DEPDIR)/corosync-cpg.Tpo -c -o corosync-cpg.o `test -f 'cpg.c' || echo '$(srcdir)/'`cpg.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-cpg.Tpo $(DEPDIR)/corosync-cpg.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cpg.c' object='corosync-cpg.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-cpg.o `test -f 'cpg.c' || echo '$(srcdir)/'`cpg.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-cpg.o `test -f 'cpg.c' || echo '$(srcdir)/'`cpg.c
 
 corosync-cpg.obj: cpg.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-cpg.obj -MD -MP -MF $(DEPDIR)/corosync-cpg.Tpo -c -o corosync-cpg.obj `if test -f 'cpg.c'; then $(CYGPATH_W) 'cpg.c'; else $(CYGPATH_W) '$(srcdir)/cpg.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-cpg.obj -MD -MP -MF $(DEPDIR)/corosync-cpg.Tpo -c -o corosync-cpg.obj `if test -f 'cpg.c'; then $(CYGPATH_W) 'cpg.c'; else $(CYGPATH_W) '$(srcdir)/cpg.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-cpg.Tpo $(DEPDIR)/corosync-cpg.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='cpg.c' object='corosync-cpg.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-cpg.obj `if test -f 'cpg.c'; then $(CYGPATH_W) 'cpg.c'; else $(CYGPATH_W) '$(srcdir)/cpg.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-cpg.obj `if test -f 'cpg.c'; then $(CYGPATH_W) 'cpg.c'; else $(CYGPATH_W) '$(srcdir)/cpg.c'; fi`
 
 corosync-pload.o: pload.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-pload.o -MD -MP -MF $(DEPDIR)/corosync-pload.Tpo -c -o corosync-pload.o `test -f 'pload.c' || echo '$(srcdir)/'`pload.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-pload.o -MD -MP -MF $(DEPDIR)/corosync-pload.Tpo -c -o corosync-pload.o `test -f 'pload.c' || echo '$(srcdir)/'`pload.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-pload.Tpo $(DEPDIR)/corosync-pload.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='pload.c' object='corosync-pload.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-pload.o `test -f 'pload.c' || echo '$(srcdir)/'`pload.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-pload.o `test -f 'pload.c' || echo '$(srcdir)/'`pload.c
 
 corosync-pload.obj: pload.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-pload.obj -MD -MP -MF $(DEPDIR)/corosync-pload.Tpo -c -o corosync-pload.obj `if test -f 'pload.c'; then $(CYGPATH_W) 'pload.c'; else $(CYGPATH_W) '$(srcdir)/pload.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-pload.obj -MD -MP -MF $(DEPDIR)/corosync-pload.Tpo -c -o corosync-pload.obj `if test -f 'pload.c'; then $(CYGPATH_W) 'pload.c'; else $(CYGPATH_W) '$(srcdir)/pload.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-pload.Tpo $(DEPDIR)/corosync-pload.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='pload.c' object='corosync-pload.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-pload.obj `if test -f 'pload.c'; then $(CYGPATH_W) 'pload.c'; else $(CYGPATH_W) '$(srcdir)/pload.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-pload.obj `if test -f 'pload.c'; then $(CYGPATH_W) 'pload.c'; else $(CYGPATH_W) '$(srcdir)/pload.c'; fi`
 
 corosync-votequorum.o: votequorum.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-votequorum.o -MD -MP -MF $(DEPDIR)/corosync-votequorum.Tpo -c -o corosync-votequorum.o `test -f 'votequorum.c' || echo '$(srcdir)/'`votequorum.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-votequorum.o -MD -MP -MF $(DEPDIR)/corosync-votequorum.Tpo -c -o corosync-votequorum.o `test -f 'votequorum.c' || echo '$(srcdir)/'`votequorum.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-votequorum.Tpo $(DEPDIR)/corosync-votequorum.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='votequorum.c' object='corosync-votequorum.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-votequorum.o `test -f 'votequorum.c' || echo '$(srcdir)/'`votequorum.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-votequorum.o `test -f 'votequorum.c' || echo '$(srcdir)/'`votequorum.c
 
 corosync-votequorum.obj: votequorum.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-votequorum.obj -MD -MP -MF $(DEPDIR)/corosync-votequorum.Tpo -c -o corosync-votequorum.obj `if test -f 'votequorum.c'; then $(CYGPATH_W) 'votequorum.c'; else $(CYGPATH_W) '$(srcdir)/votequorum.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-votequorum.obj -MD -MP -MF $(DEPDIR)/corosync-votequorum.Tpo -c -o corosync-votequorum.obj `if test -f 'votequorum.c'; then $(CYGPATH_W) 'votequorum.c'; else $(CYGPATH_W) '$(srcdir)/votequorum.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-votequorum.Tpo $(DEPDIR)/corosync-votequorum.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='votequorum.c' object='corosync-votequorum.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-votequorum.obj `if test -f 'votequorum.c'; then $(CYGPATH_W) 'votequorum.c'; else $(CYGPATH_W) '$(srcdir)/votequorum.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-votequorum.obj `if test -f 'votequorum.c'; then $(CYGPATH_W) 'votequorum.c'; else $(CYGPATH_W) '$(srcdir)/votequorum.c'; fi`
 
 corosync-util.o: util.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-util.o -MD -MP -MF $(DEPDIR)/corosync-util.Tpo -c -o corosync-util.o `test -f 'util.c' || echo '$(srcdir)/'`util.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-util.o -MD -MP -MF $(DEPDIR)/corosync-util.Tpo -c -o corosync-util.o `test -f 'util.c' || echo '$(srcdir)/'`util.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-util.Tpo $(DEPDIR)/corosync-util.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='util.c' object='corosync-util.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-util.o `test -f 'util.c' || echo '$(srcdir)/'`util.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-util.o `test -f 'util.c' || echo '$(srcdir)/'`util.c
 
 corosync-util.obj: util.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-util.obj -MD -MP -MF $(DEPDIR)/corosync-util.Tpo -c -o corosync-util.obj `if test -f 'util.c'; then $(CYGPATH_W) 'util.c'; else $(CYGPATH_W) '$(srcdir)/util.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-util.obj -MD -MP -MF $(DEPDIR)/corosync-util.Tpo -c -o corosync-util.obj `if test -f 'util.c'; then $(CYGPATH_W) 'util.c'; else $(CYGPATH_W) '$(srcdir)/util.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-util.Tpo $(DEPDIR)/corosync-util.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='util.c' object='corosync-util.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-util.obj `if test -f 'util.c'; then $(CYGPATH_W) 'util.c'; else $(CYGPATH_W) '$(srcdir)/util.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-util.obj `if test -f 'util.c'; then $(CYGPATH_W) 'util.c'; else $(CYGPATH_W) '$(srcdir)/util.c'; fi`
 
 corosync-schedwrk.o: schedwrk.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-schedwrk.o -MD -MP -MF $(DEPDIR)/corosync-schedwrk.Tpo -c -o corosync-schedwrk.o `test -f 'schedwrk.c' || echo '$(srcdir)/'`schedwrk.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-schedwrk.o -MD -MP -MF $(DEPDIR)/corosync-schedwrk.Tpo -c -o corosync-schedwrk.o `test -f 'schedwrk.c' || echo '$(srcdir)/'`schedwrk.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-schedwrk.Tpo $(DEPDIR)/corosync-schedwrk.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='schedwrk.c' object='corosync-schedwrk.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-schedwrk.o `test -f 'schedwrk.c' || echo '$(srcdir)/'`schedwrk.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-schedwrk.o `test -f 'schedwrk.c' || echo '$(srcdir)/'`schedwrk.c
 
 corosync-schedwrk.obj: schedwrk.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-schedwrk.obj -MD -MP -MF $(DEPDIR)/corosync-schedwrk.Tpo -c -o corosync-schedwrk.obj `if test -f 'schedwrk.c'; then $(CYGPATH_W) 'schedwrk.c'; else $(CYGPATH_W) '$(srcdir)/schedwrk.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-schedwrk.obj -MD -MP -MF $(DEPDIR)/corosync-schedwrk.Tpo -c -o corosync-schedwrk.obj `if test -f 'schedwrk.c'; then $(CYGPATH_W) 'schedwrk.c'; else $(CYGPATH_W) '$(srcdir)/schedwrk.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-schedwrk.Tpo $(DEPDIR)/corosync-schedwrk.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='schedwrk.c' object='corosync-schedwrk.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-schedwrk.obj `if test -f 'schedwrk.c'; then $(CYGPATH_W) 'schedwrk.c'; else $(CYGPATH_W) '$(srcdir)/schedwrk.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-schedwrk.obj `if test -f 'schedwrk.c'; then $(CYGPATH_W) 'schedwrk.c'; else $(CYGPATH_W) '$(srcdir)/schedwrk.c'; fi`
 
 corosync-main.o: main.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-main.o -MD -MP -MF $(DEPDIR)/corosync-main.Tpo -c -o corosync-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-main.o -MD -MP -MF $(DEPDIR)/corosync-main.Tpo -c -o corosync-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-main.Tpo $(DEPDIR)/corosync-main.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='main.c' object='corosync-main.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
 
 corosync-main.obj: main.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-main.obj -MD -MP -MF $(DEPDIR)/corosync-main.Tpo -c -o corosync-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-main.obj -MD -MP -MF $(DEPDIR)/corosync-main.Tpo -c -o corosync-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-main.Tpo $(DEPDIR)/corosync-main.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='main.c' object='corosync-main.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`
 
 corosync-apidef.o: apidef.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-apidef.o -MD -MP -MF $(DEPDIR)/corosync-apidef.Tpo -c -o corosync-apidef.o `test -f 'apidef.c' || echo '$(srcdir)/'`apidef.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-apidef.o -MD -MP -MF $(DEPDIR)/corosync-apidef.Tpo -c -o corosync-apidef.o `test -f 'apidef.c' || echo '$(srcdir)/'`apidef.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-apidef.Tpo $(DEPDIR)/corosync-apidef.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='apidef.c' object='corosync-apidef.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-apidef.o `test -f 'apidef.c' || echo '$(srcdir)/'`apidef.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-apidef.o `test -f 'apidef.c' || echo '$(srcdir)/'`apidef.c
 
 corosync-apidef.obj: apidef.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-apidef.obj -MD -MP -MF $(DEPDIR)/corosync-apidef.Tpo -c -o corosync-apidef.obj `if test -f 'apidef.c'; then $(CYGPATH_W) 'apidef.c'; else $(CYGPATH_W) '$(srcdir)/apidef.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-apidef.obj -MD -MP -MF $(DEPDIR)/corosync-apidef.Tpo -c -o corosync-apidef.obj `if test -f 'apidef.c'; then $(CYGPATH_W) 'apidef.c'; else $(CYGPATH_W) '$(srcdir)/apidef.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-apidef.Tpo $(DEPDIR)/corosync-apidef.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='apidef.c' object='corosync-apidef.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-apidef.obj `if test -f 'apidef.c'; then $(CYGPATH_W) 'apidef.c'; else $(CYGPATH_W) '$(srcdir)/apidef.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-apidef.obj `if test -f 'apidef.c'; then $(CYGPATH_W) 'apidef.c'; else $(CYGPATH_W) '$(srcdir)/apidef.c'; fi`
 
 corosync-quorum.o: quorum.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-quorum.o -MD -MP -MF $(DEPDIR)/corosync-quorum.Tpo -c -o corosync-quorum.o `test -f 'quorum.c' || echo '$(srcdir)/'`quorum.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-quorum.o -MD -MP -MF $(DEPDIR)/corosync-quorum.Tpo -c -o corosync-quorum.o `test -f 'quorum.c' || echo '$(srcdir)/'`quorum.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-quorum.Tpo $(DEPDIR)/corosync-quorum.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='quorum.c' object='corosync-quorum.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-quorum.o `test -f 'quorum.c' || echo '$(srcdir)/'`quorum.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-quorum.o `test -f 'quorum.c' || echo '$(srcdir)/'`quorum.c
 
 corosync-quorum.obj: quorum.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-quorum.obj -MD -MP -MF $(DEPDIR)/corosync-quorum.Tpo -c -o corosync-quorum.obj `if test -f 'quorum.c'; then $(CYGPATH_W) 'quorum.c'; else $(CYGPATH_W) '$(srcdir)/quorum.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-quorum.obj -MD -MP -MF $(DEPDIR)/corosync-quorum.Tpo -c -o corosync-quorum.obj `if test -f 'quorum.c'; then $(CYGPATH_W) 'quorum.c'; else $(CYGPATH_W) '$(srcdir)/quorum.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-quorum.Tpo $(DEPDIR)/corosync-quorum.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='quorum.c' object='corosync-quorum.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-quorum.obj `if test -f 'quorum.c'; then $(CYGPATH_W) 'quorum.c'; else $(CYGPATH_W) '$(srcdir)/quorum.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-quorum.obj `if test -f 'quorum.c'; then $(CYGPATH_W) 'quorum.c'; else $(CYGPATH_W) '$(srcdir)/quorum.c'; fi`
 
 corosync-icmap.o: icmap.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-icmap.o -MD -MP -MF $(DEPDIR)/corosync-icmap.Tpo -c -o corosync-icmap.o `test -f 'icmap.c' || echo '$(srcdir)/'`icmap.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-icmap.o -MD -MP -MF $(DEPDIR)/corosync-icmap.Tpo -c -o corosync-icmap.o `test -f 'icmap.c' || echo '$(srcdir)/'`icmap.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-icmap.Tpo $(DEPDIR)/corosync-icmap.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='icmap.c' object='corosync-icmap.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-icmap.o `test -f 'icmap.c' || echo '$(srcdir)/'`icmap.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-icmap.o `test -f 'icmap.c' || echo '$(srcdir)/'`icmap.c
 
 corosync-icmap.obj: icmap.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-icmap.obj -MD -MP -MF $(DEPDIR)/corosync-icmap.Tpo -c -o corosync-icmap.obj `if test -f 'icmap.c'; then $(CYGPATH_W) 'icmap.c'; else $(CYGPATH_W) '$(srcdir)/icmap.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-icmap.obj -MD -MP -MF $(DEPDIR)/corosync-icmap.Tpo -c -o corosync-icmap.obj `if test -f 'icmap.c'; then $(CYGPATH_W) 'icmap.c'; else $(CYGPATH_W) '$(srcdir)/icmap.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-icmap.Tpo $(DEPDIR)/corosync-icmap.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='icmap.c' object='corosync-icmap.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-icmap.obj `if test -f 'icmap.c'; then $(CYGPATH_W) 'icmap.c'; else $(CYGPATH_W) '$(srcdir)/icmap.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-icmap.obj `if test -f 'icmap.c'; then $(CYGPATH_W) 'icmap.c'; else $(CYGPATH_W) '$(srcdir)/icmap.c'; fi`
 
 corosync-timer.o: timer.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-timer.o -MD -MP -MF $(DEPDIR)/corosync-timer.Tpo -c -o corosync-timer.o `test -f 'timer.c' || echo '$(srcdir)/'`timer.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-timer.o -MD -MP -MF $(DEPDIR)/corosync-timer.Tpo -c -o corosync-timer.o `test -f 'timer.c' || echo '$(srcdir)/'`timer.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-timer.Tpo $(DEPDIR)/corosync-timer.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='timer.c' object='corosync-timer.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-timer.o `test -f 'timer.c' || echo '$(srcdir)/'`timer.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-timer.o `test -f 'timer.c' || echo '$(srcdir)/'`timer.c
 
 corosync-timer.obj: timer.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-timer.obj -MD -MP -MF $(DEPDIR)/corosync-timer.Tpo -c -o corosync-timer.obj `if test -f 'timer.c'; then $(CYGPATH_W) 'timer.c'; else $(CYGPATH_W) '$(srcdir)/timer.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-timer.obj -MD -MP -MF $(DEPDIR)/corosync-timer.Tpo -c -o corosync-timer.obj `if test -f 'timer.c'; then $(CYGPATH_W) 'timer.c'; else $(CYGPATH_W) '$(srcdir)/timer.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-timer.Tpo $(DEPDIR)/corosync-timer.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='timer.c' object='corosync-timer.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-timer.obj `if test -f 'timer.c'; then $(CYGPATH_W) 'timer.c'; else $(CYGPATH_W) '$(srcdir)/timer.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-timer.obj `if test -f 'timer.c'; then $(CYGPATH_W) 'timer.c'; else $(CYGPATH_W) '$(srcdir)/timer.c'; fi`
 
 corosync-ipc_glue.o: ipc_glue.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-ipc_glue.o -MD -MP -MF $(DEPDIR)/corosync-ipc_glue.Tpo -c -o corosync-ipc_glue.o `test -f 'ipc_glue.c' || echo '$(srcdir)/'`ipc_glue.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-ipc_glue.o -MD -MP -MF $(DEPDIR)/corosync-ipc_glue.Tpo -c -o corosync-ipc_glue.o `test -f 'ipc_glue.c' || echo '$(srcdir)/'`ipc_glue.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-ipc_glue.Tpo $(DEPDIR)/corosync-ipc_glue.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ipc_glue.c' object='corosync-ipc_glue.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-ipc_glue.o `test -f 'ipc_glue.c' || echo '$(srcdir)/'`ipc_glue.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-ipc_glue.o `test -f 'ipc_glue.c' || echo '$(srcdir)/'`ipc_glue.c
 
 corosync-ipc_glue.obj: ipc_glue.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-ipc_glue.obj -MD -MP -MF $(DEPDIR)/corosync-ipc_glue.Tpo -c -o corosync-ipc_glue.obj `if test -f 'ipc_glue.c'; then $(CYGPATH_W) 'ipc_glue.c'; else $(CYGPATH_W) '$(srcdir)/ipc_glue.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-ipc_glue.obj -MD -MP -MF $(DEPDIR)/corosync-ipc_glue.Tpo -c -o corosync-ipc_glue.obj `if test -f 'ipc_glue.c'; then $(CYGPATH_W) 'ipc_glue.c'; else $(CYGPATH_W) '$(srcdir)/ipc_glue.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-ipc_glue.Tpo $(DEPDIR)/corosync-ipc_glue.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ipc_glue.c' object='corosync-ipc_glue.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-ipc_glue.obj `if test -f 'ipc_glue.c'; then $(CYGPATH_W) 'ipc_glue.c'; else $(CYGPATH_W) '$(srcdir)/ipc_glue.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-ipc_glue.obj `if test -f 'ipc_glue.c'; then $(CYGPATH_W) 'ipc_glue.c'; else $(CYGPATH_W) '$(srcdir)/ipc_glue.c'; fi`
 
 corosync-service.o: service.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-service.o -MD -MP -MF $(DEPDIR)/corosync-service.Tpo -c -o corosync-service.o `test -f 'service.c' || echo '$(srcdir)/'`service.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-service.o -MD -MP -MF $(DEPDIR)/corosync-service.Tpo -c -o corosync-service.o `test -f 'service.c' || echo '$(srcdir)/'`service.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-service.Tpo $(DEPDIR)/corosync-service.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='service.c' object='corosync-service.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-service.o `test -f 'service.c' || echo '$(srcdir)/'`service.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-service.o `test -f 'service.c' || echo '$(srcdir)/'`service.c
 
 corosync-service.obj: service.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-service.obj -MD -MP -MF $(DEPDIR)/corosync-service.Tpo -c -o corosync-service.obj `if test -f 'service.c'; then $(CYGPATH_W) 'service.c'; else $(CYGPATH_W) '$(srcdir)/service.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-service.obj -MD -MP -MF $(DEPDIR)/corosync-service.Tpo -c -o corosync-service.obj `if test -f 'service.c'; then $(CYGPATH_W) 'service.c'; else $(CYGPATH_W) '$(srcdir)/service.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-service.Tpo $(DEPDIR)/corosync-service.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='service.c' object='corosync-service.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-service.obj `if test -f 'service.c'; then $(CYGPATH_W) 'service.c'; else $(CYGPATH_W) '$(srcdir)/service.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-service.obj `if test -f 'service.c'; then $(CYGPATH_W) 'service.c'; else $(CYGPATH_W) '$(srcdir)/service.c'; fi`
 
 corosync-logconfig.o: logconfig.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-logconfig.o -MD -MP -MF $(DEPDIR)/corosync-logconfig.Tpo -c -o corosync-logconfig.o `test -f 'logconfig.c' || echo '$(srcdir)/'`logconfig.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-logconfig.o -MD -MP -MF $(DEPDIR)/corosync-logconfig.Tpo -c -o corosync-logconfig.o `test -f 'logconfig.c' || echo '$(srcdir)/'`logconfig.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-logconfig.Tpo $(DEPDIR)/corosync-logconfig.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='logconfig.c' object='corosync-logconfig.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-logconfig.o `test -f 'logconfig.c' || echo '$(srcdir)/'`logconfig.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-logconfig.o `test -f 'logconfig.c' || echo '$(srcdir)/'`logconfig.c
 
 corosync-logconfig.obj: logconfig.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-logconfig.obj -MD -MP -MF $(DEPDIR)/corosync-logconfig.Tpo -c -o corosync-logconfig.obj `if test -f 'logconfig.c'; then $(CYGPATH_W) 'logconfig.c'; else $(CYGPATH_W) '$(srcdir)/logconfig.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-logconfig.obj -MD -MP -MF $(DEPDIR)/corosync-logconfig.Tpo -c -o corosync-logconfig.obj `if test -f 'logconfig.c'; then $(CYGPATH_W) 'logconfig.c'; else $(CYGPATH_W) '$(srcdir)/logconfig.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-logconfig.Tpo $(DEPDIR)/corosync-logconfig.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='logconfig.c' object='corosync-logconfig.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-logconfig.obj `if test -f 'logconfig.c'; then $(CYGPATH_W) 'logconfig.c'; else $(CYGPATH_W) '$(srcdir)/logconfig.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-logconfig.obj `if test -f 'logconfig.c'; then $(CYGPATH_W) 'logconfig.c'; else $(CYGPATH_W) '$(srcdir)/logconfig.c'; fi`
 
 corosync-totemconfig.o: totemconfig.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-totemconfig.o -MD -MP -MF $(DEPDIR)/corosync-totemconfig.Tpo -c -o corosync-totemconfig.o `test -f 'totemconfig.c' || echo '$(srcdir)/'`totemconfig.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-totemconfig.o -MD -MP -MF $(DEPDIR)/corosync-totemconfig.Tpo -c -o corosync-totemconfig.o `test -f 'totemconfig.c' || echo '$(srcdir)/'`totemconfig.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-totemconfig.Tpo $(DEPDIR)/corosync-totemconfig.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='totemconfig.c' object='corosync-totemconfig.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-totemconfig.o `test -f 'totemconfig.c' || echo '$(srcdir)/'`totemconfig.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-totemconfig.o `test -f 'totemconfig.c' || echo '$(srcdir)/'`totemconfig.c
 
 corosync-totemconfig.obj: totemconfig.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-totemconfig.obj -MD -MP -MF $(DEPDIR)/corosync-totemconfig.Tpo -c -o corosync-totemconfig.obj `if test -f 'totemconfig.c'; then $(CYGPATH_W) 'totemconfig.c'; else $(CYGPATH_W) '$(srcdir)/totemconfig.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-totemconfig.obj -MD -MP -MF $(DEPDIR)/corosync-totemconfig.Tpo -c -o corosync-totemconfig.obj `if test -f 'totemconfig.c'; then $(CYGPATH_W) 'totemconfig.c'; else $(CYGPATH_W) '$(srcdir)/totemconfig.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-totemconfig.Tpo $(DEPDIR)/corosync-totemconfig.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='totemconfig.c' object='corosync-totemconfig.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-totemconfig.obj `if test -f 'totemconfig.c'; then $(CYGPATH_W) 'totemconfig.c'; else $(CYGPATH_W) '$(srcdir)/totemconfig.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-totemconfig.obj `if test -f 'totemconfig.c'; then $(CYGPATH_W) 'totemconfig.c'; else $(CYGPATH_W) '$(srcdir)/totemconfig.c'; fi`
 
 corosync-mon.o: mon.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-mon.o -MD -MP -MF $(DEPDIR)/corosync-mon.Tpo -c -o corosync-mon.o `test -f 'mon.c' || echo '$(srcdir)/'`mon.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-mon.o -MD -MP -MF $(DEPDIR)/corosync-mon.Tpo -c -o corosync-mon.o `test -f 'mon.c' || echo '$(srcdir)/'`mon.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-mon.Tpo $(DEPDIR)/corosync-mon.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mon.c' object='corosync-mon.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-mon.o `test -f 'mon.c' || echo '$(srcdir)/'`mon.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-mon.o `test -f 'mon.c' || echo '$(srcdir)/'`mon.c
 
 corosync-mon.obj: mon.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-mon.obj -MD -MP -MF $(DEPDIR)/corosync-mon.Tpo -c -o corosync-mon.obj `if test -f 'mon.c'; then $(CYGPATH_W) 'mon.c'; else $(CYGPATH_W) '$(srcdir)/mon.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-mon.obj -MD -MP -MF $(DEPDIR)/corosync-mon.Tpo -c -o corosync-mon.obj `if test -f 'mon.c'; then $(CYGPATH_W) 'mon.c'; else $(CYGPATH_W) '$(srcdir)/mon.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-mon.Tpo $(DEPDIR)/corosync-mon.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mon.c' object='corosync-mon.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-mon.obj `if test -f 'mon.c'; then $(CYGPATH_W) 'mon.c'; else $(CYGPATH_W) '$(srcdir)/mon.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-mon.obj `if test -f 'mon.c'; then $(CYGPATH_W) 'mon.c'; else $(CYGPATH_W) '$(srcdir)/mon.c'; fi`
 
 corosync-wd.o: wd.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-wd.o -MD -MP -MF $(DEPDIR)/corosync-wd.Tpo -c -o corosync-wd.o `test -f 'wd.c' || echo '$(srcdir)/'`wd.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-wd.o -MD -MP -MF $(DEPDIR)/corosync-wd.Tpo -c -o corosync-wd.o `test -f 'wd.c' || echo '$(srcdir)/'`wd.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-wd.Tpo $(DEPDIR)/corosync-wd.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='wd.c' object='corosync-wd.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-wd.o `test -f 'wd.c' || echo '$(srcdir)/'`wd.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-wd.o `test -f 'wd.c' || echo '$(srcdir)/'`wd.c
 
 corosync-wd.obj: wd.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync-wd.obj -MD -MP -MF $(DEPDIR)/corosync-wd.Tpo -c -o corosync-wd.obj `if test -f 'wd.c'; then $(CYGPATH_W) 'wd.c'; else $(CYGPATH_W) '$(srcdir)/wd.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -MT corosync-wd.obj -MD -MP -MF $(DEPDIR)/corosync-wd.Tpo -c -o corosync-wd.obj `if test -f 'wd.c'; then $(CYGPATH_W) 'wd.c'; else $(CYGPATH_W) '$(srcdir)/wd.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync-wd.Tpo $(DEPDIR)/corosync-wd.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='wd.c' object='corosync-wd.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync-wd.obj `if test -f 'wd.c'; then $(CYGPATH_W) 'wd.c'; else $(CYGPATH_W) '$(srcdir)/wd.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_CPPFLAGS) $(CPPFLAGS) $(corosync_CFLAGS) $(CFLAGS) -c -o corosync-wd.obj `if test -f 'wd.c'; then $(CYGPATH_W) 'wd.c'; else $(CYGPATH_W) '$(srcdir)/wd.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

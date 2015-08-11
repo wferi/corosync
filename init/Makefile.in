@@ -272,13 +272,18 @@ sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 statgrab_CFLAGS = @statgrab_CFLAGS@
 statgrab_LIBS = @statgrab_LIBS@
+statgrabge090_CFLAGS = @statgrabge090_CFLAGS@
+statgrabge090_LIBS = @statgrabge090_LIBS@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in
-EXTRA_DIST = corosync.in corosync-notifyd.in corosync.service.in corosync-notifyd.service.in corosync.conf.in corosync-notifyd.conf.in
+EXTRA_DIST = corosync.in corosync-notifyd.in corosync.service.in \
+                          corosync-notifyd.service.in corosync.conf.in corosync-notifyd.conf.in \
+                          corosync.sysconfig.example
+
 @INSTALL_SYSTEMD_TRUE@systemdconfdir = $(SYSTEMDDIR)
 @INSTALL_SYSTEMD_TRUE@systemdconf_DATA = corosync.service corosync-notifyd.service
 @INSTALL_SYSTEMD_FALSE@initscriptdir = $(INITDDIR)

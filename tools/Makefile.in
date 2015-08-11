@@ -115,6 +115,10 @@ corosync_notifyd_DEPENDENCIES = $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(top_builddir)/lib/libcmap.la $(top_builddir)/lib/libcfg.la \
 	$(top_builddir)/lib/libquorum.la
+corosync_notifyd_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(corosync_notifyd_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
+	-o $@
 corosync_quorumtool_SOURCES = corosync-quorumtool.c
 corosync_quorumtool_OBJECTS = corosync-quorumtool.$(OBJEXT)
 corosync_quorumtool_DEPENDENCIES = $(am__DEPENDENCIES_1) \
@@ -329,6 +333,8 @@ sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 statgrab_CFLAGS = @statgrab_CFLAGS@
 statgrab_LIBS = @statgrab_LIBS@
+statgrabge090_CFLAGS = @statgrabge090_CFLAGS@
+statgrabge090_LIBS = @statgrabge090_LIBS@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
@@ -351,7 +357,7 @@ corosync_quorumtool_LDADD = $(LIBQB_LIBS) \
 			    $(top_builddir)/lib/libquorum.la \
 			    $(top_builddir)/lib/libvotequorum.la
 
-corosync_notifyd_CPPFLAGS = $(DBUS_CFLAGS)
+corosync_notifyd_CFLAGS = $(DBUS_CFLAGS)
 corosync_notifyd_LDADD = $(LIBQB_LIBS) $(DBUS_LIBS) $(SNMP_LIBS) \
 			    $(top_builddir)/lib/libcmap.la \
 			    $(top_builddir)/lib/libcfg.la \
@@ -448,7 +454,7 @@ corosync-keygen$(EXEEXT): $(corosync_keygen_OBJECTS) $(corosync_keygen_DEPENDENC
 	$(AM_V_CCLD)$(LINK) $(corosync_keygen_OBJECTS) $(corosync_keygen_LDADD) $(LIBS)
 corosync-notifyd$(EXEEXT): $(corosync_notifyd_OBJECTS) $(corosync_notifyd_DEPENDENCIES) 
 	@rm -f corosync-notifyd$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(corosync_notifyd_OBJECTS) $(corosync_notifyd_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(corosync_notifyd_LINK) $(corosync_notifyd_OBJECTS) $(corosync_notifyd_LDADD) $(LIBS)
 corosync-quorumtool$(EXEEXT): $(corosync_quorumtool_OBJECTS) $(corosync_quorumtool_DEPENDENCIES) 
 	@rm -f corosync-quorumtool$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(corosync_quorumtool_OBJECTS) $(corosync_quorumtool_LDADD) $(LIBS)
@@ -525,20 +531,20 @@ distclean-compile:
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
 
 corosync_notifyd-corosync-notifyd.o: corosync-notifyd.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_notifyd_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync_notifyd-corosync-notifyd.o -MD -MP -MF $(DEPDIR)/corosync_notifyd-corosync-notifyd.Tpo -c -o corosync_notifyd-corosync-notifyd.o `test -f 'corosync-notifyd.c' || echo '$(srcdir)/'`corosync-notifyd.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(corosync_notifyd_CFLAGS) $(CFLAGS) -MT corosync_notifyd-corosync-notifyd.o -MD -MP -MF $(DEPDIR)/corosync_notifyd-corosync-notifyd.Tpo -c -o corosync_notifyd-corosync-notifyd.o `test -f 'corosync-notifyd.c' || echo '$(srcdir)/'`corosync-notifyd.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync_notifyd-corosync-notifyd.Tpo $(DEPDIR)/corosync_notifyd-corosync-notifyd.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='corosync-notifyd.c' object='corosync_notifyd-corosync-notifyd.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_notifyd_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync_notifyd-corosync-notifyd.o `test -f 'corosync-notifyd.c' || echo '$(srcdir)/'`corosync-notifyd.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(corosync_notifyd_CFLAGS) $(CFLAGS) -c -o corosync_notifyd-corosync-notifyd.o `test -f 'corosync-notifyd.c' || echo '$(srcdir)/'`corosync-notifyd.c
 
 corosync_notifyd-corosync-notifyd.obj: corosync-notifyd.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_notifyd_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT corosync_notifyd-corosync-notifyd.obj -MD -MP -MF $(DEPDIR)/corosync_notifyd-corosync-notifyd.Tpo -c -o corosync_notifyd-corosync-notifyd.obj `if test -f 'corosync-notifyd.c'; then $(CYGPATH_W) 'corosync-notifyd.c'; else $(CYGPATH_W) '$(srcdir)/corosync-notifyd.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(corosync_notifyd_CFLAGS) $(CFLAGS) -MT corosync_notifyd-corosync-notifyd.obj -MD -MP -MF $(DEPDIR)/corosync_notifyd-corosync-notifyd.Tpo -c -o corosync_notifyd-corosync-notifyd.obj `if test -f 'corosync-notifyd.c'; then $(CYGPATH_W) 'corosync-notifyd.c'; else $(CYGPATH_W) '$(srcdir)/corosync-notifyd.c'; fi`
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/corosync_notifyd-corosync-notifyd.Tpo $(DEPDIR)/corosync_notifyd-corosync-notifyd.Po
 @am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='corosync-notifyd.c' object='corosync_notifyd-corosync-notifyd.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(corosync_notifyd_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o corosync_notifyd-corosync-notifyd.obj `if test -f 'corosync-notifyd.c'; then $(CYGPATH_W) 'corosync-notifyd.c'; else $(CYGPATH_W) '$(srcdir)/corosync-notifyd.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(corosync_notifyd_CFLAGS) $(CFLAGS) -c -o corosync_notifyd-corosync-notifyd.obj `if test -f 'corosync-notifyd.c'; then $(CYGPATH_W) 'corosync-notifyd.c'; else $(CYGPATH_W) '$(srcdir)/corosync-notifyd.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

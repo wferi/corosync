@@ -166,11 +166,33 @@ static int logsys_config_file_set_unlocked (
 		return (0);
 	}
 
+	if (logsys_loggers[subsysid].target_id > 0 &&
+	    logsys_loggers[subsysid].logfile != NULL &&
+	    strcmp(file, logsys_loggers[subsysid].logfile) == 0) {
+		return (0);
+	}
+
 	if (strlen(file) >= PATH_MAX) {
 		snprintf (error_string_response,
 			sizeof(error_string_response),
-			"%s: logfile name exceed maximum system filename lenght",
+			"%s: logfile name exceed maximum system filename length",
 			logsys_loggers[subsysid].subsys);
+		*error_string = error_string_response;
+		return (-1);
+	}
+
+	if (logsys_loggers[subsysid].logfile != NULL) {
+		free(logsys_loggers[subsysid].logfile);
+		logsys_loggers[subsysid].logfile = NULL;
+	}
+
+	logsys_loggers[subsysid].logfile = strdup(file);
+
+	if (logsys_loggers[subsysid].logfile == NULL) {
+		snprintf (error_string_response,
+			sizeof(error_string_response),
+			"Unable to allocate memory for logfile '%s'",
+			file);
 		*error_string = error_string_response;
 		return (-1);
 	}
@@ -185,15 +207,6 @@ static int logsys_config_file_set_unlocked (
 			logsys_loggers[subsysid].target_id = logsys_loggers[i].target_id;
 			return (0);
 		}
-	}
-	logsys_loggers[subsysid].logfile = strdup(file);
-	if (logsys_loggers[subsysid].logfile == NULL) {
-		snprintf (error_string_response,
-			sizeof(error_string_response),
-			"Unable to allocate memory for logfile '%s'",
-			file);
-		*error_string = error_string_response;
-		return (-1);
 	}
 
 	if (logsys_loggers[subsysid].target_id > 0) {
@@ -296,6 +309,7 @@ int _logsys_system_setup(
 	int i;
 	int32_t fidx;
 	char tempsubsys[LOGSYS_MAX_SUBSYS_NAMELEN];
+	int blackbox_enable_res;
 
 	if ((mainsystem == NULL) ||
 	    (strlen(mainsystem) >= LOGSYS_MAX_SUBSYS_NAMELEN)) {
@@ -319,6 +333,12 @@ int _logsys_system_setup(
 	 * name clash
 	 * _logsys_subsys_filename_add (i, "util.c");
 	 */
+
+	/*
+	 * This file (logsys.c) is not exactly QB. We need tag for logsys.c if flightrecorder init
+	 * fails, and QB seems to be closest.
+	 */
+	_logsys_subsys_filename_add (i, "logsys.c");
 
 	i = LOGSYS_MAX_SUBSYS_COUNT;
 
@@ -351,7 +371,7 @@ int _logsys_system_setup(
 			  QB_LOG_FILTER_FILE, "*", LOG_TRACE);
 	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_SIZE, IPC_LOGSYS_SIZE);
 	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_THREADED, QB_FALSE);
-	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_TRUE);
+	blackbox_enable_res = qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_TRUE);
 
 	if (logsys_format_set(NULL) == -1) {
 		return -1;
@@ -375,6 +395,14 @@ int _logsys_system_setup(
 			_logsys_config_mode_set_unlocked(i, logsys_loggers[i].mode);
 			_logsys_config_apply_per_subsys(i);
 		}
+	}
+
+	if (blackbox_enable_res < 0) {
+		LOGSYS_PERROR (-blackbox_enable_res, LOGSYS_LEVEL_WARNING,
+		    "Unable to initialize log flight recorder. "\
+		    "The most common cause of this error is " \
+		    "not enough space on /dev/shm. Corosync will continue work, " \
+		    "but blackbox will not be available");
 	}
 
 	pthread_mutex_unlock (&logsys_config_mutex);
