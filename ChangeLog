@@ -1,3 +1,621 @@
+2014-08-26  Jan Friesse  <jfriesse@redhat.com>
+
+	totemudpu: Send msgs to all members occasionally
+	To follow spec it's needed to send messages to all nodes (not only
+	active members) from time to time to detect merge.
+
+	This is needed in situations when totemsrp merge timer isn't running
+	(because there is enough messages sent by processors) to detect merge.
+
+	Example scenario:
+	- 3 nodes, all of them running cpgverify
+	- One node is isolated (iptables for example)
+	- Node is un-isolated
+
+	Without this commit, node will not merge as long as the cpgverify is
+	running.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	totemudpu: Implement member_set_active
+	Member active is used for sending "multicast" messages only to members
+	of ring. This reduces network load if some nodes are intentionally down.
+	Only regular multicast message load is reduced (messages sent by
+	totemudpu_mcast_noflush_send), because special messages (like hold
+	cancel, join message, ...) still have to be send to all members to
+	ensure correct behavior.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	totemrrp: Implement *_membership_changed
+	All *_membership_changed calls totemnet_member_set_active passing 1 as
+	active parameter for joined nodes and 0 for left nodes.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	totemnet: Add totemnet_member_set_active
+	totemnet_member_set_active together with transport specific
+	member_set_active makes possible for totemnet (and more interestingly
+	transport) to be informed about membership changes.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	totem: Inform RRP about membership changes
+	Services are informed about membership changes, but if same information
+	is needed inside totemrrp or totemnet, it's impossible to gather this
+	information.
+
+	Patch makes this possible for now only for RRP with empty callbacks.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-08-25  Jan Friesse  <jfriesse@redhat.com>
+
+	Makefile: Do not install TODO file
+
+	TODO: Remove TODO file
+	TODO file has many problems like it's not updated regularly, it's not
+	updated at all in already distributed tarballs, ...
+
+	All relevant RFEs were filled at github as issues with flag "TODO file
+	convert" so file can finally be removed from git.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-08-22  Christine Caulfield  <ccaulfie@redhat.com>
+
+	corosync-quorumtool: add sort options
+	Adds a -o<a|i|n> option to corosync-votequorum so that the nodes list
+	can be sorted by Address, node Id or Name. The default remains IP
+	address.
+
+	Signed-Off-By: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-08-18  Christine Caulfield  <ccaulfie@redhat.com>
+
+	YKD: Fix loading of YKD quorum module
+	Although YKD is currently unsupported, untested and decprecated it's
+	handy for testing things in the quorum module.
+
+	This patch allows YKD to actually load without an error. It does not fix
+	anything else in the service!
+
+	Also remove vsftype and its reference to YKD being the preferred and
+	default provider from the corosync.conf man page,
+	as that hasn't been true for a considerable time.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-08-15  Christine Caulfield  <ccaulfie@redhat.com>
+
+	quorumtool: Sort output by nodeid
+	corosync-quorumtool prints the node listing by IP address
+	(as passed back to it from corosync) but this can be
+	counter-intuitive if the node IDs aren't in the same
+	order as the IP addresses. This patch sorts the nodes
+	by node ID so that the output is easier for humans to
+	parse.
+
+	Reviewed-By: Jan Friesse <jfriesse@redhat.com>
+
+2014-08-12  Christine Caulfield  <ccaulfie@redhat.com>
+
+	votequorum: Add cmap key to reset wait_for_all
+	It's possible in a two_node cluster (and others but it's more likely
+	with just two) that a node could be booted up after downtime or failure
+	and the other node is not available for some reason. In this case it
+	would not be allowed to proceed because wait_for_all is enforced.
+
+	This patch provides a cmap key to clear this flag in the desperate
+	situation where that becomes necessary. It should only be used with
+	extreme caution and will be wrapped up in pcs which should also check
+	that fencing has been run.
+
+	Signed-Off-By: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by:  Jan Friesse <jfriesse@redhat.com>
+
+2014-08-12  Jason HU  <huzhijiang@gmail.com>
+
+	Cancel token holding while in retransmition
+	When there is no other activty on ring but only retransmition, and
+	token is in hold mode, the retransmition will become slow. More over,
+	if the retransmition is always fail but token rotation works well, then
+	it takes quite a lone time
+	(fail_to_recv_const * token_hold = 2500 * 180ms = 450sec) for the
+	retransmit requester to meet the "FAILED TO RECEIVE" condition to
+	re-construct a new ring.
+
+	This problem can be solved by checking if retransmits are present
+	before going into hold. If a node is the retransmit requester or
+	the resender, it set my_token_held to 0 to speed up retransmition
+	and omit further unnecessary sending of token_hold_cancel signal.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-08-05  Jan Friesse  <jfriesse@redhat.com>
+
+	votequorum: Make qdev timeout in sync configurable
+	Configuration option quorum.device.sync_timeout is available for setting
+	qdevice poll timeout for synchronization phase. Default value is 30
+	sec.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	testvotequorum2: Opt for polling with old ringid
+	Option -F is added to force sending old ringid for given number of
+	times. Option is useful for testing failure scenario during corosync
+	synchronization phase.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	votequorum: Block sync until qdevice poll
+	If qdevice is registered a alive, corosync waits in sync phase until
+	timeout expires or qdevice votes with correct nodeid parameter.
+
+	This gives qdevice time to decide to vote or not undisturbed and without
+	time hazard.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	ipc: Process votequorum messages during sync
+	This is needed for qdevice to be able to process messages during
+	synchronization phase.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	votequorum: Add ring id to poll call
+	If votequorum service receives incorrect (not current) ringid, call is
+	ignored and CS_ERR_MESSAGE_ERROR is returned.
+
+	This and previous commits makes incompatible changes in votequorum
+	API/ABI, so library version is increased.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	votequorum: Return current ring id in callback
+	Returning ring id will be used in poll function.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-07-25  Christine Caulfield  <ccaulfie@redhat.com>
+
+	totemconfig: Make sure join timeout is less than consensus
+	The thesis contains this paragraph:
+
+	" The Join timeout is shorter than the Consensus timeout and is used to
+	  increase the probability that Join messages from all currently
+	  working processors are received during a single round of consensus."
+
+	Empirically I can confirm that making join less than consensus can cause
+	havoc with a cluster so I think we should enforce this.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-07-24  Christine Caulfield  <ccaulfie@redhat.com>
+
+	config: Fix typos
+	Fix several places where 'then' is used instead of 'than' in error
+	messages and a comment.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-07-24  Jan Friesse  <jfriesse@redhat.com>
+
+	corosync-keygen: Replace printf/exit call with err
+	Calling of err makes code shorter, easier to read and eliminates
+	problems with forgotten newline characters.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-07-22  Jan Friesse  <jfriesse@redhat.com>
+
+	totemconfig: refactor nodelist_to_interface func
+	Move finding of bindaddr in nodelist to generally usable function
+	totem_config_find_local_addr_in_nodelist and refactor
+	config_convert_nodelist_to_interface function to use it.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	totemconfig: totem_config_get_ip_version
+	Add totem_config_get_ip_version to get user configured ip version.
+	Make totem_config_read use this newly introduced function.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	totemconfig: Free ifaddrs list
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2014-07-21  Vladislav Bogdanov  <bubble@hoster-ok.com>
+
+	Slightly rework corosync-keygen.
+	Allow it to create keyfile not in the hardcoded location.
+	Drop root checks.
+	Minor cosmetic fixes to the man-page.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-07-21  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	be consistent in using CPPFLAGS vs CFLAGS
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	cleanup after test-driver
+	update .gitignore and make maintainer-clean target
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-07-16  Vladislav Bogdanov  <bubble@hoster-ok.com>
+
+	Implement config file testing mode
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-07-15  Vladislav Bogdanov  <bubble@hoster-ok.com>
+
+	corosync-cmapctl: Allow -p option to delete keys
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-07-09  Jan Friesse  <jfriesse@redhat.com>
+
+	Fix compiler warning introduced by previous patch
+	QB loop signal handler prototype differs from signal(2) prototype.
+	Solution is to create wrapper functions.
+
+2014-07-03  zouyu  <hopkings2005@gmail.com>
+
+	Handle SIGSEGV and SIGABRT signals
+	SIGSEGV and SIGABRT signals are now correctly handled (blackbox is
+	dumped and logsys is finalized).
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	fix memory leak produced by 'corosync -v'
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-07-01  Kazunori INOUE  <kazunori.inoue3@gmail.com>
+
+	systemd: Config example for corosync wd service
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-06-27  Jan Friesse  <jfriesse@redhat.com>
+
+	votequorum: Do not process events during reload
+	During reload, local_node_pos is deleted and reinstation is handled in
+	totemconfig after reload is finished. votequorum handles this events and
+	tries to reload it's configuration. This led to logging a little scary
+	messages (even nothing bad is happening, because after local_node_pos
+	reinstation everything back to normal).
+
+	Solution is to stop processing events during reload. Sadly, simple
+	tracking of config.reload_in_progress doesn't work because LibQB events
+	triggering order is undefined so votequorum reload handler can be called
+	before totemconfig (and before local_node_pos is reinstatied).
+
+	So new config.totemconfig_reload_in_progress key is defined with very
+	similar semanthic as config.reload_in_progress but set inside
+	totem_reload_notify function. Votequorum then use this new key.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	Make config.reload_in_progress key read only
+	It's not very good idea to allow user apps changing internal key
+	reload_in_progress.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-06-12  Jan Friesse  <jfriesse@redhat.com>
+
+	Doc: Enhance INSTALL file a bit
+	Some information in INSTALL file were pretty outdated. This patch moves
+	them closer to current release.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	coroparse: More strict numbers parsing
+	Previous safe_atoi didn't check range of input values so if for example
+	user used -1 s token timeout, it was converted to UINT32_MAX without
+	letting user know.
+
+	Another safe_atoi problem was using strtol. This works pretty well on
+	64-bit systems, where long integer is usually 64-bits long, sadly on
+	32-bit systems, it is usually 32-bit long. And because strtol returns
+	signed integer, it was not possible to enter 32-bit value with highest
+	bit set.
+
+	Solution is to use strtoll which is guaranteed to be at least 64-bits
+	long and check value range.
+
+	Also error message now contains also information about expected value
+	range.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-06-10  Konstantin  <konstantin.ponomarenko@gmail.com>
+
+	Install doc: Correct a typo
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-06-09  Lidong Zhong  <lzhong@suse.com>
+
+	init: change return value when starting corosync
+	When corosync is started by systemd, it would be considered
+	as failed because it returns a non-zero value, even though it
+	starts sucessfully.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-06-02  Jan Friesse  <jfriesse@redhat.com>
+
+	Move ringid store and load from totem library
+	Functions for storing and loading ring id was in the totem library. This
+	causes problem, what to do when it's impossible to load or store ring
+	id. Easy solution seemed to be assert, but sadly this makes hard for
+	user to find out what happened (because corosync was just aborted and
+	logsys didn't flush)
+
+	Solution is to move these functions to main.c, where is much easier to
+	handle error. This also makes libtotem free of any file system
+	operations.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	Introduce get_run_dir function
+	Run dir (LOCALSTATEDIR/lib/corosync) was hardcoded thru whole codebase.
+	Totemsrp was trying to create and chdir into it, but also
+	takes into account environment variable COROSYNC_RUN_DIR creating
+	inconsistency.
+
+	get_run_dir correctly returns COROSYNC_RUN_DIR (when set) or
+	LOCALSTATEDIR/lib/corosync. This is now used by all functions instead of
+	hardcoded string.
+
+	All occurrences of mkdir/chdir are removed from totemsrp and chdir is
+	now called in main function. Mkdir call is completely removed, because
+	it was not used anyway (check in main.c was called before totemsrp init,
+	so mkdir was never called) and also make install and/or package system
+	should take care of creating this directory with correct
+	permissions/context.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	logsys: Log warning if flightrecorder init fails
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	logsys: Log error if blackbox cannot be created
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-05-15  Jan Friesse  <jfriesse@redhat.com>
+
+	totemiba: Fix incorrect failed log message
+	rdma_join_multicast failed ... message parameters was swapped.
+
+	Also information about multicast join is now logged as notice.
+
+2014-05-14  Yevheniy Demchenko  <zheka@uvt.cz>
+
+	totemiba: Add multicast recovery
+	Totemiba wasn't able to survive SubnetManager handover or
+	restart. If SM was migrated to another node, corosync logged
+	"multicast error" and losses connectivity.
+
+	Commit should solve this situation.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-05-09  hfu  <askfuhu@gmail.com>
+
+	Indent: Remove newline before else branch start
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Indent: Remove space in negation of expression
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-05-09  Kazunori INOUE  <kazunori.inoue3@gmail.com>
+
+	upstart: Make job conf file configurable
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-05-07  Jan Friesse  <jfriesse@redhat.com>
+
+	config: Allow dynamic change of token_coefficient
+	token_coefficient change in cmap didn't triggered change. So only way
+	how to change token_coefficient was editing config file and reload.
+
+	Patch let's key totem.token_coefficient to be processed so
+	token_coefficient can be dynamically changed.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-04-11  Jan Friesse  <jfriesse@redhat.com>
+
+	init: Make init script configurable
+	Init script loads /etc/sysconfig/corosync (or /etc/defaults/corosync) by
+	default, but it didn't existed by default and also no options was
+	defined.
+
+	Patch adds COROSYNC_INIT_TIMEOUT (how many seconds to wait for ipc
+	initialization) with default value 1 minute (instead of previous 10
+	seconds, what may be too small value for some productions) and
+	COROSYNC_OPTIONS (by default empty) containing options directly
+	passed to corosync executable.
+
+	Specfile template is also modified to install example of init file
+	configuration.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-03-25  Jan Friesse  <jfriesse@redhat.com>
+
+	Add token_coefficient option
+	Token coefficient is used only when nodelist is specified and contains
+	at least 3 nodes. If so, real token timeout is then computed as
+	token + (number_of_nodes - 2) * token_coefficient. This allows cluster
+	to scale without manually changing token timeout every time new
+	node is added. This value can be set to 0 resulting in effective
+	removal of this feature.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	totemconfig: Log errors on key change and reload
+	When volatile key was changed (cmap set or reload) and checks fails,
+	nothing was logged.
+
+	Values are now checked and error string is logged on problems.
+
+	Also totem_config is dumped to log (DEBUG level) after every
+	volatile key change and every reload.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	totemconfig: Key change process dependencies
+	When key with dependency was changed, dependant keys were not recomputed.
+	Nice example is consensus timeout. If token timout was changed,
+	consensus timeout was not recomputed correctly (nether via cmap change
+	of key nor via cfg reload).
+
+	Solution is almost complete refactor of handling volatile defaults.
+
+	totem_volatile_config_read now handles not only storing cmap key to
+	totem_config structure, but also checking of existence, comparing with
+	zero value and properly storing defaults.
+
+	totem_set_volatile_defaults is gone. It's function was splitted into
+	totem_volatile_config_read and totem_volatile_config_validate functions.
+
+	Reload callback and change of key callback are now mostly same functions
+	and both calls totem_volatile_config_read.
+
+	Patch also fixes small memory leak. totem.vsftype key is not used for
+	long time and original totem_volatile_config_read wasn't freeing
+	allocated memory returned by icmap_get_string. Whole reading of
+	totem.vsftype is removed.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	Really clear totemconfig nodes on reload
+	When reload was called nodes were constantly added to totemconfig
+	nodelist.
+
+	So simple corosync-cfgtool -R resulted very quickly in filling whole
+	array and segfault.
+
+	Solution is to clear member_count.
+
+	Clearing is also moved directly to put_nodelist_members_to_config to
+	make sure it's always processed.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	Log: Make reload of logging work
+	When reload was called multiple times (~20), logging to file stopped
+	working.
+
+	Main problem was hidden in the fact, that log file was opened multiple
+	times, because even target_id was shared via subsystem loggers, file
+	name was not.
+
+	Solution is to ALWAYS set proper log file name into subsystem logger
+	(copy is stored). This will not only fix problem but also removes small
+	leak.
+
+	Also if filename didn't changed, function can return sooner.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-03-17  Jan Friesse  <jfriesse@redhat.com>
+
+	config: Handle totem_set_volatile_defaults errors
+	When totem_set_volatile_defaults is called from totem_config_validate
+	return code is unchecked.
+
+	It's then perfectly possible to set (for example) join timeout to very
+	small value (1) and consensus value is then set to 0 making corosync
+	unable to create membership.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-02-26  Jan Friesse  <jfriesse@redhat.com>
+
+	votequorum: Properly initialize atb and atb_string
+	icmap_get_* behavior is to NOT modify passed variable when it doesn't
+	success. So we must initialize variable before icmap_get_* call.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2014-02-25  Jan Friesse  <jfriesse@redhat.com>
+
+	mon: Make monitoring work
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	mon: Pass correct pointer to inst
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	mon: Fix comparsion typo
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	mon: Make mon compilable with libstatgrab ver 0.9
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-02-19  Jan Friesse  <jfriesse@redhat.com>
+
+	cpg: Make sure left nodes are really removed
+	When node is paused and other nodes has in meantime exited cpg process,
+	paused node after resume doesn't update it's membership correctly so on
+	previously paused node exited cpg process is still visible.
+
+	Solution is to compare join list with cpd and remove all pids which are
+	not included in join list.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	cpg: Make sure nodid is always logged as hex num
+	Also number is prefixed by 0x so it's easier to spot that number is
+	hexadecimal.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	cpg: Refactor mh_req_exec_cpg_procleave
+	Most of functionality is moved to do_proc_leave function to make it
+	reusable.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-02-18  Jan Friesse  <jfriesse@redhat.com>
+
+	totemsrp: Fix typo with cont gather
+	Patch f3ffd3da5c71a10e1783a38e50bafc61192854f6 introduced named states
+	of state-machine, but sadly contains logical problem causing
+	stats.continuous_gather increasing even when it shouldn't. Problem is
+	not critical, because continuous_gather is set to 0 on successful
+	membership creation.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-02-17  Christine Caulfield  <ccaulfie@redhat.com>
+
+	votequorum: Add extended options to auto_tie_breaker
+	This patch adds more flexibility to the auto_tie_breaker feature of
+	votequorum. With this, not only can the lowest nodeid be used as
+	a tie breaker, but also the highest, or a node from a nominated list.
+
+	If there is a list of nodes, the first node in the list that was not
+	part of the previous partition is used. This allows the user to
+	specify a preferred set of nodes but prevents a split-brain if the
+	cluster divides evenly with a node in each half.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-01-23  Masatake YAMATO  <yamato@redhat.com>
+
+	Free object allocated at quorum_register_callback
+	Memory object allocated with malloc at quorum_register_callback
+	is not freed. The object is linked to internal_trackers_list.
+
+	The object is unlinked at quorum_unregister_callback. However,
+	it is not freed at the function.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
 2014-01-14  Jan Friesse  <jfriesse@redhat.com>
 
 	Properly check result of symlink

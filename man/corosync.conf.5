@@ -238,18 +238,6 @@ Choose hardware carefully if intending to use large frame support.
 The default is 1500.
 
 .TP
-vsftype
-This directive controls the virtual synchrony filter type used to identify
-a primary component.  The preferred choice is YKD dynamic linear voting,
-however, for clusters larger then 32 nodes YKD consumes alot of memory.  For
-large scale clusters that are created by changing the MAX_PROCESSORS_COUNT
-#define in the C code totem.h file, the virtual synchrony filter "none" is
-recommended but then AMF and DLCK services (which are currently experimental)
-are not safe for use.
-
-The default is ykd.  The vsftype can also be set to none.
-
-.TP
 transport
 This directive controls the transport mechanism used.  If the interface to
 which corosync is binding is an RDMA interface such as RoCEE or Infiniband, the
@@ -298,6 +286,18 @@ in the current configuration.  Reforming a new configuration takes about 50
 milliseconds in addition to this timeout.
 
 The default is 1000 milliseconds.
+
+.TP
+token_coefficient
+This value is used only when
+.B nodelist
+section is specified and contains at least 3 nodes. If so, real token timeout
+is then computed as token + (number_of_nodes - 2) * token_coefficient.
+This allows cluster to scale without manually changing token timeout
+every time new node is added. This value can be set to 0 resulting
+in effective removal of this feature.
+
+The default is 650 milliseconds.
 
 .TP
 token_retransmit

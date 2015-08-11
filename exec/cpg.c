@@ -313,6 +313,12 @@ static void do_proc_join(
 	unsigned int nodeid,
 	int reason);
 
+static void do_proc_leave(
+	const mar_cpg_name_t *name,
+	uint32_t pid,
+	unsigned int nodeid,
+	int reason);
+
 static int notify_lib_totem_membership (
 	void *conn,
 	int member_list_entries,
@@ -925,6 +931,56 @@ static void downlist_master_choose_and_send (void)
 	qb_map_destroy(group_map);
 }
 
+/*
+ * Remove processes that might have left the group while we were suspended.
+ */
+static void joinlist_remove_zombie_pi_entries (void)
+{
+	struct list_head *pi_iter;
+	struct list_head *jl_iter;
+	struct process_info *pi;
+	struct joinlist_msg *stored_msg;
+	int found;
+
+	for (pi_iter = process_info_list_head.next; pi_iter != &process_info_list_head; ) {
+		pi = list_entry (pi_iter, struct process_info, list);
+		pi_iter = pi_iter->next;
+
+		/*
+		 * Ignore local node
+		 */
+		if (pi->nodeid == api->totem_nodeid_get()) {
+			continue ;
+		}
+
+		/*
+		 * Try to find message in joinlist messages
+		 */
+		found = 0;
+		for (jl_iter = joinlist_messages_head.next;
+			jl_iter != &joinlist_messages_head;
+			jl_iter = jl_iter->next) {
+
+			stored_msg = list_entry(jl_iter, struct joinlist_msg, list);
+
+			if (stored_msg->sender_nodeid == api->totem_nodeid_get()) {
+				continue ;
+			}
+
+			if (pi->nodeid == stored_msg->sender_nodeid &&
+			    pi->pid == stored_msg->pid &&
+			    mar_name_compare (&pi->group, &stored_msg->group_name) == 0) {
+				found = 1;
+				break ;
+			}
+		}
+
+		if (!found) {
+			do_proc_leave(&pi->group, pi->pid, pi->nodeid, CONFCHG_CPG_REASON_PROCDOWN);
+		}
+	}
+}
+
 static void joinlist_inform_clients (void)
 {
 	struct joinlist_msg *stored_msg;
@@ -951,6 +1007,8 @@ static void joinlist_inform_clients (void)
 		do_proc_join (&stored_msg->group_name, stored_msg->pid, stored_msg->sender_nodeid,
 			CONFCHG_CPG_REASON_NODEUP);
 	}
+
+	joinlist_remove_zombie_pi_entries ();
 }
 
 static void downlist_messages_delete (void)
@@ -1195,11 +1253,42 @@ static void do_proc_join(
 			    MESSAGE_RES_CPG_CONFCHG_CALLBACK);
 }
 
+static void do_proc_leave(
+	const mar_cpg_name_t *name,
+	uint32_t pid,
+	unsigned int nodeid,
+	int reason)
+{
+	struct process_info *pi;
+	struct list_head *iter;
+	mar_cpg_address_t notify_info;
+
+	notify_info.pid = pid;
+	notify_info.nodeid = nodeid;
+	notify_info.reason = reason;
+
+	notify_lib_joinlist(name, NULL,
+		0, NULL,
+		1, &notify_info,
+		MESSAGE_RES_CPG_CONFCHG_CALLBACK);
+
+	for (iter = process_info_list_head.next; iter != &process_info_list_head; ) {
+		pi = list_entry(iter, struct process_info, list);
+		iter = iter->next;
+
+		if (pi->pid == pid && pi->nodeid == nodeid &&
+			mar_name_compare (&pi->group, name)==0) {
+			list_del (&pi->list);
+			free (pi);
+		}
+	}
+}
+
 static void message_handler_req_exec_cpg_downlist_old (
 	const void *message,
 	unsigned int nodeid)
 {
-	log_printf (LOGSYS_LEVEL_WARNING, "downlist OLD from node %d",
+	log_printf (LOGSYS_LEVEL_WARNING, "downlist OLD from node 0x%x",
 		nodeid);
 }
 
@@ -1254,7 +1343,7 @@ static void message_handler_req_exec_cpg_procjoin (
 {
 	const struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = message;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got procjoin message from cluster node %d (%s) for pid %u",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got procjoin message from cluster node 0x%x (%s) for pid %u",
 		nodeid,
 		api->totem_ifaces_print(nodeid),
 		(unsigned int)req_exec_cpg_procjoin->pid);
@@ -1269,31 +1358,15 @@ static void message_handler_req_exec_cpg_procleave (
 	unsigned int nodeid)
 {
 	const struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = message;
-	struct process_info *pi;
-	struct list_head *iter;
-	mar_cpg_address_t notify_info;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got procleave message from cluster node %d", nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got procleave message from cluster node 0x%x (%s) for pid %u",
+		nodeid,
+		api->totem_ifaces_print(nodeid),
+		(unsigned int)req_exec_cpg_procjoin->pid);
 
-	notify_info.pid = req_exec_cpg_procjoin->pid;
-	notify_info.nodeid = nodeid;
-	notify_info.reason = req_exec_cpg_procjoin->reason;
-
-	notify_lib_joinlist(&req_exec_cpg_procjoin->group_name, NULL,
-		0, NULL,
-		1, &notify_info,
-		MESSAGE_RES_CPG_CONFCHG_CALLBACK);
-
-	for (iter = process_info_list_head.next; iter != &process_info_list_head; ) {
-		pi = list_entry(iter, struct process_info, list);
-		iter = iter->next;
-
-		if (pi->pid == req_exec_cpg_procjoin->pid && pi->nodeid == nodeid &&
-			mar_name_compare (&pi->group, &req_exec_cpg_procjoin->group_name)==0) {
-			list_del (&pi->list);
-			free (pi);
-		}
-	}
+	do_proc_leave (&req_exec_cpg_procjoin->group_name,
+		req_exec_cpg_procjoin->pid, nodeid,
+		req_exec_cpg_procjoin->reason);
 }
 
 
@@ -1307,7 +1380,7 @@ static void message_handler_req_exec_cpg_joinlist (
 	const struct join_list_entry *jle = (const struct join_list_entry *)(message + sizeof(struct qb_ipc_response_header));
 	struct joinlist_msg *stored_msg;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got joinlist message from node %x",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got joinlist message from node 0x%x",
 		nodeid);
 
 	while ((const char*)jle < message + res->size) {

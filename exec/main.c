@@ -193,25 +193,29 @@ void corosync_state_dump (void)
 static void corosync_blackbox_write_to_file (void)
 {
 	char fname[PATH_MAX];
+	char fdata_fname[PATH_MAX];
 	char time_str[PATH_MAX];
 	struct tm cur_time_tm;
 	time_t cur_time_t;
+	ssize_t res;
 
 	cur_time_t = time(NULL);
 	localtime_r(&cur_time_t, &cur_time_tm);
 
 	strftime(time_str, PATH_MAX, "%Y-%m-%dT%H:%M:%S", &cur_time_tm);
 	snprintf(fname, PATH_MAX, "%s/fdata-%s-%lld",
-	    LOCALSTATEDIR "/lib/corosync",
+	    get_run_dir(),
 	    time_str,
 	    (long long int)getpid());
 
-	qb_log_blackbox_write_to_file(fname);
-
-	unlink(LOCALSTATEDIR "/lib/corosync/fdata");
-	if (symlink(fname, LOCALSTATEDIR "/lib/corosync/fdata") == -1) {
+	if ((res = qb_log_blackbox_write_to_file(fname)) < 0) {
+		LOGSYS_PERROR(-res, LOGSYS_LEVEL_ERROR, "Can't store blackbox file");
+	}
+	snprintf(fdata_fname, sizeof(fdata_fname), "%s/fdata", get_run_dir());
+	unlink(fdata_fname);
+	if (symlink(fname, fdata_fname) == -1) {
 		log_printf(LOGSYS_LEVEL_ERROR, "Can't create symlink to '%s' for corosync blackbox file '%s'",
-		    fname, LOCALSTATEDIR "/lib/corosync/fdata");
+		    fname, fdata_fname);
 	}
 }
 
@@ -248,12 +252,34 @@ static void sigsegv_handler (int num)
 	raise (SIGSEGV);
 }
 
+/*
+ * QB wrapper for real signal handler
+ */
+static int32_t sig_segv_handler (int num, void *data)
+{
+
+	sigsegv_handler(num);
+
+	return 0;
+}
+
 static void sigabrt_handler (int num)
 {
 	(void)signal (SIGABRT, SIG_DFL);
 	corosync_blackbox_write_to_file ();
 	qb_log_fini();
 	raise (SIGABRT);
+}
+
+/*
+ * QB wrapper for real signal handler
+ */
+static int32_t sig_abrt_handler (int num, void *data)
+{
+
+	sigabrt_handler(num);
+
+	return 0;
 }
 
 #define LOCALHOST_IP inet_addr("127.0.0.1")
@@ -699,6 +725,87 @@ int main_mcast (
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
 }
 
+static void corosync_ring_id_create_or_load (
+	struct memb_ring_id *memb_ring_id,
+	const struct totem_ip_address *addr)
+{
+	int fd;
+	int res = 0;
+	char filename[PATH_MAX];
+
+	snprintf (filename, sizeof(filename), "%s/ringid_%s",
+		get_run_dir(), totemip_print (addr));
+	fd = open (filename, O_RDONLY, 0700);
+	/*
+	 * If file can be opened and read, read the ring id
+	 */
+	if (fd != -1) {
+		res = read (fd, &memb_ring_id->seq, sizeof (uint64_t));
+		close (fd);
+	}
+	/*
+	 * If file could not be opened or read, create a new ring id
+	 */
+	if ((fd == -1) || (res != sizeof (uint64_t))) {
+		memb_ring_id->seq = 0;
+		umask(0);
+		fd = open (filename, O_CREAT|O_RDWR, 0700);
+		if (fd != -1) {
+			res = write (fd, &memb_ring_id->seq, sizeof (uint64_t));
+			close (fd);
+			if (res == -1) {
+				LOGSYS_PERROR (errno, LOGSYS_LEVEL_ERROR,
+					"Couldn't write ringid file '%s'", filename);
+
+				corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
+			}
+		} else {
+			LOGSYS_PERROR (errno, LOGSYS_LEVEL_ERROR,
+				"Couldn't create ringid file '%s'", filename);
+
+			corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
+		}
+	}
+
+	totemip_copy(&memb_ring_id->rep, addr);
+	assert (!totemip_zero_check(&memb_ring_id->rep));
+}
+
+static void corosync_ring_id_store (
+	const struct memb_ring_id *memb_ring_id,
+	const struct totem_ip_address *addr)
+{
+	char filename[PATH_MAX];
+	int fd;
+	int res;
+
+	snprintf (filename, sizeof(filename), "%s/ringid_%s",
+		get_run_dir(), totemip_print (addr));
+
+	fd = open (filename, O_WRONLY, 0777);
+	if (fd == -1) {
+		fd = open (filename, O_CREAT|O_RDWR, 0777);
+	}
+	if (fd == -1) {
+		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
+			"Couldn't store new ring id %llx to stable storage",
+			memb_ring_id->seq);
+
+		corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
+	}
+	log_printf (LOGSYS_LEVEL_DEBUG,
+		"Storing new sequence id for ring %llx", memb_ring_id->seq);
+	res = write (fd, &memb_ring_id->seq, sizeof(memb_ring_id->seq));
+	close (fd);
+	if (res != sizeof(memb_ring_id->seq)) {
+		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
+			"Couldn't store new ring id %llx to stable storage",
+			memb_ring_id->seq);
+
+		corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
+	}
+}
+
 static qb_loop_timer_handle recheck_the_q_level_timer;
 void corosync_recheck_the_q_level(void *data)
 {
@@ -966,6 +1073,8 @@ static void set_icmap_ro_keys_flag (void)
 	icmap_set_ro_access("totem.rrp_mode", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.netmtu", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("qb.ipc_type", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("config.reload_in_progress", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("config.totemconfig_reload_in_progress", CS_FALSE, CS_TRUE);
 }
 
 static void main_service_ready (void)
@@ -1081,9 +1190,8 @@ int main (int argc, char **argv, char **envp)
 	const char *error_string;
 	struct totem_config totem_config;
 	int res, ch;
-	int background, setprio;
+	int background, setprio, testonly;
 	struct stat stat_out;
-	char corosync_lib_dir[PATH_MAX];
 	enum e_corosync_done flock_err;
 	uint64_t totem_config_warnings;
 	struct scheduler_pause_timeout_data scheduler_pause_timeout_data;
@@ -1092,8 +1200,9 @@ int main (int argc, char **argv, char **envp)
 	 */
 	background = 1;
 	setprio = 0;
+	testonly = 0;
 
-	while ((ch = getopt (argc, argv, "fprv")) != EOF) {
+	while ((ch = getopt (argc, argv, "fprtv")) != EOF) {
 
 		switch (ch) {
 			case 'f':
@@ -1104,9 +1213,13 @@ int main (int argc, char **argv, char **envp)
 			case 'r':
 				setprio = 1;
 				break;
+			case 't':
+				testonly = 1;
+				break;
 			case 'v':
 				printf ("Corosync Cluster Engine, version '%s'\n", VERSION);
 				printf ("Copyright (c) 2006-2009 Red Hat, Inc.\n");
+				logsys_system_fini();
 				return EXIT_SUCCESS;
 
 				break;
@@ -1115,8 +1228,10 @@ int main (int argc, char **argv, char **envp)
 					"usage:\n"\
 					"        -f     : Start application in foreground.\n"\
 					"        -p     : Does nothing.    \n"\
+					"        -t     : Test configuration and exit.\n"\
 					"        -r     : Set round robin realtime scheduling \n"\
 					"        -v     : Display version and SVN revision of Corosync and exit.\n");
+				logsys_system_fini();
 				return EXIT_FAILURE;
 		}
 	}
@@ -1173,16 +1288,24 @@ int main (int argc, char **argv, char **envp)
 		corosync_exit_error (COROSYNC_DONE_LOGCONFIGREAD);
 	}
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
-	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
+	if (!testonly) {
+		log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
+		log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
+	}
 
 	/*
 	 * Make sure required directory is present
 	 */
-	sprintf (corosync_lib_dir, "%s/lib/corosync", LOCALSTATEDIR);
-	res = stat (corosync_lib_dir, &stat_out);
+	res = stat (get_run_dir(), &stat_out);
 	if ((res == -1) || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.", corosync_lib_dir);
+		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.", get_run_dir());
+		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
+	}
+
+	res = chdir(get_run_dir());
+	if (res == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Cannot chdir to run directory %s.  "
+		    "Please make sure it has correct context and rights.", get_run_dir());
 		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
 	}
 
@@ -1220,7 +1343,14 @@ int main (int argc, char **argv, char **envp)
 		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
+	if (testonly) {
+		corosync_exit_error (COROSYNC_DONE_EXIT);
+	}
+
 	ip_version = totem_config.ip_version;
+
+	totem_config.totem_memb_ring_id_create_or_load = corosync_ring_id_create_or_load;
+	totem_config.totem_memb_ring_id_store = corosync_ring_id_store;
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem,"
@@ -1253,6 +1383,10 @@ int main (int argc, char **argv, char **envp)
 		SIGUSR2, NULL, sig_diag_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
 		SIGINT, NULL, sig_exit_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGSEGV, NULL, sig_segv_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGABRT, NULL, sig_abrt_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
 		SIGQUIT, NULL, sig_exit_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
