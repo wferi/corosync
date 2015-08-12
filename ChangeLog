@@ -1,3 +1,377 @@
+2015-06-22  Jan Friesse  <jfriesse@redhat.com>
+
+	Don't link with libz when not needed
+	Commit 8cc8e513633a1a8b12c416e32fb5362fcf4d65dd added check for libz
+	resulting in linking with lib z for all libraries. This is not expected
+	behavior. Patch solves it by making defining automake conditional so
+	cpghum is linked only if libz is available and LIBS variable is not
+	modified at all.
+
+	Log: Add logrotate configuration file
+	In cman era corosync was depending on logrotate file distributed by
+	cman. It's good idea to logrotate also on systems without cman (new
+	clusters).
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+	Add note about rrp active beeing unsupported
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2015-06-18  Christine Caulfield  <ccaulfie@redhat.com>
+
+	votequorum: Fix auto_tie_breaker behaviour in odd-sized clusters
+	auto_tie_breaker can behave incorrectly in the case of a cluster
+	with an odd number of nodes. It's possible for a partition to
+	have quorum while the other side has the ATB node, and both will
+	continue working. (Of course in a properly configured cluster one side
+	will be fenced but that becomes an indeterminate race .. just what ATB
+	is supposed to avoid).
+
+	This patch prevents ATB from running in a partition if the 'other'
+	partition might have quorum, and also mandates the use of wait_for_all
+	in clusters with an odd number of nodes so that a quorate partition
+	cannot start services or fence an existing partition with the tie
+	breaker node.
+
+	Signed-Off-By: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-06-12  Christine Caulfield  <ccaulfie@redhat.com>
+
+	totemsrp: Improve logging of left/down nodes
+	This patch from Hideo Yamauchi improves the logging of
+	whether nodes leave the cluster cleanly or uncleanly,
+	making it easier to determine if a node ws shut down
+	by the operator. There is also the possibility that a
+	LEAVE message could get missed (due to the node being
+	in flush state) so this can also make that clearer.
+
+	The modifications are as follows.
+
+	Change 1) I added the list which maintained LEAVE node to totemsrp.
+	Change 2) I added registration, a search, the handling of to clear LEAVE
+	node.
+	Change 3) I added the output to log.
+	Change 4) I changed an output level of the log.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-04-17  Christine Caulfield  <ccaulfie@redhat.com>
+
+	totem: Log a message if JOIN or LEAVE message is ignored
+	As per recent email thread, this patch adds a log message if a JOIN or
+	LEAVE message is discarded while corosync is flushing the receive queue.
+
+	While ignoring a JOIN message is harmless (it will be resent), ignoring
+	a LEAVE message can cause a longer state transition as it is treated as
+	a node crashing rather than leaving gracefully, so the system admin
+	might be confused as to the cause.
+
+	Unfortunately, we can't (at the totemudp level) distinguish between JOIN
+	or LEAVE messages without a lot more protocol-specific code creeping in
+	the lower layer so the message is left ambiguous.
+
+2015-04-10  Christine Caulfield  <ccaulfie@redhat.com>
+
+	totemconfig: Check for duplicate nodeids
+	Having duplicate nodeids in corosync.conf can play havoc with a cluster,
+	so (as suggested by someone on this list) here is some code to check
+	that all nodeids are unique. Even if a nodeid is not specified it will
+	check to be sure that the ID generated from the IP address (ipv4 only)
+	does not clash with one that is provided.
+
+	It logs all non-unique nodeids to syslog, but only the last is reported
+	on the command-line to the user which should be enough to get them to
+	check further. At startup this will cause corosync to fail to start.
+
+2015-03-16  Christine Caulfield  <ccaulfie@redhat.com>
+
+	quorum: don't allow quorum_trackstart to be called twice
+	If quorum_trackstart() or votequorum_trackstart() are called twice with
+	CS_TRACK_CHANGES then the client gets added twice to the notifications
+	list effectively corrupting it. Users have reported segfaults in
+	corosync when they did this (by mistake!).
+
+	As there's already a tracking_enabled flag in the private-data, we check
+	that before adding to the list again and return an error if
+	the process is already registered.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-03-10  Jan Friesse  <jfriesse@redhat.com>
+
+	Really add cpghum
+
+2015-03-05  Christine Caulfield  <ccaulfie@redhat.com>
+
+	cpg: Add support for messages larger than 1Mb
+	If a cpg client sends a message larger than 1Mb (actually slightly
+	less to allow for internal buffers) cpg will now fragment that into
+	several corosync messages before sending it around the ring.
+
+	cpg_mcast_joined() can now return CS_ERR_INTERRUPT which means that the
+	cpg membership was disrupted during the send operation and the message
+	needs to be resent.
+
+	The new API call cpg_max_atomic_msgsize_get() returns the maximum size
+	of a message that will not be fragmented internally.
+
+	New test program cpghum was written to stress test this functionality,
+	it checks message integrity and order of receipt.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-03-05  Andrey N. Groshev  <greenx@yandex.ru>
+
+	totemsrp: Format member list log as unsigned int
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-03-02  Christine Caulfield  <ccaulfie@redhat.com>
+
+	Don't allow both two_node and auto_tie_breaker in corosync.conf
+	The two_node and auto_tie_breaker options are incompatible as they
+	specify conflicting methods of determining the quorate half of a cluster
+	partition.
+
+	This patch detects this error in corosync.conf, issues a message and
+	disables two_node if auto_tie_breaker is present.
+
+	Signed-Off-By: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Votequorum: Fix auto_tie_breaker default
+	The default for auto_tie_breaker should be 'lowest' - which is what it
+	was before the extended ATB functionality of auto_tie_breaker_node was
+	added, and what the documentation states.
+
+	However this was broken so that if auto_tie_breaker_node was not
+	specified then auto_tie_breaker itself was ignored. This patch fixes
+	that.
+
+	It also fixes a typo in a comment.
+
+	Signed-Off-By: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-01-21  Jan Friesse  <jfriesse@redhat.com>
+
+	Handle adding and removing UDPU members atomically
+	When config file is reloaded with removed UDPU member, internal icmap
+	index of nodelist.node can change. This can result in removal and then
+	adding back node. This, with UDPU alive filtering (where member is by
+	default considered as not a member) makes corosync not sending messages
+	to such members resulting in new membership creation.
+
+	Solution is to properly test which members were really deleted and added
+	(instead of relying on internal and dynamic naming of icmap hash table
+	key name).
+
+	Also trully dynamic add and remove node (via cmap) is now handled by
+	same function so totem_config->interfaces is now updated properly.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2015-01-20  Jan Friesse  <jfriesse@redhat.com>
+
+	corosync_ring_id_store: Use safer permissions
+	corosync_ring_id_store should use same (safer) permissions as
+	corosync_ring_id_create_or_load for (eventually) newly created ringid
+	file.
+
+	Credit to Sjerek for finding this problem.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2015-01-15  Jason  <huzhijiang@gmail.com>
+
+	totem: Ignore duplicated commit tokens in recovery
+	In active rrp mode, commit tokens are treated as mcast data messages,
+	thus, rrp directly delivers them to srp layer by active_mcast_recv().
+	This will result in duplicated commit tokens being received by srp from
+	different heartbeat links. If node is in recovery state and has already
+	sent out the initial orf token, those duplicated commit tokens will
+	cause message_handler_memb_commit_token() to send initial orf token
+	again! This is wrong because it resets the orf token content in
+	instance->orf_token_retransmit, which breaks the token retransmission
+	state.
+
+	Furthermore, by sending those initial orf tokens again and again,
+	it may lead active_token_recv() to drop some subsequent orf tokens.
+	It is OK for rrp because srp will do token retransmission,
+	but as said above, srp retransmission state has already been broken,
+	so finally we meet a "token lost in recovery state" condition caused
+	by software. If token timeout value is large, then it will takes long
+	time to create a new ring.
+
+	This can be reproduced by having two noded set to active rrp mode, with
+	two heartbeat links. Then with one node always on, let the other one do
+	stop/start again and again. It has a low probability to reproduce.
+	In theory, I think, the more heartbeat links used, the more easily it
+	can be reproduced.
+
+	This problem can be resolved by letting
+	message_handler_memb_commit_token() to ignore duplicated commit tokens
+	in recovery state if node (the ring representation) has already sent
+	out the initial orf token.
+
+	Different from prev take, this version do not depends on stored token
+	data but uses originated_orf_token in totemsrp_instance to remember
+	if initial orf token has been already originated for current membership.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2015-01-14  Jan Friesse  <jfriesse@redhat.com>
+
+	Log auto-recovery of ring only once
+	Make sure to log auto-recovery of ring only once. Every
+	MESSAGE_TYPE_RING_TEST_ACTIVATE receive is logged, but with lower
+	priority and more detailed information.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2015-01-05  Jan Friesse  <jfriesse@redhat.com>
+
+	Set RR priority by default
+	Experience with larger production clusters showed that setting RR
+	priority for corosync is viable for prevent random fencing, ...
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	automake: Check minimum automake version
+	Corosync needs automake version at least 1.11. Patch adds minimum
+	version check.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-12-08  Jason  <huzhijiang@gmail.com>
+
+	Reset timer_problem_decrementer on fault
+	After a heartbeat link's FAULTY and its auto re-enable,
+	active_instance->timer_problem_decrementer did not reset to zero. So in
+	the next timer_function_active_token_expired() round,
+	active_timer_problem_decrementer_start() will not be called. This will
+	result in that the active_instance->counter_problems of this link can
+	not be decreased any more. Cause rrp lose the ability to tolerate
+	network fluctuation.
+
+	This problem can be reproduced by the following sequence:
+	1) Set RRP in active mode, configure at least 2 heartbeat links.
+	2) Unplug one link till corosync-cfgtool -s shows it is FAULTY.
+	3) Re-plug this link then corosync-cfgtool -s shows it is active with
+	no faults.
+	4) Unplug this link again but quicky re-plug it before it becomes
+	FAULTY.
+	5) Finally, you can see corosync-cfgtool -s shows it is in
+	"Incrementing problem counter" state despite it currently is physically
+	healthy.
+
+	It can be solved by not forget to reset timer_problem_decrementer to
+	zero in active_timer_problem_decrementer_cancel().
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-11-24  Jan Friesse  <jfriesse@redhat.com>
+
+	config: Ensure mcast address/port differs for rrp
+	When using multiple interfaces, it's necessary to use different
+	multicast address/port pair for each interface to make
+	rrp work correctly. This is now checked in parser.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	config: Process broadcast option consistently
+	Broadcast option is global but in config set in interface section. When
+	more interfaces are defined, only broadcast from last section was used.
+
+	Solution is to use broadcast whenever at least one interface use
+	broadcast.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	config: Make sure user doesn't mix IPv6 and IPv4
+	Checking code was there, sadly not correct, so it was possible to enter
+	one bindnet addr as IPv4 and second as IPv6. Fix is trivial.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-10-13  Jan Friesse  <jfriesse@redhat.com>
+
+	man page: Improve description of token timeout
+	With introduction of token_coefficient, token timeout defined in
+	configuration file may be no longer reflect real token timeout, what may
+	be confusing.
+
+	Enhanced description hopefully fix that.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	Store configuration values used by totem to cmap
+	Some totem configuration values (like token, consensus, ...) are ether
+	computed or default value is used. It's hard to find out, what
+	value is really used.
+
+	Solution is to store values in cmap.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-10-13  Christine Caulfield  <ccaulfie@redhat.com>
+
+	manpage: Fix English
+	While I was looking at the above man page changes I thought I'd review
+	the rest of it. So here are some more English fixes for the cmap_keys.8
+	man page
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2014-10-08  Jan Friesse  <jfriesse@redhat.com>
+
+	init: Don't wait for ipc if corosync doesn't start
+	Init script now checks return code of executing corosync command. If it
+	fails, ipc_wait section is skipped, resulting in much faster failure of
+	init script.
+
+	Reviewed-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+
+2014-10-01  Jan Friesse  <jfriesse@redhat.com>
+
+	Adjust MTU for IPv6 correctly
+	MTU for IPv6 is 20 bytes larger then IPv4. This fact was not taken into
+	account so IPv6 packets were larger then MTU resulting in fragmentation.
+
+	Solution is to substract correct IP header size.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2014-09-06  Fabio M. Di Nitto  <fdinitto@redhat.com>
+
+	[crypto] fix crypto block rounding/padding calculation
+	libnss is "weird" in this respect as some block sizes are hardcoded,
+	others need to be determined dynamically.
+
+	For AES we need to use the values we know since GetBlockSize would
+	return errors, for 3des (that hopefully nobody is using) the value
+	returned by GetBlockSize is 8, but let's use the call into libnss
+	to avoid possible conflicts with distro patching or older versions.
+
+	Now, given the correct block size, the old calculation simply added
+	block size to the hdr_size. This is not sufficient.
+
+	We use _PAD encryption methods and we need to take that into account.
+
+	_PAD is calculated given the current input buf len and rounded up
+	to block size boundary, then block_size is added.
+
+	Ideally we would do that on a per packet base but current transport
+	infrastructure doesn't allow it yet.
+
+	So round up the hdr_size to double the block_size reported by the
+	cipher.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
 2014-08-26  Jan Friesse  <jfriesse@redhat.com>
 
 	totemudpu: Send msgs to all members occasionally
