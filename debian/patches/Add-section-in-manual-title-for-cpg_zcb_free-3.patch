@@ -5,11 +5,11 @@ Subject: Add section in manual title for cpg_zcb_free 3
 Change-Id: Ib80face38dce0345e649297d16cf8a63c5b0e8c1
 Signed-off-by: Richard B Winters <rik@mmogp.com>
 ---
- man/cpg_zcb_free.3.in | 2 +-
+ man/cpg_zcb_free.3.in |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/man/cpg_zcb_free.3.in b/man/cpg_zcb_free.3.in
-index f26e2c0..369c660 100644
+index f26e2c0..7b12e2d 100644
 --- a/man/cpg_zcb_free.3.in
 +++ b/man/cpg_zcb_free.3.in
 @@ -31,7 +31,7 @@

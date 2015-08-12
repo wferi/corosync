@@ -9,7 +9,7 @@ Subject: Fix spelling errors in manual corosync.conf 5
 Change-Id: If6644694d750c30ba9f5f43b4eb852485613d64a
 Signed-off-by: Richard B Winters <rik@mmogp.com>
 ---
- man/corosync.conf.5 | 8 ++++----
+ man/corosync.conf.5 |    8 ++++----
  1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/man/corosync.conf.5 b/man/corosync.conf.5

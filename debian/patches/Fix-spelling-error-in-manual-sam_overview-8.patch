@@ -7,7 +7,7 @@ Subject: Fix spelling error in manual sam_overview 8
 Change-Id: I2d7872b21e889202cd2b7752db4c76f18fffa95d
 Signed-off-by: Richard B Winters <rik@mmogp.com>
 ---
- man/sam_overview.8 | 2 +-
+ man/sam_overview.8 |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/man/sam_overview.8 b/man/sam_overview.8

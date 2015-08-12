@@ -8,7 +8,7 @@ Subject: Fix spelling and grammar errors in manual cmap_keys 8
 Change-Id: Ic2b6388e26592affb7514f81ffa9a7f1dfae5a99
 Signed-off-by: Richard B Winters <rik@mmogp.com>
 ---
- man/cmap_keys.8 | 6 +++---
+ man/cmap_keys.8 |    6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/man/cmap_keys.8 b/man/cmap_keys.8

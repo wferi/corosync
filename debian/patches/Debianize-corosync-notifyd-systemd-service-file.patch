@@ -1,11 +1,18 @@
-From: Ferenc Wágner <wferi@niif.hu>
+From: =?utf-8?q?Ferenc_W=C3=A1gner?= <wferi@niif.hu>
+Date: Thu, 13 Aug 2015 01:20:28 +0200
 Subject: Debianize corosync-notifyd systemd service file
 
 Use /etc/default/corosync-notifyd as environment files instead of
 /etc/sysconfig/corosync-notifyd in corosync-notifyd.service file.
+---
+ init/corosync-notifyd.service.in |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/init/corosync-notifyd.service.in b/init/corosync-notifyd.service.in
+index ce576fe..b7715fc 100644
 --- a/init/corosync-notifyd.service.in
 +++ b/init/corosync-notifyd.service.in
-@@ -4,7 +4,7 @@
+@@ -4,7 +4,7 @@ Wants=corosync.service
  After=corosync.service
  
  [Service]

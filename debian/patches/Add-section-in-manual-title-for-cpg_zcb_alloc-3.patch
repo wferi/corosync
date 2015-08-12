@@ -5,11 +5,11 @@ Subject: Add section in manual title for cpg_zcb_alloc 3
 Change-Id: I8c5d6af915203533c80e4eaa574e305a46d74815
 Signed-off-by: Richard B Winters <rik@mmogp.com>
 ---
- man/cpg_zcb_alloc.3.in | 2 +-
+ man/cpg_zcb_alloc.3.in |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/man/cpg_zcb_alloc.3.in b/man/cpg_zcb_alloc.3.in
-index 607922b..25637f7 100644
+index 607922b..9450b92 100644
 --- a/man/cpg_zcb_alloc.3.in
 +++ b/man/cpg_zcb_alloc.3.in
 @@ -31,7 +31,7 @@

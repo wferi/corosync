@@ -7,7 +7,7 @@ Subject: Fix spelling error in binary corosync-cfgtool
 Change-Id: I0457bf3040a454a44f0d8343dd2cd8bf8fad16e0
 Signed-off-by: Richard B Winters <rik@mmogp.com>
 ---
- tools/corosync-cfgtool.c | 2 +-
+ tools/corosync-cfgtool.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/tools/corosync-cfgtool.c b/tools/corosync-cfgtool.c
