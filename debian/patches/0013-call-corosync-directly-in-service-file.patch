@@ -1,3 +1,6 @@
+From: Ferenc Wágner <wferi@niif.hu>
+Subject: call corosync directly in service file
+
 Modify init/corosync.service.in to call corosync directly instead of
 through the upstream SysV initscript.
 --- corosync-old.orig/init/corosync.service.in
