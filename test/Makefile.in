@@ -72,7 +72,9 @@ noinst_PROGRAMS = cpgverify$(EXEEXT) testcpg$(EXEEXT) \
 	testvotequorum1$(EXEEXT) testvotequorum2$(EXEEXT) \
 	stress_cpgfdget$(EXEEXT) stress_cpgcontext$(EXEEXT) \
 	cpgbound$(EXEEXT) testsam$(EXEEXT) testcpgzc$(EXEEXT) \
-	cpgbenchzc$(EXEEXT) testzcgc$(EXEEXT) stress_cpgzc$(EXEEXT)
+	cpgbenchzc$(EXEEXT) testzcgc$(EXEEXT) stress_cpgzc$(EXEEXT) \
+	$(am__EXEEXT_1)
+@BUILD_CPGHUM_TRUE@am__append_1 = cpghum
 subdir = test
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -90,6 +92,7 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/include/corosync/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+@BUILD_CPGHUM_TRUE@am__EXEEXT_1 = cpghum$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 cpgbench_SOURCES = cpgbench.c
 cpgbench_OBJECTS = cpgbench.$(OBJEXT)
@@ -107,6 +110,10 @@ cpgbound_SOURCES = cpgbound.c
 cpgbound_OBJECTS = cpgbound.$(OBJEXT)
 cpgbound_DEPENDENCIES = $(am__DEPENDENCIES_1) \
 	$(top_builddir)/lib/libcpg.la
+cpghum_SOURCES = cpghum.c
+cpghum_OBJECTS = cpghum.$(OBJEXT)
+@BUILD_CPGHUM_TRUE@cpghum_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+@BUILD_CPGHUM_TRUE@	$(top_builddir)/lib/libcpg.la
 cpgverify_SOURCES = cpgverify.c
 cpgverify_OBJECTS = cpgverify-cpgverify.$(OBJEXT)
 cpgverify_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -182,11 +189,11 @@ am__v_CCLD_0 = @echo "  CCLD  " $@;
 AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
-SOURCES = cpgbench.c cpgbenchzc.c cpgbound.c cpgverify.c \
+SOURCES = cpgbench.c cpgbenchzc.c cpgbound.c cpghum.c cpgverify.c \
 	stress_cpgcontext.c stress_cpgfdget.c stress_cpgzc.c testcpg.c \
 	testcpg2.c testcpgzc.c testquorum.c testsam.c \
 	testvotequorum1.c testvotequorum2.c testzcgc.c
-DIST_SOURCES = cpgbench.c cpgbenchzc.c cpgbound.c cpgverify.c \
+DIST_SOURCES = cpgbench.c cpgbenchzc.c cpgbound.c cpghum.c cpgverify.c \
 	stress_cpgcontext.c stress_cpgfdget.c stress_cpgzc.c testcpg.c \
 	testcpg2.c testcpgzc.c testquorum.c testsam.c \
 	testvotequorum1.c testvotequorum2.c testzcgc.c
@@ -251,6 +258,8 @@ LIBTOOL = @LIBTOOL@
 LINT_FLAGS = @LINT_FLAGS@
 LIPO = @LIPO@
 LN_S = @LN_S@
+LOGDIR = @LOGDIR@
+LOGROTATEDIR = @LOGROTATEDIR@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
@@ -371,6 +380,7 @@ cpgbound_LDADD = $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 cpgbench_LDADD = $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 cpgbenchzc_LDADD = $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 testsam_LDADD = $(LIBQB_LIBS) $(top_builddir)/lib/libsam.la
+@BUILD_CPGHUM_TRUE@cpghum_LDADD = $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la -lz
 LINT_FILES1 := $(filter-out sa_error.c, $(wildcard *.c))
 LINT_FILES := $(filter-out testparse.c, $(LINT_FILES1))
 all: all-am
@@ -425,6 +435,9 @@ cpgbenchzc$(EXEEXT): $(cpgbenchzc_OBJECTS) $(cpgbenchzc_DEPENDENCIES)
 cpgbound$(EXEEXT): $(cpgbound_OBJECTS) $(cpgbound_DEPENDENCIES) 
 	@rm -f cpgbound$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(cpgbound_OBJECTS) $(cpgbound_LDADD) $(LIBS)
+cpghum$(EXEEXT): $(cpghum_OBJECTS) $(cpghum_DEPENDENCIES) 
+	@rm -f cpghum$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(cpghum_OBJECTS) $(cpghum_LDADD) $(LIBS)
 cpgverify$(EXEEXT): $(cpgverify_OBJECTS) $(cpgverify_DEPENDENCIES) 
 	@rm -f cpgverify$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(cpgverify_OBJECTS) $(cpgverify_LDADD) $(LIBS)
@@ -471,6 +484,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpgbench.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpgbenchzc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpgbound.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpghum.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpgverify-cpgverify.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stress_cpgcontext.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stress_cpgfdget.Po@am__quote@
