@@ -57,6 +57,7 @@ libtotem_pg.so.5 libtotem-pg5 #MINVER#
  totemip_print@Base 1.99.9
  totemip_sockaddr_to_totemip_convert@Base 1.99.9
  totemip_totemip_to_sockaddr_convert@Base 1.99.9
+ totemip_udpip_header_size@Base 2.3.5
  totemmrp_avail@Base 1.99.9
  totemmrp_callback_token_create@Base 1.99.9
  totemmrp_callback_token_destroy@Base 1.99.9
