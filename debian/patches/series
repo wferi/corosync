@@ -10,3 +10,4 @@ Fix-spelling-error-in-binary-corosync.patch
 Remove-deprecated-doxygen-flags.patch
 Debianize-corosync-notifyd-systemd-service-file.patch
 Call-corosync-directly-in-the-service-file.patch
+Doxygen-fix-for-cmap_iter_next.patch
