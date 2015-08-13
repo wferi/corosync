@@ -5,17 +5,17 @@ Subject: Remove deprecated doxygen flags
 Running 'doxygen -u Doxyfile.in' in the source root produces the
 following results:
 
- - SYMBOL_CACHE_SIZE at line 301 has become obsolete. This tag 
+ - SYMBOL_CACHE_SIZE at line 301 has become obsolete. This tag
    has been removed.
- - SHOW_DIRECTORIES at line 507 has become obsolete. This tag 
+ - SHOW_DIRECTORIES at line 507 has become obsolete. This tag
    has been removed.
- - HTML_ALIGN_MEMBERS at line 881 has become obsolete. This tag 
+ - HTML_ALIGN_MEMBERS at line 881 has become obsolete. This tag
    has been removed.
- - USE_INLINE_TREES at line 1067 has become obsolete. This tag 
+ - USE_INLINE_TREES at line 1067 has become obsolete. This tag
    has been removed.
- - XML_SCHEMA at line 1311 has become obsolete. This tag has been 
+ - XML_SCHEMA at line 1311 has become obsolete. This tag has been
    removed.
- - XML_DTD at line 1317 has become obsolete. This tag has been 
+ - XML_DTD at line 1317 has become obsolete. This tag has been
    removed.
 ---
  Doxyfile.in |    6 ------

@@ -1,0 +1,25 @@
+From: Richard B Winters <rik@mmogp.com>
+Date: Thu, 23 Apr 2015 16:28:19 -0400
+Subject: Fix grammar in manual cmap_keys.8
+
+Informations changed to information.
+
+Change-Id: Ic2b6388e26592affb7514f81ffa9a7f1dfae5a99
+Signed-off-by: Richard B Winters <rik@mmogp.com>
+---
+ man/cmap_keys.8 |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/man/cmap_keys.8 b/man/cmap_keys.8
+index f19d2c9..73885ae 100644
+--- a/man/cmap_keys.8
++++ b/man/cmap_keys.8
+@@ -274,7 +274,7 @@ State of the client. Can be one of failed, stopped, running and waiting for quor
+ 
+ .TP
+ uidgid.*
+-Informations about users/groups which are allowed to make IPC connections to
++Information about users/groups which are allowed to make IPC connections to
+ corosync.
+ 
+ .TP

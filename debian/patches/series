@@ -3,7 +3,7 @@ Add-section-in-manual-title-for-cpg_zcb_alloc-3.patch
 Add-section-in-manual-title-for-cpg_zcb_free-3.patch
 Fix-grammer-error-in-manual-votequorum_trackstart-3.patch
 Fix-spelling-errors-in-manual-corosync.conf-5.patch
-Fix-spelling-and-grammar-errors-in-manual-cmap_keys-.patch
+Fix-grammar-in-manual-cmap_keys.8.patch
 Fix-spelling-error-in-manual-sam_overview-8.patch
 Fix-spelling-error-in-binary-corosync-cfgtool.patch
 Fix-spelling-error-in-binary-corosync.patch

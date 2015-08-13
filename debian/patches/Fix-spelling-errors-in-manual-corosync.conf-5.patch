@@ -13,10 +13,10 @@ Signed-off-by: Richard B Winters <rik@mmogp.com>
  1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/man/corosync.conf.5 b/man/corosync.conf.5
-index 8fb7a0b..9e34d59 100644
+index 2283cd4..226762e 100644
 --- a/man/corosync.conf.5
 +++ b/man/corosync.conf.5
-@@ -411,7 +411,7 @@ max_network_delay
+@@ -423,7 +423,7 @@ max_network_delay
  [HeartBeating mechanism]
  This constant specifies in milliseconds the approximate delay that your network takes
  to transport one packet from one machine to another. This value is to be set by system
@@ -25,7 +25,7 @@ index 8fb7a0b..9e34d59 100644
  mechanism using heartbeat.
  
  The default is 50 milliseconds.
-@@ -526,7 +526,7 @@ The default is off.
+@@ -538,7 +538,7 @@ The default is off.
  
  .PP
  The following options are valid both for top level logging directive
@@ -34,7 +34,7 @@ index 8fb7a0b..9e34d59 100644
  
  .TP
  to_stderr
-@@ -598,7 +598,7 @@ The default is: info.
+@@ -610,7 +610,7 @@ The default is: info.
  .TP
  debug
  This specifies whether debug output is logged for this particular logger. Also can contain
@@ -43,7 +43,7 @@ index 8fb7a0b..9e34d59 100644
  
  The default is off.
  
-@@ -633,7 +633,7 @@ See votequorum(5) for configuration options.
+@@ -645,7 +645,7 @@ See votequorum(5) for configuration options.
  .PP
  Within the
  .B nodelist
