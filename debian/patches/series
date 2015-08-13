@@ -12,3 +12,4 @@ Debianize-corosync-notifyd-systemd-service-file.patch
 Call-corosync-directly-in-the-service-file.patch
 Doxygen-fix-for-cmap_iter_next.patch
 Close-Doxygen-group-in-include-corosync-cmap.h.patch
+corosync-notifyd.8-show-correct-option-letter-in-DBu.patch
