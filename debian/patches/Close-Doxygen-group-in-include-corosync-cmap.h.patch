@@ -1,0 +1,22 @@
+From: =?utf-8?q?Ferenc_W=C3=A1gner?= <wferi@niif.hu>
+Date: Thu, 13 Aug 2015 14:06:32 +0200
+Subject: Close Doxygen group in include/corosync/cmap.h
+
+This avoids warning: end of file while inside a group.
+---
+ include/corosync/cmap.h |    2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/corosync/cmap.h b/include/corosync/cmap.h
+index b10993b..af44196 100644
+--- a/include/corosync/cmap.h
++++ b/include/corosync/cmap.h
+@@ -327,6 +327,8 @@ extern cs_error_t cmap_track_add(
+  */
+ extern cs_error_t cmap_track_delete(cmap_handle_t handle, cmap_track_handle_t track_handle);
+ 
++/** @} */
++
+ #ifdef __cplusplus
+ }
+ #endif
