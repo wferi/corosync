@@ -21,6 +21,7 @@ override_dh_autoreconf:
 
 override_dh_auto_configure:
 	dh_auto_configure -- \
+	    --with-logdir=/var/log/corosync \
 	    --enable-dbus \
 	    --enable-rdma \
 	    --disable-monitoring \

@@ -1,2 +1,3 @@
 var/lib/corosync
+# the log dir is used in debian/corosync.postinst
 var/log/corosync

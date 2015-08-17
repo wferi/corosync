@@ -1,6 +1,7 @@
 usr/sbin
 usr/bin/corosync-blackbox
 etc/init
+etc/logrotate.d/corosync
 usr/share/man/man5/corosync*.5
 usr/share/man/man5/votequorum.5
 usr/share/man/man8/corosync*.8
