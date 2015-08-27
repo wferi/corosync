@@ -68,6 +68,7 @@ $(DESC_SUBST): debian/description
 	tr '\n' _ < $< | sed 's/^/DESCRIPTION=/;s/_/$${Newline}/g' >$@
 
 override_dh_gencontrol: $(DESC_SUBST)
+	debian/check_header_deps
 	dh_gencontrol -- -T$<
 
 override_dh_clean:
