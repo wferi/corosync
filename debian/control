@@ -208,6 +208,7 @@ Architecture: any
 Multi-Arch: same
 Depends: ${misc:Depends},
  ${header:Depends},
+ libqb-dev,
  libcorosync-common4 (= ${binary:Version})
 Description: cluster engine common development
  ${DESCRIPTION}
