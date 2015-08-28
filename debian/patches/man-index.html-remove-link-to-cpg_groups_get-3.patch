@@ -1,0 +1,29 @@
+From: =?utf-8?q?Ferenc_W=C3=A1gner?= <wferi@niif.hu>
+Date: Fri, 28 Aug 2015 14:22:56 +0200
+Subject: man/index.html: remove link to cpg_groups_get(3)
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+The function was removed in 37dee7e.
+
+Signed-off-by: Ferenc Wágner <wferi@niif.hu>
+---
+ man/index.html |    4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/man/index.html b/man/index.html
+index a46c217..54359b1 100644
+--- a/man/index.html
++++ b/man/index.html
+@@ -126,10 +126,6 @@
+       Description of the cpg_local_get interface.
+       <br>
+ 
+-      <a href="cpg_groups_get.3.html">cpg_local_get(3)</a>:
+-      Description of the cpg_groups_get interface.
+-      <br>
+-
+       <a href="cpg_iteration_initialize.3.html">cpg_iteration_initialize(3)</a>:
+       Description of the cpg_iteration_initialize interface.
+       <br>
