@@ -37,9 +37,23 @@ Depends: ${shlibs:Depends},
  lsb-base (>= 3.0-6),
  adduser,
  xsltproc
-Description: cluster engine daemons and utilities
+Description: cluster engine daemon and utilities
  ${DESCRIPTION}
- This package contains the Corosync daemons and utilities.
+ This package contains the Corosync daemon and some administration tools.
+
+Package: corosync-notifyd
+Architecture: any
+Depends: ${shlibs:Depends},
+ ${misc:Depends},
+ corosync,
+ lsb-base (>= 3.0-6)
+Recommends: dbus
+# corosync-notifyd was split out of corosync
+Breaks: corosync (<< 2.3.5-1~)
+Replaces: corosync (<< 2.3.5-1~)
+Description: cluster engine notification daemon
+ ${DESCRIPTION}
+ This package contains the DBus/SNMP notification daemon for Corosync events.
 
 Package: corosync-dbg
 Section: debug

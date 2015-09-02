@@ -1,0 +1,5 @@
+# start corosync-notifyd at boot [yes|no]
+START=no
+
+# Send DBUS signals on all events (see corosync-notifyd(8) for options)
+OPTIONS="-d"
