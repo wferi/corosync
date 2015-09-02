@@ -32,10 +32,6 @@ RARUNDIR=/var/run/resource-agents
 # Make sure the Resource Agents run dir exists. Otherwise create it.
 [ -d "$RARUNDIR" ] || mkdir -p $RARUNDIR
 
-if [ "$START" != "yes" ]; then
-	exit 0
-fi
-
 # Define LSB log_* functions.
 # Depend on lsb-base (>= 3.0-6) to ensure that this file is present.
 . /lib/lsb/init-functions
