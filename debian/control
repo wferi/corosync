@@ -35,14 +35,6 @@ Pre-Depends: ${misc:Pre-Depends}
 Depends: ${shlibs:Depends},
  ${misc:Depends},
  lsb-base (>= 3.0-6),
- libcfg6 (= ${binary:Version}),
- libcmap4 (= ${binary:Version}),
- libcorosync-common4 (= ${binary:Version}),
- libcpg4 (= ${binary:Version}),
- libquorum5 (= ${binary:Version}),
- libsam4 (= ${binary:Version}),
- libtotem-pg5 (= ${binary:Version}),
- libvotequorum7 (= ${binary:Version}),
  adduser,
  xsltproc
 Description: cluster engine daemons and utilities
