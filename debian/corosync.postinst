@@ -3,9 +3,9 @@
 set -e
 
 if [ "$1" = "configure" ]; then
-	# Touch an empty file so the log dir stays around after package removal
-	# so logrotate doesn't choke
-	touch /var/log/corosync/.empty
+	echo 'This file is here to keep the log dir around after package removal
+until #588515 is fixed.' >/var/log/corosync/.empty
+	# really was empty before 2.3.5-1
 fi
 
 #DEBHELPER#
