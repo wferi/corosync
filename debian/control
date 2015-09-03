@@ -60,6 +60,8 @@ Section: debug
 Priority: extra
 Architecture: any
 Depends: ${misc:Depends},
+ corosync (= ${binary:Version}),
+ corosync-notifyd (= ${binary:Version}),
  libcfg6 (= ${binary:Version}),
  libcmap4 (= ${binary:Version}),
  libcorosync-common4 (= ${binary:Version}),
