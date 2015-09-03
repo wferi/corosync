@@ -19,3 +19,4 @@ man-index.html-remove-link-to-cpg_groups_get-3.patch
 man-index.html-add-missing-cpg_-and-votequorum_qdevi.patch
 man-index.html-corosync-fplay-has-already-been-remov.patch
 man-add-synopsis-section-macros-for-cpg_zcb_alloc-an.patch
+Use-OPTIONS-in-the-corosync.conf-Upstart-file.patch

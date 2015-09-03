@@ -6,3 +6,6 @@
 
 # Path to authfile
 #COROSYNC_TOTEM_AUTHKEY_FILE=/etc/corosync/authkey
+
+# Command line options
+#OPTIONS=""
