@@ -1,3 +1,111 @@
+corosync (2.3.5-1) unstable; urgency=medium
+
+  [ Richard B Winters ]
+  * [9f5bb05] Bump Standards-Version (no changes needed)
+  * [6bc58b5] Fold package relationship control fields
+  * [1b27764] Add myself to Uploaders
+  * [98350b5] Add Homepage control field
+  * [eaf2c8b] Update Vcs-Git and Vcs-Browser control fields
+  * [0fa78d2] Use the dh command sequencer with autoreconf and systemd support
+    (Closes: #753289)
+  * [3880949] Updated to watch new upstream release location
+  * [635e2a4] libvotequorum SOVERSION incremented to 7
+  * [dff0476] Remove unnecessary Section field of the corosync binary package
+  * [7105b15] Different short descriptions for the transitional packages
+  * [272def5] Added several patches for fixing manual issues
+  * [54ac965] Added respective binary dependency for each dev package
+  * [dd3a503] Added accurate symbols from snapshot.debian.org
+  * [60dc392] Added accurate symbols for libcorosync-common4 from snapshot.d.o
+  * [f7a768d] Add patch to remove deprecated Doxygen flags
+
+  [ Ferenc Wágner ]
+  * [6e2624b] Update debian/copyright and make it machine-readable
+  * [ec41127] Add corosync-doc package for the HTML documentation
+  * [b88593b] Patch systemd service file to call corosync directly
+  * [ea1fd76] Enabling SNMP support was ineffective without libsnmp-dev
+  * [8fff368] The QB_IPC_NATIVE enum value was introduced in libqb 0.12
+  * [6b5bef8] We do not need the upstream SysV init scripts
+  * [689e23d] Install documentation files generically
+  * [8712256] Include the component overview man pages plus two supplemental
+    ones
+  * [69df3f6] Add myself to Uploaders
+  * [906d4ca] The --with-socket-dir configure option was removed in version
+    1.99.8
+  * [a6d808a] Convert package to multiarch
+  * [08705ce] ${shlibs:Depends} does not apply for the debug package
+  * [aa9730a] Do not build and ship static libraries
+  * [6e3e0c8] Remove unnecessary arguments from dh_installinit calls
+  * [a65fdd6] Current libtool does not employ RPATH
+  * [52462e1] Move all HTML documentation into corosync-doc
+  * [7f52a09] Drop very old Conflicts declarations
+  * [6a373d0] Weed out unnecessary Conflicts, turn the rest into Breaks
+  * [b981e3b] librdmacm-dev and libibverbs-dev lack pkg-config support
+  * [8b578b0] Freshen package descriptions
+  * [bc43e9b] All -dev packages depend on libcorosync-common-dev headers
+  * [7daa765] Simplify installation of the Debian config file
+  * [a1d375f] Wildcard the manual page installations in the -dev packages
+  * [b528342] Add LSB Description to the Debian init scripts (for Lintian)
+  * [94776ba] Add Build-Depends-Package meta fields to the symbols files
+  * [5439cc8] README.source is not needed anymore, 3.0 (quilt) is our format
+  * [ebc6aa6] Disable functionality related to the Cluster Test System
+  * [aafb17c] Check in gbp.conf for DEP-14 layout
+  * [6d7057a] Add author and subject info to the new patch files
+  * [885c3a4] Run patches through gbp pq (format changes and renames only)
+  * [d7b8376] Refresh patches
+  * [733e0c0] We don't need the ais user anymore (Closes: #577965)
+  * [02d8e13] New patch Doxygen-fix-for-cmap_iter_next.patch
+  * [c1f95b4] New patch Close-Doxygen-group-in-include-corosync-cmap.h.patch
+  * [514cc47] New patch corosync-notifyd.8-show-correct-option-letter-in-
+    DBu.patch
+  * [88fdcfa] Upstream started to ship a logrotate config, switch to that
+  * [abf17e0] Only log to syslog by default
+  * [d9767df] New patch Substitute-LOGDIR-into-the-example-configs.patch
+    (Closes: #739730)
+  * [8780215] Generate header dependencies for dev packages
+  * [979daec] Various Corosync headers include some libqb headers, so pull them
+    in
+  * [0b6aca5] Add 4 patches fixing man/index.html
+  * [49476ca] New patch man-add-synopsis-section-macros-for-cpg_zcb_alloc-
+    an.patch
+  * [6436dcb] Add my copyright on debian/*
+  * [d438120] Remove obsoleted conffiles from /etc/corosync
+  * [41329a8] Harmonize the corosync-notifyd init script variable with the
+    systemd unit
+  * [45dc7bf] The corosync daemon does not need strictly versioned libraries
+  * [b14c085] Split corosync-notifyd into a separate binary package
+  * [56e7d73] Remove the START={yes|no} feature, which breaks systemd
+    consistency
+  * [c79e223] Consolidate on using OPTIONS in all corosync init files
+  * [b892361] Delete corosync preinst script, because 1.2.1-4 is oldoldstable
+  * [cbc032e] Make the role of the placeholder file more obvious
+  * [2b48d82] The debug package provides debug info for the daemons, too
+  * [499e5c9] Configure "debian" as the default cluster_name
+
+  [ Adrian Vondendriesch ]
+  * [fb80683] Add libdbus-1-dev to Build-Depends. (Closes: #705023)
+  * [939d650] Add myself to Uploaders.
+  * [05e635e] Remove unnecessary ${shlibs:Depends} for dev packages.
+  * [c32e3ee] Install example configs under /usr/share/doc/corosync/examples.
+  * [3d4a183] Use wildcard pattern to install corosync HTML files.
+  * [2c14a78] Install upstream upstart scripts.
+  * [42e457f] Use wildcard pattern to mach all corosync man pages.
+  * [f3efe53] Install mibs under /usr/share/snmp/mibs
+  * [bb1704e] Install corosync-xmlproc and xml2conf.xsl
+  * [df89fea] Install corosync and corosync-notifyd service files.
+  * [d3ab07d] Patch upstream corosync-notifyd.service file.
+  * [9a84b7d] Simplify init and default filenames for corosync.
+  * [84b2b54] Fix debian/watch file.
+  * [73bd735] Create new corosync.conf based on upstream version.
+  * [e468ecd] Comment in quorum provider.
+  * [335c307] debian/corosync.default: add known variables with defaults
+  * [93deab4] Drop unnecessary comment line in corosync.init (Closes: #645774)
+
+  [ Christoph Berg ]
+  * [8d7adf6] Import symbols for version 2.3.5
+  * [021a971] Remove old libcorosync4 and libcorosync-dev transitional packages
+
+ -- Ferenc Wágner <wferi@niif.hu>  Tue, 08 Sep 2015 09:57:18 +0200
+
 corosync (2.3.3-1) experimental; urgency=medium
 
   * New upstream release
