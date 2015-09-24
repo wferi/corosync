@@ -27,7 +27,9 @@ RARUNDIR=/var/run/resource-agents
 [ -x "$DAEMON" ] || exit 0
 
 # Read configuration variable file if it is present
+set -a
 [ -r /etc/default/corosync ] && . /etc/default/corosync
+set +a
 
 # Make sure the Resource Agents run dir exists. Otherwise create it.
 [ -d "$RARUNDIR" ] || mkdir -p $RARUNDIR
