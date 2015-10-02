@@ -8,7 +8,6 @@ Fix-spelling-error-in-manual-sam_overview-8.patch
 Fix-spelling-error-in-binary-corosync-cfgtool.patch
 Fix-spelling-error-in-binary-corosync.patch
 Remove-deprecated-doxygen-flags.patch
-Call-corosync-directly-in-the-service-file.patch
 Doxygen-fix-for-cmap_iter_next.patch
 Close-Doxygen-group-in-include-corosync-cmap.h.patch
 corosync-notifyd.8-show-correct-option-letter-in-DBu.patch
@@ -20,3 +19,4 @@ man-index.html-corosync-fplay-has-already-been-remov.patch
 man-add-synopsis-section-macros-for-cpg_zcb_alloc-an.patch
 Use-OPTIONS-in-the-corosync.conf-Upstart-file.patch
 Generalize-corosync-notifyd-systemd-service-file.patch
+Send-corosync-startup-notification-to-systemd.patch
