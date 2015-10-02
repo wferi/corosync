@@ -21,3 +21,4 @@ Use-OPTIONS-in-the-corosync.conf-Upstart-file.patch
 Generalize-corosync-notifyd-systemd-service-file.patch
 Send-corosync-startup-notification-to-systemd.patch
 Make-systemd-stop-and-restart-corosync-notifyd-if-co.patch
+Send-corosync-notifyd-startup-notification-to-system.patch
