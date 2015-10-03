@@ -34,6 +34,8 @@ override_dh_auto_configure:
 	    --enable-qdevices \
 	    --disable-static
 
+# Provide reproducible timestamps for the manual pages
+override_dh_auto_build: export PACKAGING_DATE=$(shell date -d "$$(dpkg-parsechangelog -SDate)" +%F)
 override_dh_auto_build:
 	dh_auto_build
 	$(MAKE) doxygen
