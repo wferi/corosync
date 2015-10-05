@@ -23,3 +23,4 @@ Send-corosync-startup-notification-to-systemd.patch
 Make-systemd-stop-and-restart-corosync-notifyd-if-co.patch
 Send-corosync-notifyd-startup-notification-to-system.patch
 Use-debian-changelog-timestamp-for-the-build-time-of.patch
+cmap_track_add.3.in-fix-typo-bellow-below.patch
