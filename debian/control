@@ -220,6 +220,9 @@ Depends: ${misc:Depends},
  ${header:Depends},
  libqb-dev,
  libcorosync-common4 (= ${binary:Version})
+# Moved from corosync-dev: /usr/include/corosync/corodefs.h
+Replaces: corosync-dev (<< 1.99.9-1)
+Breaks: corosync-dev (<< 1.99.9-1)
 Description: cluster engine common development
  ${DESCRIPTION}
  This package contains the headers and other necessary files to build
