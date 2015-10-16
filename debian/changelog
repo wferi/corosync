@@ -1,3 +1,27 @@
+corosync (2.3.5-2) unstable; urgency=medium
+
+  * [e66dda1] Make sure environment variables are propagated by the init script
+  * [638b690] Mention the significance of cluster_name when creating shared LVM
+    VGs
+  * [48d88e3] Generalization may be acceptable for upstream, Debianization is
+    not
+  * [cd6437f] New patch Send-corosync-startup-notification-to-systemd.patch
+  * [f4da902] New patch Make-systemd-stop-and-restart-corosync-notifyd-if-
+    co.patch
+  * [1504fb9] New patch Send-corosync-notifyd-startup-notification-to-
+    system.patch
+  * [837ec3e] New patch Use-debian-changelog-timestamp-for-the-build-time-
+    of.patch
+    (Closes: #800662, #800663)
+  * [c96145c] libcorosync-common-dev takes over files from old corosync-dev
+    (Closes: #800923)
+  * [24f4fe9] New patch cmap_track_add.3.in-fix-typo-bellow-below.patch
+  * [ef858f3] Only Linux supports RDMA, let's omit it on other architectures
+  * [70989fd] Simplify debian/rules by providing .pc files for rdmacm and
+    ibverbs
+
+ -- Ferenc Wágner <wferi@niif.hu>  Fri, 16 Oct 2015 14:19:19 +0200
+
 corosync (2.3.5-1) unstable; urgency=medium
 
   [ Richard B Winters ]
