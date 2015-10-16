@@ -6,13 +6,9 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 # Ensure that we link against all needed libraries (cf. Policy 10.2)
 export DEB_LDFLAGS_MAINT_APPEND=-Wl,-z,defs
 
-# librdmacm-dev and libibverbs-dev lacks pkg-config support, so the
-# configure script needs some help to find these modules:
 ifneq ($(wildcard /usr/include/rdma/rdma_cma.h),)
-export rdmacm_LIBS=-lrdmacm
-export rdmacm_CFLAGS="-I/usr/include/rdma"
-export ibverbs_LIBS=-libverbs
-export ibverbs_CFLAGS="-I/usr/include/infiniband"
+# Provide .pc files for rdmacm and ibverbs
+export PKG_CONFIG_PATH=debian
 enable-rdma=--enable-rdma
 endif
 
