@@ -26,23 +26,23 @@ libtotem_pg.so.5 libtotem-pg5 #MINVER#
  rrp_algos@Base 1.99.9
  rrp_deliver_fn@Base 1.99.9
  rrp_iface_change_fn@Base 1.99.9
- totemiba_buffer_alloc@Base 1.99.9
- totemiba_buffer_release@Base 1.99.9
- totemiba_crypto_set@Base 1.99.9
- totemiba_finalize@Base 1.99.9
- totemiba_iface_check@Base 1.99.9
- totemiba_iface_get@Base 1.99.9
- totemiba_iface_print@Base 1.99.9
- totemiba_initialize@Base 1.99.9
- totemiba_mcast_flush_send@Base 1.99.9
- totemiba_mcast_noflush_send@Base 1.99.9
- totemiba_net_mtu_adjust@Base 1.99.9
- totemiba_processor_count_set@Base 1.99.9
- totemiba_recv_flush@Base 1.99.9
- totemiba_recv_mcast_empty@Base 1.99.9
- totemiba_send_flush@Base 1.99.9
- totemiba_token_send@Base 1.99.9
- totemiba_token_target_set@Base 1.99.9
+ (arch=linux-any)totemiba_buffer_alloc@Base 1.99.9
+ (arch=linux-any)totemiba_buffer_release@Base 1.99.9
+ (arch=linux-any)totemiba_crypto_set@Base 1.99.9
+ (arch=linux-any)totemiba_finalize@Base 1.99.9
+ (arch=linux-any)totemiba_iface_check@Base 1.99.9
+ (arch=linux-any)totemiba_iface_get@Base 1.99.9
+ (arch=linux-any)totemiba_iface_print@Base 1.99.9
+ (arch=linux-any)totemiba_initialize@Base 1.99.9
+ (arch=linux-any)totemiba_mcast_flush_send@Base 1.99.9
+ (arch=linux-any)totemiba_mcast_noflush_send@Base 1.99.9
+ (arch=linux-any)totemiba_net_mtu_adjust@Base 1.99.9
+ (arch=linux-any)totemiba_processor_count_set@Base 1.99.9
+ (arch=linux-any)totemiba_recv_flush@Base 1.99.9
+ (arch=linux-any)totemiba_recv_mcast_empty@Base 1.99.9
+ (arch=linux-any)totemiba_send_flush@Base 1.99.9
+ (arch=linux-any)totemiba_token_send@Base 1.99.9
+ (arch=linux-any)totemiba_token_target_set@Base 1.99.9
  totemip_compare@Base 1.99.9
  totemip_copy@Base 1.99.9
  totemip_copy_endian_convert@Base 1.99.9
