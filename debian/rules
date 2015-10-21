@@ -12,6 +12,10 @@ export PKG_CONFIG_PATH=debian
 enable-rdma=--enable-rdma
 endif
 
+ifneq ($(wildcard /usr/include/statgrab.h),)
+enable-monitoring=--enable-monitoring
+endif
+
 %:
 	dh $@ --with autoreconf,systemd
 
@@ -20,7 +24,7 @@ override_dh_auto_configure:
 	    --with-logdir=/var/log/corosync \
 	    --enable-dbus \
 	    $(enable-rdma) \
-	    --disable-monitoring \
+	    $(enable-monitoring) \
 	    --enable-watchdog \
 	    --enable-augeas \
 	    --enable-snmp \
