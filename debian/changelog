@@ -1,3 +1,11 @@
+corosync (2.3.5-3) unstable; urgency=medium
+
+  * [e64ff08] Really add arm64 support (Closes: #753289)
+  * [5e60e11] Enable the monitoring service on Linux architectures
+  * [9b635d5] Make libtotem-pg-dev usable by shipping corosync/list.h
+
+ -- Ferenc Wágner <wferi@niif.hu>  Thu, 22 Oct 2015 15:01:59 +0200
+
 corosync (2.3.5-2) unstable; urgency=medium
 
   * [e66dda1] Make sure environment variables are propagated by the init script
