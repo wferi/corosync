@@ -16,9 +16,15 @@ ifneq ($(wildcard /usr/include/statgrab.h),)
 enable-monitoring=--enable-monitoring
 endif
 
-ifeq ($(shell dpkg-architecture -qDEB_HOST_ARCH_OS),linux)
+ifneq ($(wildcard /usr/include/linux/watchdog.h),)
 enable-watchdog=--enable-watchdog
+endif
+
+ifneq ($(wildcard /usr/include/systemd/sd-daemon.h),)
 enable-systemd=--enable-systemd
+initscript-dir=usr/share/corosync
+else
+initscript-dir=etc/init.d
 endif
 
 %:
@@ -48,14 +54,12 @@ override_dh_auto_build:
 override_dh_auto_install:
 	dh_auto_install
 	rm -v debian/tmp/usr/lib/*/lib*.la
-	# we don't need the upstream SysV init scripts (installed there on linux only) and license
-	rm -vf debian/tmp/usr/share/corosync/corosync \
-	   debian/tmp/usr/share/corosync/corosync-notifyd \
+# we don't need the upstream SysV init scripts and license
+	rm debian/tmp/$(initscript-dir)/corosync \
+	   debian/tmp/$(initscript-dir)/corosync-notifyd \
 	   debian/tmp/usr/share/doc/corosync/LICENSE
 
 override_dh_install:
-	# remove upstream init scripts (present on non-linux only)
-	rm -vf debian/tmp/etc/init.d/corosync*
 	dh_install --fail-missing --exclude=.md5
 
 override_dh_installchangelogs:
