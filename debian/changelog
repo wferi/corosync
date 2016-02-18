@@ -1,3 +1,9 @@
+corosync (2.3.5-3~bpo8+1) jessie-backports; urgency=medium
+
+  * Rebuild for jessie-backports.
+
+ -- Christoph Berg <myon@debian.org>  Thu, 18 Feb 2016 16:19:51 +0100
+
 corosync (2.3.5-3) unstable; urgency=medium
 
   * [e64ff08] Really add arm64 support (Closes: #753289)
