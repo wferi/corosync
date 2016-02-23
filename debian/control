@@ -55,26 +55,6 @@ Description: cluster engine notification daemon
  ${DESCRIPTION}
  This package contains the DBus/SNMP notification daemon for Corosync events.
 
-Package: corosync-dbg
-Section: debug
-Priority: extra
-Architecture: any
-Depends: ${misc:Depends},
- corosync (= ${binary:Version}),
- corosync-notifyd (= ${binary:Version}),
- libcfg6 (= ${binary:Version}),
- libcmap4 (= ${binary:Version}),
- libcorosync-common4 (= ${binary:Version}),
- libcpg4 (= ${binary:Version}),
- libquorum5 (= ${binary:Version}),
- libsam4 (= ${binary:Version}),
- libtotem-pg5 (= ${binary:Version}),
- libvotequorum7 (= ${binary:Version})
-Description: cluster engine debugging symbols
- ${DESCRIPTION}
- This package contains debug information for the Corosync daemons, utilities
- and libraries.
-
 Package: corosync-doc
 Section: doc
 Architecture: all
