@@ -51,6 +51,7 @@ override_dh_auto_configure:
 override_dh_auto_build-indep:
 	$(MAKE) -C man
 	$(MAKE) doxygen
+	find doc/api/html -name "*.md5" -print -delete
 
 # The check target would unnecessarily build the software
 override_dh_auto_test-indep:
@@ -67,7 +68,7 @@ override_dh_auto_install-arch:
 	   debian/tmp/usr/share/doc/corosync/LICENSE
 
 override_dh_install:
-	dh_install --fail-missing --exclude=.md5
+	dh_install --fail-missing
 
 override_dh_installchangelogs:
 	dh_installchangelogs ChangeLog
