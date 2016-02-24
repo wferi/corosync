@@ -31,7 +31,7 @@ initscript-dir=etc/init.d
 endif
 
 %:
-	dh $@ --with autoreconf,systemd
+	dh $@ --parallel --with autoreconf,systemd
 
 # Avoid useless dependencies in the libraries
 override_dh_autoreconf:
