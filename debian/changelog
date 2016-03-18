@@ -1,3 +1,10 @@
+corosync (2.3.5-4) UNRELEASED; urgency=medium
+
+  * debian/tests: Add simple smoke test using corosync-cfgtool and
+    corosync-quorumtool.
+
+ -- Christoph Berg <christoph.berg@credativ.de>  Fri, 18 Mar 2016 11:23:01 +0100
+
 corosync (2.3.5-3) unstable; urgency=medium
 
   * [e64ff08] Really add arm64 support (Closes: #753289)
