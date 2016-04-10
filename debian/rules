@@ -16,6 +16,10 @@ ifneq ($(wildcard /usr/include/statgrab.h),)
 enable-monitoring=--enable-monitoring
 endif
 
+ifeq ($(shell dpkg-architecture -qDEB_HOST_ARCH_OS),linux)
+enable-watchdog=--enable-watchdog
+endif
+
 %:
 	dh $@ --with autoreconf,systemd
 
@@ -25,7 +29,7 @@ override_dh_auto_configure:
 	    --enable-dbus \
 	    $(enable-rdma) \
 	    $(enable-monitoring) \
-	    --enable-watchdog \
+	    $(enable-watchdog) \
 	    --enable-augeas \
 	    --enable-snmp \
 	    --enable-xmlconf \
