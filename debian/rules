@@ -18,6 +18,7 @@ endif
 
 ifeq ($(shell dpkg-architecture -qDEB_HOST_ARCH_OS),linux)
 enable-watchdog=--enable-watchdog
+enable-systemd=--enable-systemd
 endif
 
 %:
@@ -33,7 +34,7 @@ override_dh_auto_configure:
 	    --enable-augeas \
 	    --enable-snmp \
 	    --enable-xmlconf \
-	    --enable-systemd \
+	    $(enable-systemd) \
 	    --enable-upstart \
 	    --enable-qdevices \
 	    --disable-static
@@ -47,12 +48,14 @@ override_dh_auto_build:
 override_dh_auto_install:
 	dh_auto_install
 	rm -v debian/tmp/usr/lib/*/lib*.la
-# we don't need the upstream SysV init scripts and license
-	rm debian/tmp/usr/share/corosync/corosync \
+	# we don't need the upstream SysV init scripts (installed there on linux only) and license
+	rm -vf debian/tmp/usr/share/corosync/corosync \
 	   debian/tmp/usr/share/corosync/corosync-notifyd \
 	   debian/tmp/usr/share/doc/corosync/LICENSE
 
 override_dh_install:
+	# remove upstream init scripts (present on non-linux only)
+	rm -vf debian/tmp/etc/init.d/corosync*
 	dh_install --fail-missing --exclude=.md5
 
 override_dh_installchangelogs:

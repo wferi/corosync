@@ -10,6 +10,7 @@ Standards-Version: 3.9.7
 Build-Depends: debhelper (>= 9),
  dctrl-tools,
  dh-autoreconf,
+ dh-exec,
  dh-systemd,
  doxygen,
  graphviz,
