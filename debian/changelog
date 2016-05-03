@@ -1,6 +1,10 @@
 corosync (2.3.5-5) UNRELEASED; urgency=medium
 
+  [ Christoph Berg ]
   * Disable watchdog and systemd on non-linux architectures.
+
+  [ Adrian Vondendriesch ]
+  * Import upstream patch to make watchdog support configurable.
 
  -- Christoph Berg <myon@debian.org>  Sun, 10 Apr 2016 12:30:16 +0200
 
