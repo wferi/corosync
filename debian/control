@@ -6,7 +6,7 @@ Uploaders: Christoph Berg <myon@debian.org>,
  Richard B Winters <rik@mmogp.com>,
  Adrian Vondendriesch <adrian.vondendriesch@credativ.de>,
  Ferenc Wágner <wferi@niif.hu>
-Standards-Version: 3.9.7
+Standards-Version: 3.9.8
 Build-Depends: debhelper (>= 9),
  dctrl-tools,
  dh-autoreconf,
