@@ -1,0 +1,42 @@
+--- a/exec/cfg.c
++++ b/exec/cfg.c
+@@ -1011,6 +1011,11 @@ exit_fn:
+ 	LEAVE();
+ }
+ 
++/* PIPE_BUF is undefined on GNU Hurd */
++#ifndef PIPE_BUF
++#define PIPE_BUF 512
++#endif
++
+ static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
+ 							const void *msg)
+ {
+--- a/include/corosync/corotypes.h
++++ b/include/corosync/corotypes.h
+@@ -41,6 +41,11 @@
+ #include <time.h>
+ #include <sys/time.h>
+ 
++/* PATH_MAX is undefined on GNU Hurd */
++#ifndef PATH_MAX
++#define PATH_MAX 1024
++#endif
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+--- a/include/corosync/logsys.h
++++ b/include/corosync/logsys.h
+@@ -46,6 +46,11 @@
+ #include <qb/qbconfig.h>
+ #include <qb/qblog.h>
+ 
++/* PATH_MAX is undefined on GNU Hurd */
++#ifndef PATH_MAX
++#define PATH_MAX 1024
++#endif
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
