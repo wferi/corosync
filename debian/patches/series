@@ -26,4 +26,3 @@ Use-debian-changelog-timestamp-for-the-build-time-of.patch
 cmap_track_add.3.in-fix-typo-bellow-below.patch
 totemip.h-uses-list.h.patch
 upstream-patch_make-watchdog-configurable.patch
-hurd-defines
