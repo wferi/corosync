@@ -1,9 +1,9 @@
-corosync (2.3.5-6) UNRELEASED; urgency=medium
+corosync (2.3.5-6) unstable; urgency=medium
 
   * Fix hurd-i386 build by defining PATH_MAX and PIPE_BUF in configure.ac.
     Patch by Svante Signell, thanks! (Closes: #823826)
 
- -- Christoph Berg <myon@debian.org>  Mon, 09 May 2016 21:12:51 +0200
+ -- Christoph Berg <myon@debian.org>  Mon, 09 May 2016 22:45:00 +0200
 
 corosync (2.3.5-5) unstable; urgency=medium
 
