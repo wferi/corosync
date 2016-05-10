@@ -21,7 +21,7 @@ Build-Depends: debhelper (>= 9),
  librdmacm-dev [linux-any],
  libsnmp-dev,
  libstatgrab-dev [linux-any],
- libsystemd-dev,
+ libsystemd-dev [linux-any],
  libxml2-dev,
  pkg-config,
  zlib1g-dev
