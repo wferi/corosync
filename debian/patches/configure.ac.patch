@@ -1,7 +1,15 @@
-Index: corosync-2.3.5/configure.ac
-===================================================================
---- corosync-2.3.5.orig/configure.ac
-+++ corosync-2.3.5/configure.ac
+From: Svante Signell <svante.signell@gmail.com>
+Date: Tue, 10 May 2016 18:34:29 +0200
+Subject: configure.ac
+
+---
+ configure.ac | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/configure.ac b/configure.ac
+index 3a157b3..339750d 100644
+--- a/configure.ac
++++ b/configure.ac
 @@ -441,6 +441,14 @@ if test "x${enable_rdma}" = xyes; then
  	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
  	WITH_LIST="$WITH_LIST --with rdma"

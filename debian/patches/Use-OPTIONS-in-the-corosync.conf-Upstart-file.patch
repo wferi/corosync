@@ -6,7 +6,7 @@ The SysV init script and the systemd service file use the OPTIONS variable
 from the default file.  corosync-notifyd also uses OPTIONS in all init
 configurations.  So just consolidate on this, upstream is inconsistent.
 ---
- init/corosync.conf.in |    2 +-
+ init/corosync.conf.in | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/init/corosync.conf.in b/init/corosync.conf.in

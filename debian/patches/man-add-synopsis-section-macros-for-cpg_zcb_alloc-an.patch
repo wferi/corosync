@@ -7,8 +7,8 @@ Content-Transfer-Encoding: 8bit
 
 Signed-off-by: Ferenc Wágner <wferi@niif.hu>
 ---
- man/cpg_zcb_alloc.3.in |    1 +
- man/cpg_zcb_free.3.in  |    1 +
+ man/cpg_zcb_alloc.3.in | 1 +
+ man/cpg_zcb_free.3.in  | 1 +
  2 files changed, 2 insertions(+)
 
 diff --git a/man/cpg_zcb_alloc.3.in b/man/cpg_zcb_alloc.3.in

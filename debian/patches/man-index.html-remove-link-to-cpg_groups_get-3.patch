@@ -9,7 +9,7 @@ The function was removed in 37dee7e.
 
 Signed-off-by: Ferenc Wágner <wferi@niif.hu>
 ---
- man/index.html |    4 ----
+ man/index.html | 4 ----
  1 file changed, 4 deletions(-)
 
 diff --git a/man/index.html b/man/index.html

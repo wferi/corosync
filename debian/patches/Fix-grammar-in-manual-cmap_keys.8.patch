@@ -7,7 +7,7 @@ Informations changed to information.
 Change-Id: Ic2b6388e26592affb7514f81ffa9a7f1dfae5a99
 Signed-off-by: Richard B Winters <rik@mmogp.com>
 ---
- man/cmap_keys.8 |    2 +-
+ man/cmap_keys.8 | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/man/cmap_keys.8 b/man/cmap_keys.8

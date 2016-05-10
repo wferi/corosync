@@ -1,6 +1,6 @@
-commit 8d8d4a936ab73d8449a3574f969b17a90ef9428e
-Author: Valentin Vidic <Valentin.Vidic@CARNet.hr>
-Date:   Tue May 3 09:05:54 2016 +0200
+From: Valentin Vidic <Valentin.Vidic@CARNet.hr>
+Date: Tue, 3 May 2016 09:05:54 +0200
+Subject: upstream-patch_make-watchdog-configurable
 
     wd: make watchdog device configurable
     
@@ -14,9 +14,12 @@ Date:   Tue May 3 09:05:54 2016 +0200
     
     Signed-off-by: Valentin Vidic <Valentin.Vidic@CARNet.hr>
     Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+---
+ exec/wd.c | 24 +++++++++++++++++++-----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
 
 diff --git a/exec/wd.c b/exec/wd.c
-index 27d4155..feb049e 100644
+index 093747f..2f0fcd6 100644
 --- a/exec/wd.c
 +++ b/exec/wd.c
 @@ -89,6 +89,7 @@ static uint64_t tickle_timeout = (WD_DEFAULT_TIMEOUT_MS / 2);
@@ -27,7 +30,7 @@ index 27d4155..feb049e 100644
  
  struct corosync_service_engine wd_service_engine = {
  	.name			= "corosync watchdog service",
-@@ -629,20 +630,33 @@ static void watchdog_timeout_apply (uint32_t new)
+@@ -625,20 +626,33 @@ static void watchdog_timeout_apply (uint32_t new)
  static int setup_watchdog(void)
  {
  	struct watchdog_info ident;
@@ -65,7 +68,7 @@ index 27d4155..feb049e 100644
  		dog = -1;
  		return -1;
  	}
-@@ -652,7 +666,7 @@ static int setup_watchdog(void)
+@@ -648,7 +662,7 @@ static int setup_watchdog(void)
  	 */
  
  	ioctl(dog, WDIOC_GETSUPPORT, &ident);

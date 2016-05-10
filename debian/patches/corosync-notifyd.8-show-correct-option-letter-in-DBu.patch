@@ -3,7 +3,7 @@ Date: Tue, 28 Jul 2015 15:31:36 +0200
 Subject: corosync-notifyd.8: show correct option letter in DBus example
 
 ---
- man/corosync-notifyd.8 |    2 +-
+ man/corosync-notifyd.8 | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/man/corosync-notifyd.8 b/man/corosync-notifyd.8

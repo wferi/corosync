@@ -9,7 +9,7 @@ Subject: Fix grammer error in manual votequorum_trackstart 3
 Change-Id: I9559e31c780e211b651744c6eaa056ce8d4c3db1
 Signed-off-by: Richard B Winters <rik@mmogp.com>
 ---
- man/votequorum_trackstart.3.in |    2 +-
+ man/votequorum_trackstart.3.in | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/man/votequorum_trackstart.3.in b/man/votequorum_trackstart.3.in

@@ -4,7 +4,7 @@ Subject: Close Doxygen group in include/corosync/cmap.h
 
 This avoids warning: end of file while inside a group.
 ---
- include/corosync/cmap.h |    2 ++
+ include/corosync/cmap.h | 2 ++
  1 file changed, 2 insertions(+)
 
 diff --git a/include/corosync/cmap.h b/include/corosync/cmap.h

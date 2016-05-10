@@ -4,11 +4,11 @@ Subject: Substitute LOGDIR into the example configs
 
 Closes: #739730
 ---
- conf/corosync.conf.example         |   81 ------------------------------------
- conf/corosync.conf.example.in      |   81 ++++++++++++++++++++++++++++++++++++
- conf/corosync.conf.example.udpu    |   58 --------------------------
- conf/corosync.conf.example.udpu.in |   58 ++++++++++++++++++++++++++
- configure.ac                       |    2 +
+ conf/corosync.conf.example         | 81 --------------------------------------
+ conf/corosync.conf.example.in      | 81 ++++++++++++++++++++++++++++++++++++++
+ conf/corosync.conf.example.udpu    | 58 ---------------------------
+ conf/corosync.conf.example.udpu.in | 58 +++++++++++++++++++++++++++
+ configure.ac                       |  2 +
  5 files changed, 141 insertions(+), 139 deletions(-)
  delete mode 100644 conf/corosync.conf.example
  create mode 100644 conf/corosync.conf.example.in

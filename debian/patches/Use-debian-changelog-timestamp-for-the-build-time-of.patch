@@ -5,7 +5,7 @@ Subject: Use debian/changelog timestamp for the build time of the manuals
 Otherwise the manuals become arch-dependent, breaking co-installability of
 the Multi-Arch: same development packages.
 ---
- man/Makefile.am |    3 +--
+ man/Makefile.am | 3 +--
  1 file changed, 1 insertion(+), 2 deletions(-)
 
 diff --git a/man/Makefile.am b/man/Makefile.am
