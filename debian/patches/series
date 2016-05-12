@@ -27,3 +27,5 @@ cmap_track_add.3.in-fix-typo-bellow-below.patch
 totemip.h-uses-list.h.patch
 upstream-patch_make-watchdog-configurable.patch
 configure.ac.patch
+Fix-typo-funtion-function.patch
+Fix-typo-interger-integer.patch
