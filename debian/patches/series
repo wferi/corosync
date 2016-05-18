@@ -29,3 +29,4 @@ upstream-patch_make-watchdog-configurable.patch
 configure.ac.patch
 Fix-typo-funtion-function.patch
 Fix-typo-interger-integer.patch
+Add-Documentation-URIs-to-the-systemd-service-files.patch
