@@ -1,3 +1,28 @@
+corosync (2.3.5-7) unstable; urgency=medium
+
+  [ Arturo Borrero Gonzalez ]
+  * [f454b6a] d/tests/control: add isolation-container restriction
+
+  [ Ferenc Wágner ]
+  * [6e19154] Sense watchdog and systemd support by header file presence
+  * [e09b661] Build-Depend on libsystemd-dev under Linux only
+  * [8b513f8] Exclude time zone variations breaking reproducibility
+  * [1dbaab0] Migrate to automatic debug packages
+  * [679b6e1] Separate arch and indep builds
+  * [6a5133a] Explicitly delete the unwanted .md5 files created by Doxygen
+  * [3e0c9de] Avoid useless dependencies
+  * [7133c51] Enable parallel builds
+  * [60b37aa] Attach bug numbers to the libstatgrab dependency condition
+  * [5ba48da] Use secure protocol in the VCS URIs
+  * [0eb18eb] Add author info to the last two patches, which were added via
+    quilt
+  * [752ecd3] Add new patches fixing typos
+  * [0314361] New patch Add-Documentation-URIs-to-the-systemd-service-
+    files.patch
+  * [f963a3d] New patches fixing various typos
+
+ -- Ferenc Wágner <wferi@niif.hu>  Wed, 18 May 2016 23:19:04 +0200
+
 corosync (2.3.5-6) unstable; urgency=medium
 
   * Fix hurd-i386 build by defining PATH_MAX and PIPE_BUF in configure.ac.
