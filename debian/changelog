@@ -1,3 +1,11 @@
+corosync (2.3.5-8) unstable; urgency=medium
+
+  * [b4dfaf1] Move documentation into /usr/share/doc/pacemaker
+  * [3820f48] Register the HTML manual pages with doc-base
+  * [bf8dd12] New patch totempg-Fix-memory-leak.patch (Closes: #826126)
+
+ -- Ferenc Wágner <wferi@niif.hu>  Sat, 04 Jun 2016 14:38:31 +0200
+
 corosync (2.3.5-7) unstable; urgency=medium
 
   [ Arturo Borrero Gonzalez ]
