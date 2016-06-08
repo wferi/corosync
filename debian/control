@@ -63,6 +63,9 @@ Architecture: all
 Multi-Arch: foreign
 Depends: ${misc:Depends}
 Recommends: w3m | www-browser
+# /usr/share/doc/corosync/html moved over from corosync
+Breaks: corosync (<<2.3.5-1~)
+Replaces: corosync (<<2.3.5-1~)
 Description: cluster engine HTML documentation
  ${DESCRIPTION}
  This package contains the Corosync HTML manuals and the API documentation
