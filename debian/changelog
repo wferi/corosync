@@ -1,3 +1,10 @@
+corosync (2.3.5-9) unstable; urgency=medium
+
+  * [c10f9b2] Declare the file conflicts resulting from moving the HTML docs
+    (Closes: #826586)
+
+ -- Ferenc Wágner <wferi@niif.hu>  Wed, 08 Jun 2016 17:01:04 +0200
+
 corosync (2.3.5-8) unstable; urgency=medium
 
   * [b4dfaf1] Move documentation into /usr/share/doc/pacemaker
