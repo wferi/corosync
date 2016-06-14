@@ -77,9 +77,6 @@ override_dh_install:
 override_dh_installchangelogs:
 	dh_installchangelogs ChangeLog
 
-override_dh_strip:
-	dh_strip --dbgsym-migration='corosync-dbg (<< 2.3.5-7~)'
-
 # Play safe
 .DELETE_ON_ERROR:
 
