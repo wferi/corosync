@@ -11,7 +11,7 @@ it does not even get restarted by systemd.
 
 Signed-off-by: Ferenc Wágner <wferi@niif.hu>
 ---
- init/corosync-notifyd.service.in |    4 ++--
+ init/corosync-notifyd.service.in | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/init/corosync-notifyd.service.in b/init/corosync-notifyd.service.in

@@ -2,7 +2,8 @@ libtotem_pg.so.5 libtotem-pg5 #MINVER#
 * Build-Depends-Package: libtotem-pg-dev
  active_algo@Base 1.99.9
  assembly_list_free@Base 1.99.9
- assembly_list_free_trans@Base 2.3.0
+# internal symbol removed by 600fb40 (cherry-picked as totempg-Fix-memory-leak.patch)
+#MISSING: 2.3.5-8# assembly_list_free_trans@Base 2.3.0
  assembly_list_inuse@Base 1.99.9
  assembly_list_inuse_trans@Base 2.3.0
  callback_token_received_handle@Base 1.99.9

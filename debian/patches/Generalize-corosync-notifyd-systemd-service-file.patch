@@ -10,7 +10,7 @@ option besides sysconfig.
 
 Signed-off-by: Ferenc Wágner <wferi@niif.hu>
 ---
- init/corosync-notifyd.service.in |    3 ++-
+ init/corosync-notifyd.service.in | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/init/corosync-notifyd.service.in b/init/corosync-notifyd.service.in

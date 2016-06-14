@@ -7,7 +7,7 @@ Content-Transfer-Encoding: 8bit
 
 Signed-off-by: Ferenc Wágner <wferi@niif.hu>
 ---
- man/index.html |   44 ++++++++++++++++++++++++++++++++++++++++++++
+ man/index.html | 44 ++++++++++++++++++++++++++++++++++++++++++++
  1 file changed, 44 insertions(+)
 
 diff --git a/man/index.html b/man/index.html

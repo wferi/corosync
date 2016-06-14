@@ -18,7 +18,7 @@ following results:
  - XML_DTD at line 1317 has become obsolete. This tag has been
    removed.
 ---
- Doxyfile.in |    6 ------
+ Doxyfile.in | 6 ------
  1 file changed, 6 deletions(-)
 
 diff --git a/Doxyfile.in b/Doxyfile.in

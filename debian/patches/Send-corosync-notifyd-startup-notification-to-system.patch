@@ -7,9 +7,9 @@ Content-Transfer-Encoding: 8bit
 
 Signed-off-by: Ferenc Wágner <wferi@niif.hu>
 ---
- init/corosync-notifyd.service.in |    2 +-
- tools/Makefile.am                |    3 ++-
- tools/corosync-notifyd.c         |    8 ++++++++
+ init/corosync-notifyd.service.in | 2 +-
+ tools/Makefile.am                | 3 ++-
+ tools/corosync-notifyd.c         | 8 ++++++++
  3 files changed, 11 insertions(+), 2 deletions(-)
 
 diff --git a/init/corosync-notifyd.service.in b/init/corosync-notifyd.service.in

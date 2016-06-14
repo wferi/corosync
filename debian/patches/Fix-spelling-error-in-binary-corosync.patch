@@ -7,7 +7,7 @@ Subject: Fix spelling error in binary corosync
 Change-Id: I8a24b0ef5c6621dc6c19d7decbdfe7a255afd10d
 Signed-off-by: Richard B Winters <rik@mmogp.com>
 ---
- exec/logconfig.c |    4 ++--
+ exec/logconfig.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/exec/logconfig.c b/exec/logconfig.c

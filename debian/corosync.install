@@ -1,6 +1,8 @@
+#!/usr/bin/dh-exec
+
 etc/init/corosync.conf
 etc/logrotate.d/corosync
-lib/systemd/system/corosync.service
+lib/systemd/system/corosync.service [linux-any]
 usr/bin/corosync-blackbox
 usr/bin/corosync-xmlproc
 usr/sbin/corosync

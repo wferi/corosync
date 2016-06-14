@@ -5,7 +5,7 @@ Subject: totemip.h uses list.h
 Until https://github.com/corosync/corosync/issues/81 is fixed by upstream,
 partially revert d9a2110.
 ---
- include/Makefile.am |    4 ++--
+ include/Makefile.am | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/include/Makefile.am b/include/Makefile.am

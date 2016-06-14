@@ -2,32 +2,34 @@ Source: corosync
 Section: admin
 Priority: optional
 Maintainer: Debian HA Maintainers <debian-ha-maintainers@lists.alioth.debian.org>
-Uploaders: Martin Loschwitz <madkiss@debian.org>,
- Guido Günther <agx@sigxcpu.org>,
+Uploaders: Christoph Berg <myon@debian.org>,
  Richard B Winters <rik@mmogp.com>,
  Adrian Vondendriesch <adrian.vondendriesch@credativ.de>,
  Ferenc Wágner <wferi@niif.hu>
-Standards-Version: 3.9.6
+Standards-Version: 3.9.8
 Build-Depends: debhelper (>= 9),
  dctrl-tools,
  dh-autoreconf,
+ dh-exec,
  dh-systemd,
- doxygen,
- graphviz,
  groff,
  libdbus-1-dev,
  libnss3-dev,
  libqb-dev (>= 0.12),
  librdmacm-dev [linux-any],
  libsnmp-dev,
+# libstatgrab is Linux-only until #823899 and #823900 gets fixed:
  libstatgrab-dev [linux-any],
- libsystemd-dev,
+ libsystemd-dev [linux-any],
  libxml2-dev,
  pkg-config,
  zlib1g-dev
+Build-Depends-Indep:
+ doxygen,
+ graphviz,
 Homepage: http://corosync.github.io/corosync/
-Vcs-Git: git://anonscm.debian.org/debian-ha/corosync.git -b debian/master
-Vcs-Browser: http://anonscm.debian.org/cgit/debian-ha/corosync.git/
+Vcs-Git: https://anonscm.debian.org/git/debian-ha/corosync.git
+Vcs-Browser: https://anonscm.debian.org/cgit/debian-ha/corosync.git
 
 Package: corosync
 Architecture: any
@@ -55,32 +57,15 @@ Description: cluster engine notification daemon
  ${DESCRIPTION}
  This package contains the DBus/SNMP notification daemon for Corosync events.
 
-Package: corosync-dbg
-Section: debug
-Priority: extra
-Architecture: any
-Depends: ${misc:Depends},
- corosync (= ${binary:Version}),
- corosync-notifyd (= ${binary:Version}),
- libcfg6 (= ${binary:Version}),
- libcmap4 (= ${binary:Version}),
- libcorosync-common4 (= ${binary:Version}),
- libcpg4 (= ${binary:Version}),
- libquorum5 (= ${binary:Version}),
- libsam4 (= ${binary:Version}),
- libtotem-pg5 (= ${binary:Version}),
- libvotequorum7 (= ${binary:Version})
-Description: cluster engine debugging symbols
- ${DESCRIPTION}
- This package contains debug information for the Corosync daemons, utilities
- and libraries.
-
 Package: corosync-doc
 Section: doc
 Architecture: all
 Multi-Arch: foreign
 Depends: ${misc:Depends}
 Recommends: w3m | www-browser
+# /usr/share/doc/corosync/html moved over from corosync
+Breaks: corosync (<<2.3.5-1~)
+Replaces: corosync (<<2.3.5-1~)
 Description: cluster engine HTML documentation
  ${DESCRIPTION}
  This package contains the Corosync HTML manuals and the API documentation

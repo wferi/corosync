@@ -3,7 +3,7 @@ Date: Mon, 5 Oct 2015 14:04:39 +0200
 Subject: cmap_track_add.3.in: fix typo: bellow -> below
 
 ---
- man/cmap_track_add.3.in |    2 +-
+ man/cmap_track_add.3.in | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/man/cmap_track_add.3.in b/man/cmap_track_add.3.in

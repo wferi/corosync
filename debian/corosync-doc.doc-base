@@ -1,7 +1,0 @@
-Document: corosync-doc
-Title: Corosync Library API documentation
-Section: Programming/C
-
-Format: HTML
-Index: /usr/share/doc/corosync-doc/html/index.html
-Files: /usr/share/doc/corosync-doc/html/*

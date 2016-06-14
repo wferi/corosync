@@ -10,10 +10,10 @@ dependent units won't be started until initialization is complete.
 
 Signed-off-by: Ferenc Wágner <wferi@niif.hu>
 ---
- configure.ac             |    2 ++
- exec/Makefile.am         |    4 ++--
- exec/main.c              |    8 ++++++++
- init/corosync.service.in |    7 ++++---
+ configure.ac             | 2 ++
+ exec/Makefile.am         | 4 ++--
+ exec/main.c              | 8 ++++++++
+ init/corosync.service.in | 7 ++++---
  4 files changed, 16 insertions(+), 5 deletions(-)
 
 diff --git a/configure.ac b/configure.ac
