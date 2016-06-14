@@ -1,3 +1,11 @@
+corosync (2.3.5-9~bpo8+1) jessie-backports; urgency=medium
+
+  * Rebuild for jessie-backports.
+  * [8dcedaa] Update the path in the jQuery Lintian override
+  * [647c982] No --dbgsym-migration under jessie, drop the debug packages
+
+ -- Ferenc Wágner <wferi@niif.hu>  Tue, 14 Jun 2016 10:02:23 +0200
+
 corosync (2.3.5-9) unstable; urgency=medium
 
   * [c10f9b2] Declare the file conflicts resulting from moving the HTML docs
