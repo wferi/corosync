@@ -235,6 +235,7 @@ static int corosync_main_config_log_destination_set (
 	const char **error_string,
 	unsigned int mode_mask,
 	char deprecated,
+	char default_value,
 	const char *replacement)
 {
 	static char formatted_error_reason[128];
@@ -246,7 +247,7 @@ static int corosync_main_config_log_destination_set (
 	if (map_get_string(key_name, &value) == CS_OK) {
 		if (deprecated) {
 			log_printf(LOGSYS_LEVEL_WARNING,
-			 "Warning: the %s config paramater has been obsoleted."
+			 "Warning: the %s config parameter has been obsoleted."
 			 " See corosync.conf man page %s directive.",
 			 key, replacement);
 		}
@@ -268,6 +269,21 @@ static int corosync_main_config_log_destination_set (
 			}
 		} else {
 			sprintf (formatted_error_reason, "unknown value for %s", key);
+			goto parse_error;
+		}
+	}
+	/* Set to default if we are the top-level logger */
+	else if (!subsys && !deprecated) {
+
+		mode = logsys_config_mode_get (subsys);
+		if (default_value) {
+			mode |= mode_mask;
+		}
+		else {
+			mode &= ~mode_mask;
+		}
+		if (logsys_config_mode_set(subsys, mode) < 0) {
+			sprintf (formatted_error_reason, "unable to change mode %s", key);
 			goto parse_error;
 		}
 	}
@@ -314,11 +330,11 @@ static int corosync_main_config_set (
 	}
 
 	if (corosync_main_config_log_destination_set (path, "to_stderr", subsys, &error_reason,
-	    LOGSYS_MODE_OUTPUT_STDERR, 0, NULL) != 0)
+	    LOGSYS_MODE_OUTPUT_STDERR, 0, 1, NULL) != 0)
 		goto parse_error;
 
 	if (corosync_main_config_log_destination_set (path, "to_syslog", subsys, &error_reason,
-	    LOGSYS_MODE_OUTPUT_SYSLOG, 0, NULL) != 0)
+	    LOGSYS_MODE_OUTPUT_SYSLOG, 0, 1, NULL) != 0)
 		goto parse_error;
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_facility");
@@ -338,13 +354,21 @@ static int corosync_main_config_set (
 
 		free(value);
 	}
+	else {
+		/* Set default here in case of a reload */
+		if (logsys_config_syslog_facility_set(subsys,
+						      qb_log_facility2int("daemon")) < 0) {
+			error_reason = "unable to set syslog facility";
+			goto parse_error;
+		}
+	}
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_level");
 	if (map_get_string(key_name, &value) == CS_OK) {
 		int syslog_priority;
 
 		log_printf(LOGSYS_LEVEL_WARNING,
-		 "Warning: the syslog_level config paramater has been obsoleted."
+		 "Warning: the syslog_level config parameter has been obsoleted."
 		 " See corosync.conf man page syslog_priority directive.");
 
 		syslog_priority = logsys_priority_id_get(value);
@@ -377,6 +401,13 @@ static int corosync_main_config_set (
 			goto parse_error;
 		}
 	}
+	else {
+		if (logsys_config_syslog_priority_set(subsys,
+						      logsys_priority_id_get("info")) < 0) {
+			error_reason = "unable to set syslog level";
+			goto parse_error;
+		}
+	}
 
 #ifdef LOGCONFIG_USE_ICMAP
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile");
@@ -395,11 +426,11 @@ static int corosync_main_config_set (
 #endif
 
 	if (corosync_main_config_log_destination_set (path, "to_file", subsys, &error_reason,
-	    LOGSYS_MODE_OUTPUT_FILE, 1, "to_logfile") != 0)
+	   LOGSYS_MODE_OUTPUT_FILE, 1, 0, "to_logfile") != 0)
 		goto parse_error;
 
 	if (corosync_main_config_log_destination_set (path, "to_logfile", subsys, &error_reason,
-	    LOGSYS_MODE_OUTPUT_FILE, 0, NULL) != 0)
+	   LOGSYS_MODE_OUTPUT_FILE, 0, 0, NULL) != 0)
 		goto parse_error;
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile_priority");
@@ -415,6 +446,13 @@ static int corosync_main_config_set (
 		if (logsys_config_logfile_priority_set(subsys,
 						logfile_priority) < 0) {
 			error_reason = "unable to set logfile priority";
+			goto parse_error;
+		}
+	}
+	else {
+		if (logsys_config_logfile_priority_set(subsys,
+						      logsys_priority_id_get("info")) < 0) {
+			error_reason = "unable to set syslog level";
 			goto parse_error;
 		}
 	}
@@ -447,6 +485,13 @@ static int corosync_main_config_set (
 			goto parse_error;
 		}
 		free(value);
+	}
+	else {
+		if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_OFF) < 0) {
+			error_reason = "unable to set debug off";
+			free(value);
+			goto parse_error;
+		}
 	}
 
 	return (0);

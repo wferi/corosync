@@ -89,6 +89,7 @@ static uint64_t tickle_timeout = (WD_DEFAULT_TIMEOUT_MS / 2);
 static int dog = -1;
 static corosync_timer_handle_t wd_timer;
 static int watchdog_ok = 1;
+static char *watchdog_device = "/dev/watchdog";
 
 struct corosync_service_engine wd_service_engine = {
 	.name			= "corosync watchdog service",
@@ -585,7 +586,11 @@ static void wd_scan_resources (void)
 static void watchdog_timeout_apply (uint32_t new)
 {
 	struct watchdog_info ident;
-	uint32_t original_timeout = watchdog_timeout;
+	uint32_t original_timeout = 0;
+
+	if (dog > 0) {
+		ioctl(dog, WDIOC_GETTIMEOUT, &original_timeout);
+	}
 
 	if (new == original_timeout) {
 		return;
@@ -625,20 +630,33 @@ static void watchdog_timeout_apply (uint32_t new)
 static int setup_watchdog(void)
 {
 	struct watchdog_info ident;
+	char *str;
 
 	ENTER();
-	if (access ("/dev/watchdog", W_OK) != 0) {
-		log_printf (LOGSYS_LEVEL_WARNING, "No Watchdog, try modprobe <a watchdog>");
+
+	if (icmap_get_string("resources.watchdog_device", &str) == CS_OK) {
+		if (strcmp (str, "off") == 0) {
+			log_printf (LOGSYS_LEVEL_WARNING, "Watchdog disabled by configuration");
+			free(str);
+			dog = -1;
+			return -1;
+		} else {
+			watchdog_device = str;
+		}
+	}
+
+	if (access (watchdog_device, W_OK) != 0) {
+		log_printf (LOGSYS_LEVEL_WARNING, "No Watchdog %s, try modprobe <a watchdog>", watchdog_device);
 		dog = -1;
 		return -1;
 	}
 
 	/* here goes, lets hope they have "Magic Close"
 	 */
-	dog = open("/dev/watchdog", O_WRONLY);
+	dog = open(watchdog_device, O_WRONLY);
 
 	if (dog == -1) {
-		log_printf (LOGSYS_LEVEL_WARNING, "Watchdog exists but couldn't be opened.");
+		log_printf (LOGSYS_LEVEL_WARNING, "Watchdog %s exists but couldn't be opened.", watchdog_device);
 		dog = -1;
 		return -1;
 	}
@@ -648,7 +666,7 @@ static int setup_watchdog(void)
 	 */
 
 	ioctl(dog, WDIOC_GETSUPPORT, &ident);
-	log_printf (LOGSYS_LEVEL_INFO, "Watchdog is now been tickled by corosync.");
+	log_printf (LOGSYS_LEVEL_INFO, "Watchdog %s is now been tickled by corosync.", watchdog_device);
 	log_printf (LOGSYS_LEVEL_DEBUG, "%s", ident.identity);
 
 	watchdog_timeout_apply (watchdog_timeout);
@@ -669,14 +687,16 @@ static void wd_top_level_key_changed(
 
 	ENTER();
 
-	if (icmap_get_uint32("resources.watchdog_timeout", &tmp_value_32) != CS_OK) {
+	if (icmap_get_uint32("resources.watchdog_timeout", &tmp_value_32) == CS_OK) {
 		if (tmp_value_32 >= 2 && tmp_value_32 <= 120) {
 			watchdog_timeout_apply (tmp_value_32);
+			return;
 		}
 	}
-	else {
-		watchdog_timeout_apply (WD_DEFAULT_TIMEOUT_SEC);
-	}
+
+	log_printf (LOGSYS_LEVEL_WARNING,
+		"Set watchdog_timeout is out of range (2..120).");
+	icmap_set_uint32("resources.watchdog_timeout", watchdog_timeout);
 }
 
 static void watchdog_timeout_get_initial (void)
@@ -694,8 +714,14 @@ static void watchdog_timeout_get_initial (void)
 	else {
 		if (tmp_value_32 >= 2 && tmp_value_32 <= 120) {
 			watchdog_timeout_apply (tmp_value_32);
-		} else {
+		}
+		else {
+			log_printf (LOGSYS_LEVEL_WARNING,
+				"Set watchdog_timeout is out of range (2..120).");
+			log_printf (LOGSYS_LEVEL_INFO,
+				"use default value %d seconds.", WD_DEFAULT_TIMEOUT_SEC);
 			watchdog_timeout_apply (WD_DEFAULT_TIMEOUT_SEC);
+			icmap_set_uint32("resources.watchdog_timeout", watchdog_timeout);
 		}
 	}
 
@@ -716,9 +742,6 @@ static char *wd_exec_init_fn (struct corosync_api_v1 *corosync_api)
 	setup_watchdog();
 
 	wd_scan_resources();
-
-	api->timer_add_duration(tickle_timeout*MILLI_2_NANO_SECONDS, NULL,
-				wd_tickle_fn, &wd_timer);
 
 	return NULL;
 }

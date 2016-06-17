@@ -893,7 +893,11 @@ static void update_ev_tracking_barrier(uint32_t ev_t_barrier)
 		log_printf(LOGSYS_LEVEL_WARNING,
 			   "Unable to update ev_tracking_barrier on disk data!!!");
 	}
+#ifdef HAVE_FDATASYNC
 	fdatasync(ev_tracking_fd);
+#else
+	fsync(ev_tracking_fd);
+#endif
 
 	LEAVE();
 }
@@ -1054,6 +1058,7 @@ static void are_we_quorate(unsigned int total_votes)
 	    (sync_in_progress == 0)) {
 		quorum_callback(quorum_members, quorum_members_entries,
 				cluster_is_quorate, &quorum_ringid);
+		votequorum_exec_send_quorum_notification(NULL, 0L);
 	}
 
 	LEAVE();
@@ -1119,8 +1124,6 @@ static void recalculate_quorum(int allow_decrease, int by_current_nodes)
 
 	quorum = calculate_quorum(allow_decrease, cluster_members, &total_votes);
 	are_we_quorate(total_votes);
-
-	votequorum_exec_send_quorum_notification(NULL, 0L);
 
 	LEAVE();
 }
@@ -1233,6 +1236,14 @@ static char *votequorum_readconfig(int runtime)
 	ENTER();
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "Reading configuration (runtime: %d)", runtime);
+
+	/*
+	 * Set the few things we re-read at runtime back to their defaults
+	 */
+	if (runtime) {
+		two_node = 0;
+		expected_votes = 0;
+	}
 
 	/*
 	 * gather basic data here
@@ -2162,6 +2173,17 @@ static int votequorum_exec_exit_fn (void)
 	return ret;
 }
 
+static void votequorum_set_icmap_ro_keys(void)
+{
+	icmap_set_ro_access("quorum.allow_downscale", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("quorum.wait_for_all", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("quorum.last_man_standing", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("quorum.last_man_standing_window", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("quorum.expected_votes_tracking", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("quorum.auto_tie_breaker", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("quorum.auto_tie_breaker_node", CS_FALSE, CS_TRUE);
+}
+
 static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 {
 	char *error = NULL;
@@ -2208,6 +2230,11 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 		return error;
 	}
 	recalculate_quorum(0, 0);
+
+	/*
+	 * Set RO keys in icmap
+	 */
+	votequorum_set_icmap_ro_keys();
 
 	/*
 	 * Listen for changes
@@ -2352,6 +2379,8 @@ static void votequorum_sync_activate (void)
 	recalculate_quorum(0, 0);
 	quorum_callback(quorum_members, quorum_members_entries,
 			cluster_is_quorate, &quorum_ringid);
+	votequorum_exec_send_quorum_notification(NULL, 0L);
+
 	sync_in_progress = 0;
 }
 

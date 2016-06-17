@@ -71,14 +71,6 @@ enum parser_cb_type {
 	PARSER_CB_ITEM,
 };
 
-typedef int (*parser_cb_f)(const char *path,
-			char *key,
-			char *value,
-			enum parser_cb_type type,
-			const char **error_string,
-			icmap_map_t config_map,
-			void *user_data);
-
 enum main_cp_cb_data_state {
 	MAIN_CP_CB_DATA_STATE_NORMAL,
 	MAIN_CP_CB_DATA_STATE_TOTEM,
@@ -92,8 +84,22 @@ enum main_cp_cb_data_state {
 	MAIN_CP_CB_DATA_STATE_NODELIST,
 	MAIN_CP_CB_DATA_STATE_NODELIST_NODE,
 	MAIN_CP_CB_DATA_STATE_PLOAD,
-	MAIN_CP_CB_DATA_STATE_QB
+	MAIN_CP_CB_DATA_STATE_QB,
+	MAIN_CP_CB_DATA_STATE_RESOURCES,
+	MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM,
+	MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS,
+	MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM_MEMUSED,
+	MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS_MEMUSED
 };
+
+typedef int (*parser_cb_f)(const char *path,
+			char *key,
+			char *value,
+			enum main_cp_cb_data_state *state,
+			enum parser_cb_type type,
+			const char **error_string,
+			icmap_map_t config_map,
+			void *user_data);
 
 struct key_value_list_item {
 	char *key;
@@ -102,8 +108,6 @@ struct key_value_list_item {
 };
 
 struct main_cp_cb_data {
-	enum main_cp_cb_data_state state;
-
 	int ringnumber;
 	char *bindnetaddr;
 	char *mcastaddr;
@@ -277,6 +281,7 @@ static int parse_section(FILE *fp,
 			 char *path,
 			 const char **error_string,
 			 int depth,
+			 enum main_cp_cb_data_state state,
 			 parser_cb_f parser_cb,
 			 icmap_map_t config_map,
 			 void *user_data)
@@ -288,7 +293,7 @@ static int parse_section(FILE *fp,
 	char new_keyname[ICMAP_KEYNAME_MAXLEN];
 
 	if (strcmp(path, "") == 0) {
-		parser_cb("", NULL, NULL, PARSER_CB_START, error_string, config_map, user_data);
+		parser_cb("", NULL, NULL, &state, PARSER_CB_START, error_string, config_map, user_data);
 	}
 
 	while (fgets (line, sizeof (line), fp)) {
@@ -328,6 +333,7 @@ static int parse_section(FILE *fp,
 		/* New section ? */
 		if ((loc = strchr_rs (line, '{'))) {
 			char *section = remove_whitespace(line, 1);
+			enum main_cp_cb_data_state newstate;
 
 			loc--;
 			*loc = '\0';
@@ -342,11 +348,13 @@ static int parse_section(FILE *fp,
 			}
 			strcat(new_keyname, section);
 
-			if (!parser_cb(new_keyname, NULL, NULL, PARSER_CB_SECTION_START, error_string, config_map, user_data)) {
+			/* Only use the new state for items further down the stack */
+			newstate = state;
+			if (!parser_cb(new_keyname, NULL, NULL, &newstate, PARSER_CB_SECTION_START, error_string, config_map, user_data)) {
 				return -1;
 			}
 
-			if (parse_section(fp, new_keyname, error_string, depth + 1, parser_cb, config_map, user_data))
+			if (parse_section(fp, new_keyname, error_string, depth + 1, newstate, parser_cb, config_map, user_data))
 				return -1;
 
 			continue ;
@@ -371,7 +379,7 @@ static int parse_section(FILE *fp,
 			}
 			strcat(new_keyname, key);
 
-			if (!parser_cb(new_keyname, key, value, PARSER_CB_ITEM, error_string, config_map, user_data)) {
+			if (!parser_cb(new_keyname, key, value, &state, PARSER_CB_ITEM, error_string, config_map, user_data)) {
 				return -1;
 			}
 
@@ -385,7 +393,7 @@ static int parse_section(FILE *fp,
 				return -1;
 			}
 
-			if (!parser_cb(path, NULL, NULL, PARSER_CB_SECTION_END, error_string, config_map, user_data)) {
+			if (!parser_cb(path, NULL, NULL, &state, PARSER_CB_SECTION_END, error_string, config_map, user_data)) {
 				return -1;
 			}
 
@@ -399,7 +407,7 @@ static int parse_section(FILE *fp,
 	}
 
 	if (strcmp(path, "") == 0) {
-		parser_cb("", NULL, NULL, PARSER_CB_END, error_string, config_map, user_data);
+		parser_cb("", NULL, NULL, &state, PARSER_CB_END, error_string, config_map, user_data);
 	}
 
 	return 0;
@@ -486,6 +494,7 @@ static int str_to_ull(const char *str, unsigned long long int *res)
 static int main_config_parser_cb(const char *path,
 			char *key,
 			char *value,
+			enum main_cp_cb_data_state *state,
 			enum parser_cb_type type,
 			const char **error_string,
 			icmap_map_t config_map,
@@ -507,14 +516,14 @@ static int main_config_parser_cb(const char *path,
 	switch (type) {
 	case PARSER_CB_START:
 		memset(data, 0, sizeof(struct main_cp_cb_data));
-		data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
+		*state = MAIN_CP_CB_DATA_STATE_NORMAL;
 		break;
 	case PARSER_CB_END:
 		break;
 	case PARSER_CB_ITEM:
 		add_as_string = 1;
 
-		switch (data->state) {
+		switch (*state) {
 		case MAIN_CP_CB_DATA_STATE_NORMAL:
 			break;
 		case MAIN_CP_CB_DATA_STATE_PLOAD:
@@ -855,6 +864,38 @@ static int main_config_parser_cb(const char *path,
 				add_as_string = 0;
 			}
 			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES:
+			if (strcmp(key, "watchdog_timeout") == 0) {
+				val_type = ICMAP_VALUETYPE_UINT32;
+				if (safe_atoq(value, &val, val_type) != 0) {
+					goto atoi_error;
+				}
+				icmap_set_uint32_r(config_map,path, val);
+				add_as_string = 0;
+			}
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM:
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM_MEMUSED:
+			if (strcmp(key, "poll_period") == 0) {
+				if (str_to_ull(value, &ull) != 0) {
+					goto atoi_error;
+				}
+				icmap_set_uint64_r(config_map,path, ull);
+				add_as_string = 0;
+			}
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS:
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS_MEMUSED:
+			if (strcmp(key, "poll_period") == 0) {
+				if (str_to_ull(value, &ull) != 0) {
+					goto atoi_error;
+				}
+				icmap_set_uint64_r(config_map,path, ull);
+				add_as_string = 0;
+			}
+			break;
 		}
 
 		if (add_as_string) {
@@ -863,57 +904,67 @@ static int main_config_parser_cb(const char *path,
 		break;
 	case PARSER_CB_SECTION_START:
 		if (strcmp(path, "totem.interface") == 0) {
-			data->state = MAIN_CP_CB_DATA_STATE_INTERFACE;
+			*state = MAIN_CP_CB_DATA_STATE_INTERFACE;
 			data->ringnumber = 0;
 			data->mcastport = -1;
 			data->ttl = -1;
 			list_init(&data->member_items_head);
 		};
 		if (strcmp(path, "totem") == 0) {
-			data->state = MAIN_CP_CB_DATA_STATE_TOTEM;
+			*state = MAIN_CP_CB_DATA_STATE_TOTEM;
 		};
 		if (strcmp(path, "qb") == 0) {
-			data->state = MAIN_CP_CB_DATA_STATE_QB;
+			*state = MAIN_CP_CB_DATA_STATE_QB;
 		}
 		if (strcmp(path, "logging.logger_subsys") == 0) {
-			data->state = MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS;
+			*state = MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS;
 			list_init(&data->logger_subsys_items_head);
 			data->subsys = NULL;
 		}
 		if (strcmp(path, "logging.logging_daemon") == 0) {
-			data->state = MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON;
+			*state = MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON;
 			list_init(&data->logger_subsys_items_head);
 			data->subsys = NULL;
 			data->logging_daemon_name = NULL;
 		}
 		if (strcmp(path, "uidgid") == 0) {
-			data->state = MAIN_CP_CB_DATA_STATE_UIDGID;
+			*state = MAIN_CP_CB_DATA_STATE_UIDGID;
 		}
 		if (strcmp(path, "totem.interface.member") == 0) {
-			data->state = MAIN_CP_CB_DATA_STATE_MEMBER;
+			*state = MAIN_CP_CB_DATA_STATE_MEMBER;
 		}
 		if (strcmp(path, "quorum") == 0) {
-			data->state = MAIN_CP_CB_DATA_STATE_QUORUM;
+			*state = MAIN_CP_CB_DATA_STATE_QUORUM;
 		}
 		if (strcmp(path, "quorum.device") == 0) {
-			data->state = MAIN_CP_CB_DATA_STATE_QDEVICE;
+			*state = MAIN_CP_CB_DATA_STATE_QDEVICE;
 		}
 		if (strcmp(path, "nodelist") == 0) {
-			data->state = MAIN_CP_CB_DATA_STATE_NODELIST;
+			*state = MAIN_CP_CB_DATA_STATE_NODELIST;
 			data->node_number = 0;
 		}
 		if (strcmp(path, "nodelist.node") == 0) {
-			data->state = MAIN_CP_CB_DATA_STATE_NODELIST_NODE;
+			*state = MAIN_CP_CB_DATA_STATE_NODELIST_NODE;
 			data->ring0_addr_added = 0;
+		}
+		if (strcmp(path, "resources") == 0) {
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES;
+		}
+		if (strcmp(path, "resources.system") == 0) {
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM;
+		}
+		if (strcmp(path, "resources.system.memory_used") == 0) {
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM_MEMUSED;
+		}
+		if (strcmp(path, "resources.process") == 0) {
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS;
+		}
+		if (strcmp(path, "resources.process.memory_used") == 0) {
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS_MEMUSED;
 		}
 		break;
 	case PARSER_CB_SECTION_END:
-		switch (data->state) {
-		case MAIN_CP_CB_DATA_STATE_NORMAL:
-			break;
-		case MAIN_CP_CB_DATA_STATE_PLOAD:
-			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
-			break;
+		switch (*state) {
 		case MAIN_CP_CB_DATA_STATE_INTERFACE:
 			/*
 			 * Create new interface section
@@ -974,13 +1025,6 @@ static int main_config_parser_cb(const char *path,
 				ii++;
 			}
 
-			data->state = MAIN_CP_CB_DATA_STATE_TOTEM;
-			break;
-		case MAIN_CP_CB_DATA_STATE_TOTEM:
-			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
-			break;
-		case MAIN_CP_CB_DATA_STATE_QB:
-			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS:
 			if (data->subsys == NULL) {
@@ -994,7 +1038,7 @@ static int main_config_parser_cb(const char *path,
 				kv_item = list_entry(iter, struct key_value_list_item, list);
 
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s.%s",
-						data->subsys, kv_item->key);
+					 data->subsys, kv_item->key);
 				icmap_set_string_r(config_map, key_name, kv_item->value);
 
 				iter_next = iter->next;
@@ -1010,7 +1054,6 @@ static int main_config_parser_cb(const char *path,
 
 			free(data->subsys);
 
-			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON:
 			if (data->logging_daemon_name == NULL) {
@@ -1080,22 +1123,6 @@ static int main_config_parser_cb(const char *path,
 			free(data->subsys);
 			free(data->logging_daemon_name);
 
-			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
-			break;
-		case MAIN_CP_CB_DATA_STATE_UIDGID:
-			data->state = MAIN_CP_CB_DATA_STATE_UIDGID;
-			break;
-		case MAIN_CP_CB_DATA_STATE_MEMBER:
-			data->state = MAIN_CP_CB_DATA_STATE_INTERFACE;
-			break;
-		case MAIN_CP_CB_DATA_STATE_QUORUM:
-			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
-			break;
-		case MAIN_CP_CB_DATA_STATE_QDEVICE:
-			data->state = MAIN_CP_CB_DATA_STATE_QUORUM;
-			break;
-		case MAIN_CP_CB_DATA_STATE_NODELIST:
-			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
 			break;
 		case MAIN_CP_CB_DATA_STATE_NODELIST_NODE:
 			if (!data->ring0_addr_added) {
@@ -1104,7 +1131,31 @@ static int main_config_parser_cb(const char *path,
 				return (0);
 			}
 			data->node_number++;
-			data->state = MAIN_CP_CB_DATA_STATE_NODELIST;
+			break;
+		case MAIN_CP_CB_DATA_STATE_NORMAL:
+		case MAIN_CP_CB_DATA_STATE_PLOAD:
+		case MAIN_CP_CB_DATA_STATE_UIDGID:
+		case MAIN_CP_CB_DATA_STATE_MEMBER:
+		case MAIN_CP_CB_DATA_STATE_QUORUM:
+		case MAIN_CP_CB_DATA_STATE_QDEVICE:
+		case MAIN_CP_CB_DATA_STATE_NODELIST:
+		case MAIN_CP_CB_DATA_STATE_TOTEM:
+		case MAIN_CP_CB_DATA_STATE_QB:
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES:
+			*state = MAIN_CP_CB_DATA_STATE_NORMAL;
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM:
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES;
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM_MEMUSED:
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM;
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS:
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES;
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS_MEMUSED:
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS;
 			break;
 		}
 		break;
@@ -1131,6 +1182,7 @@ atoi_error:
 static int uidgid_config_parser_cb(const char *path,
 			char *key,
 			char *value,
+			enum main_cp_cb_data_state *state,
 			enum parser_cb_type type,
 			const char **error_string,
 			icmap_map_t config_map,
@@ -1195,6 +1247,7 @@ static int read_uidgid_files_into_icmap(
 	size_t len;
 	int return_code;
 	struct stat stat_buf;
+	enum main_cp_cb_data_state state = MAIN_CP_CB_DATA_STATE_NORMAL;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
 	dirname = COROSYSCONFDIR "/uidgid.d";
@@ -1224,7 +1277,7 @@ static int read_uidgid_files_into_icmap(
 
 			key_name[0] = 0;
 
-			res = parse_section(fp, key_name, error_string, 0, uidgid_config_parser_cb, config_map, NULL);
+			res = parse_section(fp, key_name, error_string, 0, state, uidgid_config_parser_cb, config_map, NULL);
 
 			fclose (fp);
 
@@ -1252,6 +1305,7 @@ static int read_config_file_into_icmap(
 	int res;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 	struct main_cp_cb_data data;
+	enum main_cp_cb_data_state state = MAIN_CP_CB_DATA_STATE_NORMAL;
 
 	filename = getenv ("COROSYNC_MAIN_CONFIG_FILE");
 	if (!filename)
@@ -1270,7 +1324,7 @@ static int read_config_file_into_icmap(
 
 	key_name[0] = 0;
 
-	res = parse_section(fp, key_name, error_string, 0, main_config_parser_cb, config_map, &data);
+	res = parse_section(fp, key_name, error_string, 0, state, main_config_parser_cb, config_map, &data);
 
 	fclose(fp);
 
