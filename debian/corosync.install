@@ -33,3 +33,4 @@ etc/corosync/corosync.*example* usr/share/doc/corosync/examples
 etc/corosync/uidgid.d
 debian/corosync.conf etc/corosync
 usr/share/corosync/xml2conf.xsl
+var/lib/corosync
