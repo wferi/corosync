@@ -30,5 +30,6 @@ usr/share/doc/corosync/INSTALL
 usr/share/augeas/lenses/corosync.aug
 usr/share/augeas/lenses/tests/test_corosync.aug
 etc/corosync/corosync.*example* usr/share/doc/corosync/examples
+etc/corosync/uidgid.d
 debian/corosync.conf etc/corosync
 usr/share/corosync/xml2conf.xsl
