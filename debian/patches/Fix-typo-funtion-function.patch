@@ -9,10 +9,10 @@ Subject: Fix typo: funtion -> function
  3 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/ChangeLog b/ChangeLog
-index 6507b79..ec82a2d 100644
+index b1a34eb..17393e2 100644
 --- a/ChangeLog
 +++ b/ChangeLog
-@@ -6096,7 +6096,7 @@
+@@ -6584,7 +6584,7 @@
  
  2011-07-15  Steven Dake  <sdake@redhat.com>
  
@@ -22,7 +22,7 @@ index 6507b79..ec82a2d 100644
  
  	Fix problem where corosync will segfault if there are gaps in recovery queue
 diff --git a/man/cpg_zcb_alloc.3.in b/man/cpg_zcb_alloc.3.in
-index 2848abc..65fcf6a 100644
+index b32b299..e46da9c 100644
 --- a/man/cpg_zcb_alloc.3.in
 +++ b/man/cpg_zcb_alloc.3.in
 @@ -43,7 +43,7 @@ The
