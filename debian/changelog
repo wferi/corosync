@@ -1,3 +1,11 @@
+corosync (2.3.6-1) unstable; urgency=medium
+
+  * [8dcedaa] Update the path in the jQuery Lintian override
+  * [cd4ea8d] New upstream release (2.3.6)
+  * [5c47852] Delete upstreamed patches, refresh the rest
+
+ -- Ferenc Wágner <wferi@niif.hu>  Fri, 17 Jun 2016 09:36:28 +0200
+
 corosync (2.3.5-9) unstable; urgency=medium
 
   * [c10f9b2] Declare the file conflicts resulting from moving the HTML docs
