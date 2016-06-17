@@ -318,10 +318,10 @@ index 0000000..84bf353
 +	#provider: corosync_votequorum
 +}
 diff --git a/configure.ac b/configure.ac
-index 922b439..31edfb4 100644
+index 6a47abb..131f12d 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -202,6 +202,8 @@ AC_CONFIG_FILES([Makefile
+@@ -204,6 +204,8 @@ AC_CONFIG_FILES([Makefile
  		 conf/Makefile
  		 qdevices/Makefile
  		 Doxyfile
