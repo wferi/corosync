@@ -1,3 +1,19 @@
+corosync (2.3.6-2) unstable; urgency=medium
+
+  * [f8af53c] Ship /etc/corosync/uidgid.d in the corosync package
+  * [1edb5d0] Depend on /var/lib/corosync being created by make install
+  * [32635c4] The package name is superfluous in the debian release tag titles
+
+ -- Ferenc Wágner <wferi@niif.hu>  Thu, 23 Jun 2016 13:17:16 +0200
+
+corosync (2.3.6-1) unstable; urgency=medium
+
+  * [8dcedaa] Update the path in the jQuery Lintian override
+  * [cd4ea8d] New upstream release (2.3.6)
+  * [5c47852] Delete upstreamed patches, refresh the rest
+
+ -- Ferenc Wágner <wferi@niif.hu>  Fri, 17 Jun 2016 09:36:28 +0200
+
 corosync (2.3.5-9~bpo8+1) jessie-backports; urgency=medium
 
   * Rebuild for jessie-backports.

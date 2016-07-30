@@ -1,3 +1,491 @@
+2016-05-27  Christine Caulfield  <ccaulfie@redhat.com>
+
+	logconfig: Fix logging reload disabling logfiles
+	In my previous logconfig patch, adding a subsys so the
+	logging stanzas could disable logging to a file, because
+	the subsys closed the file used by the main logging.
+
+	This patch only applies defaults to higher-level logging and
+	non-deprecated keys.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-05-27  yuusuke  <yusk.iida@gmail.com>
+
+	wd: Warn if values are out of range
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	parser: WD Read type correctly from corosync.conf
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2016-05-24  Christine Caulfield  <ccaulfie@redhat.com>
+
+	Add some more RO keys
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Reapply config defaults corosync.conf reload
+	There were several places where defaults were not restored
+	if the keys were removed from corosync.conf and the file reloaded.
+
+	This patch adds those back so that reloading corosync.conf
+	has the expected effect when keys are deleted.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-05-17  Jan Friesse  <jfriesse@redhat.com>
+
+	schedwrk: Cleanup and make it work on PPC BE
+	Schedwrk is passing hdb handle (64-bit) to
+	totempg_callback_token_create as a context. Context is defined to be
+	pointer, so there is conversion function which stores 64-bit hdb_handle
+	into pointer. Potentially, pointer can be 32-bit. This means, check
+	part of hdb is discarded (and have to get special no_check value in
+	schedwrk_do) later. This works quite well on 32-bit Little-Endian
+	system. Sadly on Big-Endian system, check partition of hdb is stored
+	instead of value. Result is error of hdb_handle_get call.
+
+	Proposed solution is to pass handle pointer to
+	totempg_callback_token_create as context. This means full hdb (check +
+	value) can be used in schedwrk_do (easier detection of memory
+	corruption).
+
+	Main reason for this patch is to remove usage of pointer as integer
+	value.
+
+	Small drawback of given solution is that handle pointer must be memory
+	allocated on heap or static memory, making API more bug-prone. Current
+	usage of schedwrk API across corosync always use memory in .text
+	section (safe), so it's not a problem.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+	cmapctl: Handle corosync errors in print_key func
+	print_key handles only CS_ERR_TRY_AGAIN error. If different error is
+	returned, print_key loops forewer.
+
+	Solution is to handle all errors.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2016-05-12  Michael Jones  <jonesmz@jonesmz.com>
+
+	Adds doxygen stubs to include directory
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-05-03  Michael Jones  <jonesmz@jonesmz.com>
+
+	Add clang-format configuration file
+	This .clang-format file is written for clang-format version 3.7.1
+
+	I've attempted to set the options for clang-format so that the
+	difference between the current code, and the result of the clang format
+	call is as small as possible.
+
+	Unfortunately, clang-format doesn't yet have the ability to handle every
+	single possible formatting option, so it's not perfect yet.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-05-03  Valentin Vidic  <Valentin.Vidic@CARNet.hr>
+
+	wd: make watchdog device configurable
+	Add configuration option resources.watchdog_device allowing runtime
+	selection of watchdog device.  Useful for newer servers having more
+	than one watchdog available (IPMI and iTCO).
+
+	Special value "off" disables watchdog in configuration rather than
+	just using build options.  Useful when watchdog device is needed
+	elsewhere (SBD cluster stonith service).
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-05-03  Christine Caulfield  <ccaulfie@redhat.com>
+
+	logging: Use our own version of basename
+	basename() function has some potentially odd issues on
+	other platforms.
+
+	So, to be safe, here's an internal version.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-04-26  Christine Caulfield  <ccaulfie@redhat.com>
+
+	logsys: fix TOTEM logging when corosync built out of tree
+	If corosync is built out-of-tree (passing --srcdir to configure) then
+	TOTEM logging doesn't print anything.
+
+	This is caused by the source filenames (from __FILE__ at compilation
+	time) having the configured path in them - in this example
+	../corosync/exec/totemudp.c etc. The list of totem source filenames
+	passed to libqb logging facility only has the basenames so the filenames
+	never match up as libqb does an exact string match.
+
+	I looked into fixing this in libqb but it causes a regression. We can't
+	simply basename() __FILE__ at the point of calling log_printf as it's i
+	common also to use __FILE__ to generate the logging source, and
+	using basename() on both removes the distinction between similarly named
+	files from different directories which could be a requirement.
+
+2016-04-22  Christine Caulfield  <ccaulfie@redhat.com>
+
+	parser: Make config file parser more hierarchy
+	pass 'state' down the stack so that the state of the
+	hierarchy doesn't get lost when there are unexpected items
+	in the config hierarchy.
+
+	Don't bother setting 'state' on SECTION_END as there's no point
+	now we're going back up the stack.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-04-07  Jan Friesse  <jfriesse@redhat.com>
+
+	totemconfig: Explicitly pass IP version
+	If resolver was set to prefer IPv6 (almost always) and interface section
+	was not defined (almost all config files created by pcs), IP version was
+	set to mcast_addr.family. Because mcast_addr.family was unset (reset to
+	zero), IPv6 address was returned causing failure in totemsrp.
+	Solution is to pass correct IP version stored in
+	totem_config->ip_version.
+
+	Patch also simplifies get_cluster_mcast_addr. It was using mix of
+	explicitly passed IP version and bindnet IP version.
+
+	Also return value of get_cluster_mcast_addr is now properly checked.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2016-02-24  Jan Friesse  <jfriesse@redhat.com>
+
+	cpg: Handle ipc error in cpg_zcb_alloc/free
+	- Error returned by coroipcc_msg_send_reply_receive is now correctly
+	  handled.
+	- If munmap fails, error is set to proper value and handle is put back
+	  into handle_db
+
+2016-02-24  Athira Rajeev  <atrajeev@linux.vnet.ibm.com>
+
+	cpg: Memory not unmapped in cpg_zcb_free
+	Function in cpg_zcb_alloc (from code lib/cpg.c) creates
+	/dev/shm/corosync_zerocopy-XXXXX and does mmap
+
+	The memory is allocated by corosync service (function zcb_alloc
+	in exec/cpg.c) also and both shares this memory via mmap
+	(uses MAP_SHARED in mmap call)
+
+	Corosync calls unlink which deletes the file from /dev/shm while
+	closing the file descriptor, but unmap is not happening correctly
+	while calling cpg_zcb_free.
+
+	So:
+	- still the deleted file holds the memory
+	- As munmap is not happening correctly, the number of mappings per
+	  process gets exceeded and corosync dies with ENOMEM
+
+	From gdb, the size passed to munmap appears to be zero and address
+	looks wrong. Also in the code return code of munmap is not checked.
+
+	The patch adds check for:
+	-  munmap return code and getting correct address for munmap
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-02-10  Jan Friesse  <jfriesse@redhat.com>
+
+	totempg: Fix memory leak
+	Previously there were two free lists. One for operational and one for
+	transitional state. Because every node starts in transitional state and
+	always ends in the operational state, assembly was always put to normal
+	state free list and never in transitional free list, so new assembly
+	structure was always allocated after new node connected.
+
+	Solution is to have only one free list.
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+	Reviewed-by: Steven Dake <stdake@cisco.com>
+
+2016-01-27  Richard B Winters  <rik@mmogp.com>
+
+	Fix spelling error in binary corosync
+	 - Changed paramater to parameter in exec/logcconfig.c
+
+	Change-Id: I8a24b0ef5c6621dc6c19d7decbdfe7a255afd10d
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Fix spelling error in binary corosync-cfgtool
+	 - Changed reenable to re-enable in tools/corosync-cfgtool.c
+
+	Change-Id: I0457bf3040a454a44f0d8343dd2cd8bf8fad16e0
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Fix spelling error in manual sam_overview 8
+	 - Changed usefull to useful
+
+	Change-Id: I2d7872b21e889202cd2b7752db4c76f18fffa95d
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-01-27  Jan Friesse  <jfriesse@redhat.com>
+
+	cmap_keys.8: Fix spelling and grammar errors
+	- "There are informations" changed to "There is information"
+	- Other occurrences of informations changed to information
+
+	Original patch was created by Richard B Winters <rik@mmogp.com>, so
+	thanks for it.
+
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+
+2016-01-27  Richard B Winters  <rik@mmogp.com>
+
+	Fix spelling errors in manual corosync.conf 5
+	 - dont to don't
+	 - overriden to overridden
+	 - informations to information
+
+	Change-Id: If6644694d750c30ba9f5f43b4eb852485613d64a
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Fix grammer error in manual votequorum_trackstart
+	"allows to" was updated to read "allows one to"
+
+	- With a subject it's grammatically correct.
+
+	Change-Id: I9559e31c780e211b651744c6eaa056ce8d4c3db1
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Add section in manual title for cpg_zcb_free 3
+	Change-Id: Ib80face38dce0345e649297d16cf8a63c5b0e8c1
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Add section in manual title for cpg_zcb_alloc 3
+	Change-Id: I8c5d6af915203533c80e4eaa574e305a46d74815
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Fix incorrect spelling of retrieve from retreive
+	Corrected the spelling of retrieve, where it was spelled as retreive.
+
+	 - There were two cases of this mispelling; one
+	   upper-case and one lower-case
+
+	Change-Id: Ic97fd210d8d3ae7e568e5a2e5d97c6220d2ff628
+	Reviewed-by: Steven Dake <sdake@redhat.com>
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2016-01-05  Jan Friesse  <jfriesse@redhat.com>
+
+	Update corosync.spec source link
+
+	Update gitignore files
+
+	Remove all links to old ML
+
+2016-01-04  Ruben Kerkhof  <ruben@rubenkerkhof.com>
+
+	totemsrp: Fix clang warning (tautological compare)
+	gsfrom is always >= 0
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	configure.ac: Make location of .pc overrideable
+	FreeBSD stores them in /usr/local/libdata/pkgconfig
+
+	This allows us to remove some local hooks in the process.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Remove a few unused variables and functions
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	configure.ac: We don't need no C++ compiler
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	configure.ac: Remove deprecated AC_PROG_LIBTOOL
+	AC_PROG_LIBTOOL is deprecated version of LT_INIT. Because LT_INIT is
+	called we can remove it.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	configure.ac: Remove AC_PROG_RANLIB
+	It was obsoleted by libtool and we don't use ranlib standalone.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	configure.ac: make foreign apply to all Makefiles
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Remove unused, obsolete check
+	From autoconf info Obsolete Macros:
+
+	"These days, it is portable to assume C89, and that signal
+	handlers return void, without needing to use this macro or RETSIGTYPE."
+
+	And we indeed assume so.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-12-16  Ruben Kerkhof  <ruben@rubenkerkhof.com>
+
+	Fix detection of qb_log_thread_priority_set
+	This fixes detection of libqb function qb_log_thread_priority_set
+	if it was installed outside of the standard library search
+	path, in my case /opt.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	cpghum: Fix type of recv_crc
+	Fixes build on FreeBSD which doesn't have ulong
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Check for fdatasync
+	If we don't have it, fall back to fsync
+
+	Fixes the build on FreeBSD
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Fix detection of warning flags for clang
+	Using ./configure CC=clang, the following flags are detected
+	as supported:
+
+	checking whether clang supports "-Wgnu89-inline"... yes
+	checking whether clang supports "-Wno-strict-aliasing"... yes
+
+	Which results in a lot of warnings during make:
+
+	warning: unknown warning option '-Wunsigned-char'
+	[-Wunknown-warning-option]
+	warning: unknown warning option '-Wgnu89-inline'
+	[-Wunknown-warning-option]
+
+	Clang doesn't support these flags, but the compile check returns a
+	warning, not an error:
+
+	configure:16649: checking whether clang supports "-Wunsigned-char"
+	configure:16662: clang -E  -Wunsigned-char conftest.c
+	warning: unknown warning option '-Wunsigned-char'
+	[-Wunknown-warning-option]
+	1 warning generated.
+	configure:16662: $? = 0
+	configure:16663: result: yes
+
+	Use -Wunknown-warning-option -Werror if supported
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-11-27  Hideo Yamauchi  <renayama19661014@ybb.ne.jp>
+
+	quorum: Display node id as unsigned int.
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-11-23  Jan Friesse  <jfriesse@redhat.com>
+
+	cts: InitClusterManager is now BootCluster
+	This is forward port of flatiron-cts
+	fbe1721e676eafd1f25f470234b646904f54e3f3.
+
+	Thanks to bliu <bliu@suse.com> for pointing out.
+
+2015-11-16  Christine Caulfield  <ccaulfie@redhat.com>
+
+	totemudp: Move udp bind() so that multicast works with IPv6
+	It seems that the IPv6 multicast parameters only take effect when bind()
+	is called, so I've moved the mcast recv socket bind() to the bottom of
+	totemudp_build_sockets_ip().
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-11-13  Hideo Yamauchi  <renayama19661014@ybb.ne.jp>
+
+	cfgtool: Display nodeid as unsigned int
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-10-22  Christine Caulfield  <ccaulfie@redhat.com>
+
+	votequorum: Don't send multiple callbacks when nodes join
+	This patch aligns the votequorum callbacks so that they are
+	the same as the quorum ones. Previously it was quite common
+	for votequorum to send one callback for every node in the cluster
+	when a single new node joined (because it sent one for every
+	nodeinfo message it received).
+
+	This new system makes much more sense in itself and being
+	consistent with the internal quorum is also an advantage!
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-09-18  Ferenc Wágner  <wferi@niif.hu>
+
+	man: Add synopsis for cpg_zcb_alloc and free
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	man html index: Update index
+	- add link to cmap_keys(8)
+	- remove link to cpg_groups_get(3)
+	- add missing cpg_* and votequorum_qdevice_* functions
+	- corosync-fplay has already been removed by ab32894
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-08-28  Ferenc Wágner  <wferi@niif.hu>
+
+	votequorum: Make sure cs_error_t is defined
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-08-26  Ferenc Wágner  <wferi@niif.hu>
+
+	Close Doxygen group in include/corosync/cmap.h
+	This avoids warning: end of file while inside a group.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	Doxygen fix for cmap_iter_next()
+	Remove the extra cmap_ prefix of the iter_handle parameter.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	configure: Correct help entry for logdir
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	totmesrp: Fix typo in log message
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	configure: typo in include
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+	man page: Correct option letter for DBus
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
+2015-07-14  Christine Caulfield  <ccaulfie@redhat.com>
+
+	wd: fix setting of watchdog timeouts
+	Fix setting of initial watchdog timeout, and also changing of timeout.
+
+	Remove redundant starting of timer in exec_init_fn
+
+	Reviewed-by: Christine Caulfield <ccaulfie@redhat.com>
+
+2015-07-02  Jason HU  <huzhijiang@gmail.com>
+
+	CFG: Prevent CFG orignating messages during SYNC
+	During SYNC, corosync-cfgtool -R/-H commands can pass through IPC then
+	send totem messages. This may corrupts
+	assembly_list_inuse/assembly_list_free if those messages are recedived
+	after SYNC is done.
+
+	The solution is marking related CFG APIs as
+	CS_LIB_FLOW_CONTROL_REQUIRED.
+
+	Reviewed-by: Jan Friesse <jfriesse@redhat.com>
+
 2015-06-22  Jan Friesse  <jfriesse@redhat.com>
 
 	Don't link with libz when not needed

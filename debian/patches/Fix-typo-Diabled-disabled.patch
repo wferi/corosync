@@ -7,7 +7,7 @@ Subject: Fix typo: Diabled -> disabled
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/exec/totemsrp.c b/exec/totemsrp.c
-index 9c8edc4..83a6a0e 100644
+index efb7211..1efa729 100644
 --- a/exec/totemsrp.c
 +++ b/exec/totemsrp.c
 @@ -984,7 +984,7 @@ int totemsrp_initialize (
