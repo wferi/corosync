@@ -1,3 +1,10 @@
+corosync (2.3.6-2~bpo8+1) jessie-backports; urgency=medium
+
+  * Rebuild for jessie-backports.
+  * [2544d51] Revert "Migrate to automatic debug packages"
+
+ -- Ferenc Wágner <wferi@niif.hu>  Mon, 01 Aug 2016 12:01:47 +0200
+
 corosync (2.3.6-2) unstable; urgency=medium
 
   * [f8af53c] Ship /etc/corosync/uidgid.d in the corosync package
@@ -13,14 +20,6 @@ corosync (2.3.6-1) unstable; urgency=medium
   * [5c47852] Delete upstreamed patches, refresh the rest
 
  -- Ferenc Wágner <wferi@niif.hu>  Fri, 17 Jun 2016 09:36:28 +0200
-
-corosync (2.3.5-9~bpo8+1) jessie-backports; urgency=medium
-
-  * Rebuild for jessie-backports.
-  * [8dcedaa] Update the path in the jQuery Lintian override
-  * [647c982] No --dbgsym-migration under jessie, drop the debug packages
-
- -- Ferenc Wágner <wferi@niif.hu>  Tue, 14 Jun 2016 10:02:23 +0200
 
 corosync (2.3.5-9) unstable; urgency=medium
 
