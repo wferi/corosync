@@ -1,3 +1,11 @@
+corosync (2.3.6-3) unstable; urgency=medium
+
+  * [b6c5f14] New patch config-get_cluster_mcast_addr-error-is-not-fatal.patch.
+    Thanks to Jan Friesse (Closes: #833357)
+  * [6227a90] Migrate from backported corosync-dbg versions as well
+
+ -- Ferenc Wágner <wferi@niif.hu>  Wed, 03 Aug 2016 22:52:55 +0200
+
 corosync (2.3.6-2) unstable; urgency=medium
 
   * [f8af53c] Ship /etc/corosync/uidgid.d in the corosync package
