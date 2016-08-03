@@ -17,3 +17,4 @@ Fix-typo-aquire-acquire.patch
 Fix-typo-retrive-retrieve.patch
 Fix-typo-alocated-allocated.patch
 Fix-typo-Diabled-disabled.patch
+config-get_cluster_mcast_addr-error-is-not-fatal.patch
