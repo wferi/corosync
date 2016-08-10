@@ -1,3 +1,9 @@
+corosync (2.3.6-3~bpo8+1) jessie-backports; urgency=medium
+
+  * Rebuild for jessie-backports.
+
+ -- Ferenc Wágner <wferi@niif.hu>  Wed, 10 Aug 2016 10:32:46 +0200
+
 corosync (2.3.6-3) unstable; urgency=medium
 
   * [b6c5f14] New patch config-get_cluster_mcast_addr-error-is-not-fatal.patch.
