@@ -24,7 +24,7 @@ desc="Corosync Cluster Engine"
 prog="corosync"
 
 # set secure PATH
-PATH="/sbin:/bin:/usr/sbin:/usr/bin:@SBINDIR@"
+PATH="/sbin:/bin:/usr/sbin:/usr/bin:@sbindir_expanded@"
 
 success()
 {

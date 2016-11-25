@@ -1,11 +1,11 @@
-prefix=@PREFIX@
-exec_prefix=${prefix}
-libdir=@LIBDIR@
-includedir=${prefix}/include
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
 
-Name: @LIB@
-Version: @LIBVERSION@
-Description: @LIB@
+Name: @-@
+Version: @VERSION@
+Description: @-@
 Requires:
-Libs: -L${libdir} -l@LIB@
+Libs: -L${libdir} -l@-@
 Cflags: -I${includedir}

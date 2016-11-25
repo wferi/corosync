@@ -1,10 +1,10 @@
-prefix=@PREFIX@
-exec_prefix=${prefix}
-libdir=@LIBDIR@
-includedir=${prefix}/include
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
 
 Name: corosync
-Version: @LIBVERSION@
+Version: @VERSION@
 Description: corosync
 Requires: libqb
 Cflags: -I${includedir}

@@ -30,8 +30,6 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-EXTRA_DIST		= libtemplate.pc.in corosync.pc.in
-
 LIBS	= cfg cpg quorum \
 	  totem_pg votequorum sam cmap corosync_common
 
@@ -39,30 +37,11 @@ pkgconfigdir = $(libdir)/pkgconfig
 
 target_LIBS = $(LIBS:%=lib%.pc)
 
-target_PACKAGE = corosync.pc
+pkgconfig_DATA = $(target_LIBS) corosync.pc
 
-pkgconfig_DATA = $(target_LIBS) $(target_PACKAGE)
+CLEANFILES = $(target_LIBS)
 
-CLEANFILES = $(pkgconfig_DATA)
-
-lib%.pc: libtemplate.pc.in Makefile
+lib%.pc: libtemplate.pc
 	rm -f $@-t $@
-	sed \
-		-e 's#@''PREFIX@#$(exec_prefix)#g' \
-		-e 's#@''LIBDIR@#$(libdir)#g' \
-		-e 's#@''LIBVERSION@#$(VERSION)#g' \
-		-e 's#@''LIB@#'$(*:lib%=%)'#g' \
-	    $< > $@-t
-	chmod a-w $@-t
+	sed -e 's/@-@/$*/g' $< > $@-t
 	mv $@-t $@
-
-%: %.in Makefile
-	rm -f $@-t $@
-	sed \
-		-e 's#@''PREFIX@#$(exec_prefix)#g' \
-		-e 's#@''LIBDIR@#$(libdir)#g' \
-		-e 's#@''LIBVERSION@#$(VERSION)#g' \
-	    $< > $@-t
-	chmod a-w $@-t
-	mv $@-t $@
-

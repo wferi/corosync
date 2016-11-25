@@ -192,10 +192,14 @@ AC_CONFIG_FILES([Makefile
 		 exec/Makefile
 		 include/Makefile
 		 init/Makefile
+		 init/corosync.conf
+		 init/corosync-notifyd.conf
 		 lib/Makefile
 		 common_lib/Makefile
 		 man/Makefile
 		 pkgconfig/Makefile
+		 pkgconfig/corosync.pc
+		 pkgconfig/libtemplate.pc
 		 test/Makefile
 		 cts/Makefile
 		 cts/agents/Makefile
@@ -206,6 +210,10 @@ AC_CONFIG_FILES([Makefile
 		 Doxyfile
 		 conf/logrotate/Makefile
 		 conf/tmpfiles.d/Makefile])
+
+for daemon in corosync corosync-notifyd corosync-qdevice corosync-qnetd; do
+    AC_CONFIG_FILES([init/$daemon init/$daemon.service])
+done
 
 ### Local business
 
@@ -705,6 +713,8 @@ if test "$ap_cv_cc_as_needed" = "yes"; then
 fi
 
 # substitute what we need:
+AC_SUBST([bindir_expanded],[$(eval "echo $bindir")])
+AC_SUBST([sbindir_expanded],[$(eval "echo $sbindir")])
 AC_SUBST([BASHPATH])
 AC_SUBST([INITDDIR])
 AC_SUBST([SYSTEMDDIR])
@@ -730,7 +740,9 @@ AM_CONDITIONAL(BUILD_HTML_DOCS, test -n "${GROFF}")
 
 AC_SUBST([LINT_FLAGS])
 
-AC_DEFINE_UNQUOTED([LOCALSTATEDIR], "$(eval echo ${localstatedir})", [localstate directory])
+# We need the expanded value in substitutions, too
+LOCALSTATEDIR="$(eval echo ${localstatedir})"
+AC_DEFINE_UNQUOTED([LOCALSTATEDIR],["$LOCALSTATEDIR"],[localstate directory])
 
 COROSYSCONFDIR=${sysconfdir}/corosync
 AC_SUBST([COROSYSCONFDIR])
