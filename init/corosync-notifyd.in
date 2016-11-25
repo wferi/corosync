@@ -47,13 +47,8 @@ status()
 	return $rtrn
 }
 
-# rpm based distros
-if [ -d @SYSCONFDIR@/sysconfig ]; then
-	[ -f @INITDDIR@/functions ] && . @INITDDIR@/functions
-	LOCK_FILE="@localstatedir@/lock/subsys/$prog"
-else
-	LOCK_FILE="@localstatedir@/lock/$prog"
-fi
+[ -f @INITDDIR@/functions ] && . @INITDDIR@/functions
+
 [ -f @CONFIGDIR@/$prog ] && . @CONFIGDIR@/$prog
 
 # The version of __pids_pidof in /etc/init.d/functions calls pidof with -x
@@ -83,7 +78,6 @@ start()
 		# give it time to fail
 		sleep 2
 		if status $prog > /dev/null 2>&1; then
-			touch $LOCK_FILE
 			success
 		else
 			failure
@@ -108,7 +102,6 @@ stop()
 		echo -n "."
 	done
 
-	rm -f $LOCK_FILE
 	success
 	echo
 }

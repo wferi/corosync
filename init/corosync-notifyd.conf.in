@@ -7,8 +7,6 @@ respawn
 
 env prog=corosync-notifyd
 env sysconf=@CONFIGDIR@/corosync-notifyd
-env rpm_lockfile=@localstatedir@/lock/subsys/corosync-notifyd
-env deb_lockfile=@localstatedir@/lock/corosync-notifyd
 
 script
     [ -f "$sysconf" ] && . $sysconf
@@ -17,18 +15,4 @@ end script
 
 pre-start script
     mkdir -p @localstatedir@/run
-end script
-
-post-start script
-    [ -f "$sysconf" ] && . $sysconf
-    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/sysconfig ] && LOCK_FILE="$rpm_lockfile"
-    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/default ] && LOCK_FILE="$deb_lockfile"
-    touch $LOCK_FILE
-end script
-
-post-stop script
-    [ -f "$sysconf" ] && . $sysconf
-    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/sysconfig ] && LOCK_FILE="$rpm_lockfile"
-    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/default ] && LOCK_FILE="$deb_lockfile"
-    rm -f $LOCK_FILE
 end script

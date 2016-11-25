@@ -6,8 +6,6 @@ expect fork
 
 env prog=corosync
 env sysconf=@CONFIGDIR@/corosync
-env rpm_lockfile=@localstatedir@/lock/subsys/corosync
-env deb_lockfile=@localstatedir@/lock/corosync
 
 script
     [ -f "$sysconf" ] && . $sysconf
@@ -39,16 +37,4 @@ wait_for_ipc()
     return 1
 }
     wait_for_ipc || { stop; exit 1; }
-
-    [ -f "$sysconf" ] && . $sysconf
-    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/sysconfig ] && LOCK_FILE="$rpm_lockfile"
-    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/default ] && LOCK_FILE="$deb_lockfile"
-    touch $LOCK_FILE
-end script
-
-post-stop script
-    [ -f "$sysconf" ] && . $sysconf
-    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/sysconfig ] && LOCK_FILE="$rpm_lockfile"
-    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/default ] && LOCK_FILE="$deb_lockfile"
-    rm -f $LOCK_FILE
 end script
