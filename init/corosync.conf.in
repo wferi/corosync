@@ -6,9 +6,9 @@ expect fork
 
 env prog=corosync
 env rpm_sysconf=@SYSCONFDIR@/sysconfig/corosync
-env rpm_lockfile=@LOCALSTATEDIR@/lock/subsys/corosync
+env rpm_lockfile=@localstatedir@/lock/subsys/corosync
 env deb_sysconf=@SYSCONFDIR@/default/corosync
-env deb_lockfile=@LOCALSTATEDIR@/lock/corosync
+env deb_lockfile=@localstatedir@/lock/corosync
 
 script
     [ -f "$rpm_sysconf" ] && . $rpm_sysconf
@@ -17,7 +17,7 @@ script
 end script
 
 pre-start script
-    mkdir -p @LOCALSTATEDIR@/run
+    mkdir -p @localstatedir@/run
     # rewrite according to environment.
     #[ -c /dev/watchdog ] || modprobe softdog
 end script

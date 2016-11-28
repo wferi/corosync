@@ -51,13 +51,13 @@ status()
 if [ -d @SYSCONFDIR@/sysconfig ]; then
 	[ -f @INITDDIR@/functions ] && . @INITDDIR@/functions
 	[ -f @SYSCONFDIR@/sysconfig/$prog ] && . @SYSCONFDIR@/sysconfig/$prog
-	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/subsys/$prog"
+	[ -z "$LOCK_FILE" ] && LOCK_FILE="@localstatedir@/lock/subsys/$prog"
 fi
 
 # deb based distros
 if [ -d @SYSCONFDIR@/default ]; then
 	[ -f @SYSCONFDIR@/default/$prog ] && . @SYSCONFDIR@/default/$prog
-	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/$prog"
+	[ -z "$LOCK_FILE" ] && LOCK_FILE="@localstatedir@/lock/$prog"
 fi
 
 # The version of __pids_pidof in /etc/init.d/functions calls pidof with -x
@@ -86,15 +86,15 @@ start()
 
 	! cluster_disabled_at_boot && return
 
-	# most recent distributions use tmpfs for @LOCALSTATEDIR@/run
+	# most recent distributions use tmpfs for @localstatedir@/run
 	# to avoid to clean it up on every boot.
 	# they also assume that init scripts will create
 	# required subdirectories for proper operations
-	if [ ! -d "@LOCALSTATEDIR@/run/corosync-qnetd" ];then
-		mkdir -p "@LOCALSTATEDIR@/run/corosync-qnetd"
-		chmod 0770 "@LOCALSTATEDIR@/run/corosync-qnetd"
+	if [ ! -d "@localstatedir@/run/corosync-qnetd" ];then
+		mkdir -p "@localstatedir@/run/corosync-qnetd"
+		chmod 0770 "@localstatedir@/run/corosync-qnetd"
 		if [ ! -z "$COROSYNC_QNETD_RUNAS" ];then
-			chown "$COROSYNC_QNETD_RUNAS:$COROSYNC_QNETD_RUNAS" "@LOCALSTATEDIR@/run/corosync-qnetd"
+			chown "$COROSYNC_QNETD_RUNAS:$COROSYNC_QNETD_RUNAS" "@localstatedir@/run/corosync-qnetd"
 		fi
 	fi
 
