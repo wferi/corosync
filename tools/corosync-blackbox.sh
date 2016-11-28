@@ -31,4 +31,4 @@
 
 corosync-cmapctl -s runtime.blackbox.dump_state str $(date +%s)
 corosync-cmapctl -s runtime.blackbox.dump_flight_data str $(date +%s)
-qb-blackbox "@LOCALSTATEDIR@/lib/corosync/fdata"
+qb-blackbox "@localstatedir@/lib/corosync/fdata"

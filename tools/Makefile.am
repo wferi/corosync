@@ -42,17 +42,8 @@ if INSTALL_XMLCONF
 bin_SCRIPTS		+= corosync-xmlproc
 endif
 
-EXTRA_DIST		= $(bin_SCRIPTS) corosync-xmlproc.sh \
-			  corosync-notifyd.sysconfig.example \
-                          corosync-blackbox.sh
-
-corosync-xmlproc: corosync-xmlproc.sh
-	sed -e 's#@''DATADIR@#${datadir}#g' \
-	    -e 's#@''BASHPATH@#${BASHPATH}#g' \
-	    $< > $@
-
-corosync-blackbox: corosync-blackbox.sh
-	sed -e 's#@''LOCALSTATEDIR@#${localstatedir}#g' $< > $@
+EXTRA_DIST		= $(bin_SCRIPTS) \
+			  corosync-notifyd.sysconfig.example
 
 corosync_cmapctl_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcmap.la
 
@@ -75,6 +66,3 @@ corosync_notifyd_LDADD    = $(LIBQB_LIBS) $(DBUS_LIBS) $(SNMP_LIBS) \
 
 lint:
 	-splint $(LINT_FLAGS) $(DBUS_CFLAGS) $(CPPFLAGS) $(CFLAGS) *.c
-
-clean-local:
-	rm -f corosync-xmlproc corosync-blackbox

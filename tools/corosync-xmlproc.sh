@@ -54,4 +54,4 @@ fi
 
 [ "$2" != "" ] && out_param="-o $2"
 
-$XSLT_PROC --stringparam inputfile "$1" $out_param @DATADIR@/corosync/xml2conf.xsl "$1"
+$XSLT_PROC --stringparam inputfile "$1" $out_param @datadir_expanded@/corosync/xml2conf.xsl "$1"

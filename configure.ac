@@ -205,6 +205,8 @@ AC_CONFIG_FILES([Makefile
 		 cts/agents/Makefile
 		 cts/CTSvars.py
 		 tools/Makefile
+		 tools/corosync-xmlproc:tools/corosync-xmlproc.sh
+		 tools/corosync-blackbox:tools/corosync-blackbox.sh
 		 conf/Makefile
 		 qdevices/Makefile
 		 Doxyfile
@@ -715,6 +717,7 @@ fi
 # substitute what we need:
 AC_SUBST([bindir_expanded],[$(eval "echo $bindir")])
 AC_SUBST([sbindir_expanded],[$(eval "echo $sbindir")])
+AC_SUBST([datadir_expanded],[$(eval "echo $datadir")])
 AC_SUBST([BASHPATH])
 AC_SUBST([INITDDIR])
 AC_SUBST([SYSTEMDDIR])
