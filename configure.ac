@@ -721,15 +721,26 @@ if test "$ap_cv_cc_as_needed" = "yes"; then
   LDFLAGS="$LDFLAGS -Wl,--as-needed"
 fi
 
+expand() {
+    local s1 s2
+    s1=""
+    s2="$*"
+    while test "$s1" != "$s2"; do
+        s1="$s2"
+        s2=$(eval "echo $s1")
+    done
+    echo "$s2"
+}
+
 # substitute what we need:
-AC_SUBST([bindir_expanded],[$(eval "echo $bindir")])
-AC_SUBST([sbindir_expanded],[$(eval "echo $sbindir")])
-AC_SUBST([datadir_expanded],[$(eval "echo $datadir")])
+AC_SUBST([bindir_expanded],[$(expand $bindir)])
+AC_SUBST([sbindir_expanded],[$(expand $sbindir)])
+AC_SUBST([datadir_expanded],[$(expand $datadir)])
 AC_SUBST([BASHPATH])
 AC_SUBST([INITDDIR])
 AC_SUBST([SYSTEMDDIR])
 AC_SUBST([UPSTARTDIR])
-INITWRAPPERSDIR=$(eval echo ${INITWRAPPERSDIR})
+INITWRAPPERSDIR=$(expand $INITWRAPPERSDIR)
 AC_SUBST([INITWRAPPERSDIR])
 AC_SUBST([LOGDIR])
 AC_SUBST([LOGROTATEDIR])
